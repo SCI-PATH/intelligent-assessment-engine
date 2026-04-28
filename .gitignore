@@ -1,0 +1,3 @@
+venv/
+data/chroma_db/
+.env
