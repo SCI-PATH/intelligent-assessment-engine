@@ -1,18 +1,31 @@
 import os
+import json
+import random
 from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import JsonOutputParser
 
 load_dotenv()
 
 CHROMA_DB_DIR = "data/chroma_db"
 
-# NOTE: We added 'difficulty' as an argument here!
-def generate_mcq(topic, difficulty=5):
-    print(f"\n1. Searching database for: '{topic}'...")
+# [INTEGRATION PLACEHOLDER]: Currently randomly selecting from local array. 
+# Post-integration, this variable will be populated by an active JSON payload from Component 1.
+MOCK_TOPICS = [
+    "Photosynthesis", 
+    "The Water Cycle", 
+    "Types of Mixtures", 
+    "Static Electricity",
+    "Climatic Changes and Temperature"
+]
+
+def generate_question(difficulty=5, question_type="MCQ"):
+    topic = random.choice(MOCK_TOPICS)
+    print(f"\n[INTEGRATION MOCK] Component 1 supplied topic: '{topic}'")
+    print(f"1. Searching database for: '{topic}'...")
 
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vectorstore = Chroma(persist_directory=CHROMA_DB_DIR, embedding_function=embeddings)
@@ -21,53 +34,84 @@ def generate_mcq(topic, difficulty=5):
     context = "\n\n".join([doc.page_content for doc in results])
     print("✅ Context found!\n")
 
-    print(f"2. Connecting to LLM... (Requested Difficulty: {difficulty}/10)")
+    print(f"2. Connecting to LLM... (Type: {question_type}, Target Difficulty: {difficulty}/10)")
 
-    # NOTE: The template now strictly enforces the difficulty level
     template = """
-    You are an expert science teacher. Based ONLY on the following text, write one multiple choice question.
+    You are an expert science teacher. Based ONLY on the following text, write one {question_type} question.
     
-    CRITICAL INSTRUCTION: The difficulty of this question must be exactly level {difficulty} out of 10.
-    - Level 1-3: Very simple recall of basic facts.
-    - Level 4-7: Moderate understanding and application.
-    - Level 8-10: Highly complex, analytical, requiring deep reasoning.
-
-    Include the question, 4 options (A, B, C, D), and clearly state the correct answer.
+    CRITICAL INSTRUCTION: The difficulty must be exactly level {difficulty} out of 10.
+    
+    FORMAT INSTRUCTIONS:
+    You MUST return ONLY a valid JSON object. Do not include markdown blocks or extra text.
+    
+    If question_type is "MCQ":
+    {{
+        "question": "The question text",
+        "options": {{
+            "A": "Correct answer",
+            "B": "Wrong answer 1",
+            "C": "Wrong answer 2",
+            "D": "Wrong answer 3"
+        }},
+        "correct_answer": "A",
+        "tags": {{
+            "B": "NEAR_MISS",
+            "C": "MISCONCEPTION",
+            "D": "COMPLETE_MISS"
+        }}
+    }}
+    
+    If question_type is "True/False":
+    {{
+        "question": "The statement to evaluate",
+        "correct_answer": "True" (or "False")
+    }}
+    
+    If question_type is "Fill-in-the-Blank":
+    {{
+        "question": "The sentence with a ____ representing the missing word.",
+        "correct_answer": "The missing word"
+    }}
+    
+    If question_type is "Short Answer":
+    {{
+        "question": "The open-ended question prompt.",
+        "ideal_answer": "A perfect, complete sentence answering the question.",
+        "keywords": ["keyword1", "keyword2", "keyword3"] 
+    }}
 
     Text:
     {context}
-
-    Question:
     """
     prompt = PromptTemplate.from_template(template)
-    output_parser = StrOutputParser()
+    output_parser = JsonOutputParser()
     
     try:
         llm = ChatGroq(
-            temperature=0.4, 
+            temperature=0.3, 
             model_name="llama-3.1-8b-instant"
         )
         chain = prompt | llm | output_parser
-        # Pass the difficulty into the chain!
-        response = chain.invoke({"topic": topic, "context": context, "difficulty": difficulty})
+        response = chain.invoke({
+            "topic": topic, 
+            "context": context, 
+            "difficulty": difficulty,
+            "question_type": question_type
+        })
         
     except Exception as e:
-        print(f"   -> Groq attempt failed. Falling back to Hugging Face...")
-        llm = HuggingFaceEndpoint(
-            repo_id="google/flan-t5-large",
-            task="text2text-generation",
-            temperature=0.4,
-            max_new_tokens=250
-        )
-        chain = prompt | llm | output_parser
-        response = chain.invoke({"topic": topic, "context": context, "difficulty": difficulty})
+        print(f"   -> Groq error or JSON parsing failed. Error: {e}")
+        return None
 
     print("\n" + "="*50)
-    print(f"✨ GENERATED QUESTION (TARGET DIFFICULTY: {difficulty}) ✨")
+    print(f"✨ GENERATED {question_type.upper()} QUESTION ✨")
     print("="*50)
-    print(response.strip())
+    print(json.dumps(response, indent=4))
     print("="*50 + "\n")
+    
+    return response
 
-# Let's test it with a high difficulty!
 if __name__ == "__main__":
-    generate_mcq("Climatic Changes and Temperature", difficulty=9)
+    # Let's test the brand new Short Answer format!
+    print("\n--- TESTING SHORT ANSWER ---")
+    generate_question(difficulty=7, question_type="Short Answer")

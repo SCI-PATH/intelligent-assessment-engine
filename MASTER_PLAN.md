@@ -1,17 +1,26 @@
 # SCI-PATH Component 2: Dynamic Assessment Engine
 
-## Architecture Overview & Justification
-This component is a Python FastAPI microservice that utilizes a combination of **Item Response Theory (IRT)** and a **Reinforcement Learning (PPO)** agent to drive a Retrieval-Augmented Generation (RAG) pipeline.
-* **We DO NOT use BKT.** This component handles real-time (micro-adaptive) session flow, leaving long-term knowledge tracking to Component 4.
+## Architecture Overview
+This component operates as a Python FastAPI microservice, utilizing **Item Response Theory (IRT)** and a **Reinforcement Learning (PPO)** agent to drive a Retrieval-Augmented Generation (RAG) pipeline. This system governs real-time, micro-adaptive session flow.
 
-## The AI Logic (Viva Defense)
-1. **IRT (The Baseline):** We use Item Response Theory to handle cold-start calibration. It calculates the initial difficulty starting point.
-2. **Reinforcement Learning (The Brain):** A PPO agent acts as the decision-maker. It observes the `State` (Student Accuracy, Response Time). 
-    * *Why RL is required:* The agent's `Action Space` is multi-dimensional. It doesn't just output a Difficulty Level (1-10); it also outputs the optimal **Question Type** (e.g., switching from Short Answer to MCQ if the student is highly frustrated). A rule-based system cannot optimize two continuous parameters simultaneously over a 20-minute session.
-3. **RAG Pipeline (The Generator):** LangChain pulls context from ChromaDB (Grade 6 Science text) and instructs the LLM to generate the exact Question Type and Difficulty prescribed by the RL agent.
+## Core System Logic
+1. **IRT Calibration:** Employs the Rasch Model (1PL) to calculate probabilistic student outcomes, bridging the gap between student ability and generated question difficulty.
+2. **Reinforcement Learning Orchestrator:** A PPO agent processes a 4-factor state array (`Proficiency`, `Time Taken`, `Last Correct`, `Streak`) to calculate the optimal Zone of Proximal Development and dictate the parameters for the next generation cycle.
+3. **RAG Pipeline:** Extracts contextual data from the vector database (ChromaDB) to ground the Groq LLM generations, preventing hallucinations.
+
+## Automated Evaluation & Data Contracts
+To facilitate seamless integration with external system components, the evaluation module outputs strict schemas:
+* **MCQ Evaluation:** Returns binary accuracy and categorizes incorrect responses using Distractor Tags (`NEAR_MISS`, `MISCONCEPTION`, `COMPLETE_MISS`).
+* **Short Answer Evaluation:** Utilizes NLP keyword extraction and fuzzy string matching to return a continuous `Similarity Score` (accuracy percentage).
 
 ## Implementation Phases
-* [ ] Phase 1: Local Setup, API integration, and ChromaDB vector ingestion.
-* [ ] Phase 2: Build the RAG generation prompt.
-* [ ] Phase 3: Train the RL Gymnasium environment using synthetic student simulations.
-* [ ] Phase 4: Expose FastAPI endpoints to the frontend.
+* [x] Phase 1: Local Environment Setup & Vector Ingestion.
+* [x] Phase 2: RAG Pipeline Initialization.
+* [x] Phase 3: RL Gymnasium Environment Construction.
+* [x] Phase 4: Pipeline Orchestration (RL-to-RAG Handshake).
+* [x] Phase 5: Advanced IRT & Multi-Factor State Integration.
+* [ ] Phase 6: Multi-Modal Question Generation (MCQ with Distractors, T/F, Fill-in-Blanks).
+* [ ] Phase 7: Multi-Modal Question Generation (Short Answer & Keyword Schemas).
+* [ ] Phase 8: Intelligent Evaluation Module (Fuzzy Matching & Auto-Grading).
+* [ ] Phase 9: FastAPI Endpoint Exigency & Component Mocking (Placeholders for Component 1 & 4).
+* [ ] Phase 10: Local Diagnostic Dashboard (UI for Quiz runtime, Results breakdown, and RL telemetry).
