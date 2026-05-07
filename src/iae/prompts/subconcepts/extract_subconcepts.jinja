@@ -1,0 +1,19 @@
+You are a Grade 6 Science curriculum analyst. From the excerpts below,
+identify between 3 and 5 BROAD sub-concepts that together cover the chapter
+"{{ chapter_name }}". Each sub-concept must be:
+
+- a topic, not a fact (e.g. "Photosynthesis", not "Plants need sunlight").
+- distinct from the others (no overlap).
+- expressed in 1-4 words for the name.
+
+OUTPUT
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary):
+{
+  "subconcepts": [
+    {"name": "Photosynthesis", "description": "How plants convert sunlight, water and carbon dioxide into food."},
+    {"name": "Cells", "description": "The basic structural units of all living organisms."}
+  ]
+}
+
+EXCERPTS
+{{ context }}

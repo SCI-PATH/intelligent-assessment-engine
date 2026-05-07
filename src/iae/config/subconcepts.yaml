@@ -1,0 +1,194 @@
+subconcepts:
+- id: wonders-of-the-living-world::components-of-the-environment
+  chapter_name: Wonders of the Living World
+  name: Components of the Environment
+  description: The different parts that make up the environment, including living
+    and non-living things.
+- id: wonders-of-the-living-world::characteristics-of-organisms
+  chapter_name: Wonders of the Living World
+  name: Characteristics of Organisms
+  description: The features that distinguish living things from non-living things,
+    including growth, movement, and reproduction.
+- id: wonders-of-the-living-world::nutrition-and-photosynthesis
+  chapter_name: Wonders of the Living World
+  name: Nutrition and Photosynthesis
+  description: How living things obtain and produce food, including autotrophy and
+    heterotrophy, and the process of photosynthesis.
+- id: wonders-of-the-living-world::movement-and-locomotion
+  chapter_name: Wonders of the Living World
+  name: Movement and Locomotion
+  description: The different types of movement and locomotion exhibited by living
+    things, including plants and animals.
+- id: things-around-us::matter-and-energy
+  chapter_name: Things Around Us
+  name: Matter and Energy
+  description: The two main categories of things around us.
+- id: things-around-us::states-of-matter
+  chapter_name: Things Around Us
+  name: States of Matter
+  description: 'The three main forms of matter: solid, liquid, and gas.'
+- id: things-around-us::properties-of-solids
+  chapter_name: Things Around Us
+  name: Properties of Solids
+  description: The characteristics of solids, such as hardness, malleability, and
+    elasticity.
+- id: things-around-us::characteristics-of-solids,-liquids,-and-gases
+  chapter_name: Things Around Us
+  name: Characteristics of Solids, Liquids, and Gases
+  description: The unique properties of each state of matter.
+- id: water-as-a-natural-resource::states-of-water
+  chapter_name: Water as a Natural Resource
+  name: States of Water
+  description: 'The three physical states of water: solid, liquid, and gas.'
+- id: water-as-a-natural-resource::types-of-water
+  chapter_name: Water as a Natural Resource
+  name: Types of Water
+  description: 'The ways in which water exists: precipitation, surface water, and
+    ground water.'
+- id: water-as-a-natural-resource::salinity-of-water
+  chapter_name: Water as a Natural Resource
+  name: Salinity of Water
+  description: 'The classification of water based on salinity: fresh water, marine
+    water, and brackish water.'
+- id: water-as-a-natural-resource::importance-of-water
+  chapter_name: Water as a Natural Resource
+  name: Importance of Water
+  description: The role of water in human activities and the existence of life.
+- id: water-as-a-natural-resource::water-pollution
+  chapter_name: Water as a Natural Resource
+  name: Water Pollution
+  description: The causes and effects of water pollution and the need for conservation.
+- id: energy-in-day-to-day-life::energy-sources
+  chapter_name: Energy in Day-to-Day Life
+  name: Energy Sources
+  description: Different types of energy used in day-to-day life.
+- id: energy-in-day-to-day-life::energy-conversion
+  chapter_name: Energy in Day-to-Day Life
+  name: Energy Conversion
+  description: How energy is converted from one form to another.
+- id: energy-in-day-to-day-life::energy-storage
+  chapter_name: Energy in Day-to-Day Life
+  name: Energy Storage
+  description: Ways in which energy is stored in different forms.
+- id: energy-in-day-to-day-life::energy-utilization
+  chapter_name: Energy in Day-to-Day Life
+  name: Energy Utilization
+  description: How energy is used to do work in various activities.
+- id: light-and-vision::sources-of-light
+  chapter_name: Light and Vision
+  name: Sources of Light
+  description: Objects that emit light.
+- id: light-and-vision::transmission-of-light
+  chapter_name: Light and Vision
+  name: Transmission of Light
+  description: How light passes through different materials.
+- id: light-and-vision::light-rays-and-beams
+  chapter_name: Light and Vision
+  name: Light Rays and Beams
+  description: The path of light as it travels from a source to an observer.
+- id: light-and-vision::requirements-for-vision
+  chapter_name: Light and Vision
+  name: Requirements for Vision
+  description: The factors necessary for us to see an object, including light and
+    the eye.
+- id: sound-and-hearing::sound-production
+  chapter_name: Sound and Hearing
+  name: Sound Production
+  description: How sound is produced by vibrating objects.
+- id: sound-and-hearing::hearing-and-ear
+  chapter_name: Sound and Hearing
+  name: Hearing and Ear
+  description: The process of hearing and the role of the ear in sensing sound.
+- id: sound-and-hearing::types-of-sounds
+  chapter_name: Sound and Hearing
+  name: Types of Sounds
+  description: The classification of sounds into music and noise, and the characteristics
+    of each.
+- id: sound-and-hearing::sound-equipment-and-instruments
+  chapter_name: Sound and Hearing
+  name: Sound Equipment and Instruments
+  description: The creation and use of various equipment and instruments to produce
+    and manipulate sound.
+- id: magnets::magnetic-properties
+  chapter_name: Magnets
+  name: Magnetic Properties
+  description: The characteristics and behaviors of magnets.
+- id: magnets::magnetic-poles
+  chapter_name: Magnets
+  name: Magnetic Poles
+  description: The points on a magnet where the magnetic force is strongest.
+- id: magnets::magnetic-interactions
+  chapter_name: Magnets
+  name: Magnetic Interactions
+  description: The way magnets interact with each other and other objects.
+- id: magnets::magnetic-fields
+  chapter_name: Magnets
+  name: Magnetic Fields
+  description: The area around a magnet where the magnetic force can be detected.
+- id: electricity-for-a-comfortable-life::electricity-generation
+  chapter_name: Electricity for a Comfortable Life
+  name: Electricity Generation
+  description: Methods of producing electricity.
+- id: electricity-for-a-comfortable-life::electric-circuits
+  chapter_name: Electricity for a Comfortable Life
+  name: Electric Circuits
+  description: Systems that allow electric current to flow.
+- id: electricity-for-a-comfortable-life::electric-appliances
+  chapter_name: Electricity for a Comfortable Life
+  name: Electric Appliances
+  description: Devices that use electricity to perform tasks.
+- id: electricity-for-a-comfortable-life::electricity-measurement
+  chapter_name: Electricity for a Comfortable Life
+  name: Electricity Measurement
+  description: Units and tools used to measure electricity.
+- id: heat-and-its-effects::heat-generation
+  chapter_name: Heat and Its Effects
+  name: Heat Generation
+  description: Sources and methods of heat production.
+- id: heat-and-its-effects::effects-of-heat
+  chapter_name: Heat and Its Effects
+  name: Effects of Heat
+  description: Changes in temperature, expansion, and changes of state.
+- id: heat-and-its-effects::temperature-measurement
+  chapter_name: Heat and Its Effects
+  name: Temperature Measurement
+  description: Methods and tools for measuring temperature.
+- id: heat-and-its-effects::heat-transfer
+  chapter_name: Heat and Its Effects
+  name: Heat Transfer
+  description: Conduction, convection, and radiation heat transfer.
+- id: food-related-interactions::food-webs
+  chapter_name: Food-related Interactions
+  name: Food Webs
+  description: Interconnected relationships between plants and animals for food.
+- id: food-related-interactions::food-chains
+  chapter_name: Food-related Interactions
+  name: Food Chains
+  description: Linear sequences showing the flow of energy from one living organism
+    to another.
+- id: food-related-interactions::photosynthesis
+  chapter_name: Food-related Interactions
+  name: Photosynthesis
+  description: The process by which green plants produce food using sunlight, water,
+    and carbon dioxide.
+- id: food-related-interactions::animal-nutrition
+  chapter_name: Food-related Interactions
+  name: Animal Nutrition
+  description: The different modes of nutrition in animals, including herbivory, carnivory,
+    and omnivory.
+- id: weather-and-climate::weather-factors
+  chapter_name: Weather and Climate
+  name: Weather Factors
+  description: The factors that determine the weather.
+- id: weather-and-climate::climate-formation
+  chapter_name: Weather and Climate
+  name: Climate Formation
+  description: The process of forming climate through long-term weather patterns.
+- id: weather-and-climate::weather-measurement
+  chapter_name: Weather and Climate
+  name: Weather Measurement
+  description: The methods used to measure and record weather conditions.
+- id: weather-and-climate::climatic-disasters
+  chapter_name: Weather and Climate
+  name: Climatic Disasters
+  description: The natural disasters that occur due to climatic changes.

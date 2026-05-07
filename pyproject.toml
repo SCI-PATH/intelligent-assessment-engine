@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iae"
+version = "0.1.0"
+description = "Intelligent Assessment Engine"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+iae = ["prompts/**/*.jinja", "config/*.yaml"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

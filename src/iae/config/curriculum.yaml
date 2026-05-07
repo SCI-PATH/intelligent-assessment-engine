@@ -1,0 +1,36 @@
+# Page ranges follow the textbook Table of Contents using PDF page numbers
+# (1-based). Validated against data/grade_6_science.pdf during ingest.
+chapters:
+  - name: Wonders of the Living World
+    page_start: 15
+    page_end: 34
+  - name: Things Around Us
+    page_start: 35
+    page_end: 48
+  - name: Water as a Natural Resource
+    page_start: 49
+    page_end: 62
+  - name: Energy in Day-to-Day Life
+    page_start: 63
+    page_end: 80
+  - name: Light and Vision
+    page_start: 81
+    page_end: 100
+  - name: Sound and Hearing
+    page_start: 101
+    page_end: 112
+  - name: Magnets
+    page_start: 113
+    page_end: 123
+  - name: Electricity for a Comfortable Life
+    page_start: 124
+    page_end: 146
+  - name: Heat and Its Effects
+    page_start: 147
+    page_end: 161
+  - name: Food-related Interactions
+    page_start: 162
+    page_end: 172
+  - name: Weather and Climate
+    page_start: 173
+    page_end: 190

@@ -1,0 +1,19 @@
+assessment:
+  max_questions: 5
+  cold_start_dok: 2
+  rolling_window: 5
+  response_time_target_seconds: 45
+  # Target band tracked by the RL policy. Below the lower bound we ease off,
+  # above the upper bound we push DOK higher.
+  target_accuracy_lower: 0.80
+  target_accuracy_upper: 0.85
+
+models:
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  llm_model: llama-3.1-8b-instant
+  llm_grader_model: llama-3.1-8b-instant
+
+bank:
+  questions_per_combo: 1          # questions generated per (chapter, sub_concept, dok, type)
+  generation_max_retries: 2
+  retrieval_top_k: 4
