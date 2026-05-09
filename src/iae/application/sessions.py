@@ -6,8 +6,12 @@ repository; it knows nothing about HTTP, Streamlit, or Mongo specifics.
 
 from __future__ import annotations
 
+import json
+import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import NamedTuple
+from uuid import uuid4
 
 from iae.core.models import (
     AttemptRecord,
@@ -34,6 +38,27 @@ class NextQuestion(NamedTuple):
     action: RlAction
     state: RlState
     rolling_accuracy: float
+
+
+_DEBUG_LOG_PATH = Path("debug-21ced4.log")
+
+
+def _debug_log(*, hypothesis_id: str, location: str, message: str, data: dict) -> None:
+    payload = {
+        "sessionId": "21ced4",
+        "runId": "initial",
+        "hypothesisId": hypothesis_id,
+        "id": f"log_{uuid4().hex}",
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with _DEBUG_LOG_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
 
 
 @dataclass
@@ -89,6 +114,24 @@ class SessionService:
             state = self._derive_state(session)
             action = self._policy.next_action(state, session.history)
 
+        # #region agent log
+        _debug_log(
+            hypothesis_id="H2",
+            location="src/iae/application/sessions.py:next_question",
+            message="State and action before repository fetch",
+            data={
+                "session_id": session_id,
+                "questions_asked": session.questions_asked,
+                "state_current_difficulty": state.current_difficulty,
+                "state_accuracy_score": state.accuracy_score,
+                "state_time_taken": state.time_taken,
+                "state_streak": state.streak,
+                "action_next_difficulty_level": action.next_difficulty_level,
+                "action_question_type": action.next_question_type.value,
+            },
+        )
+        # #endregion
+
         # Avoid repeating semantically identical prompts (same stem/paragraph),
         # not just duplicate question IDs.
         excluded_ids = list(session.used_question_ids)
@@ -120,13 +163,44 @@ class SessionService:
         session.asked_signatures.append(self._question_signature(question))
         self._sessions.update(session)
 
+        # #region agent log
+        _debug_log(
+            hypothesis_id="H3",
+            location="src/iae/application/sessions.py:next_question",
+            message="Selected question after repository fetch",
+            data={
+                "session_id": session_id,
+                "selected_question_id": question.id,
+                "selected_question_type": question.question_type.value,
+                "selected_dok_level": question.dok_level,
+                "selected_chapter": question.chapter_name,
+            },
+        )
+        # #endregion
+
         from iae.adaptive.telemetry import rolling_accuracy
 
+        rolling = rolling_accuracy(session.history, self._limits.rolling_window)
+        # #region agent log
+        _debug_log(
+            hypothesis_id="H2",
+            location="src/iae/application/sessions.py:next_question",
+            message="Computed rolling accuracy for next question",
+            data={
+                "session_id": session_id,
+                "questions_asked": session.questions_asked,
+                "history_len": len(session.history),
+                "rolling_accuracy": rolling,
+                "last_attempt_is_correct": session.history[-1].is_correct if session.history else None,
+                "last_attempt_score": session.history[-1].accuracy_score if session.history else None,
+            },
+        )
+        # #endregion
         return NextQuestion(
             question=question,
             action=action,
             state=state,
-            rolling_accuracy=rolling_accuracy(session.history, self._limits.rolling_window),
+            rolling_accuracy=rolling,
         )
 
     @staticmethod
@@ -155,8 +229,28 @@ class SessionService:
         question = self._questions.get(question_id)
         if question is None:
             raise KeyError(question_id)
+        from iae.adaptive.telemetry import rolling_accuracy
+
+        action = session.last_action
+        state = session.last_state
+        rolling_at_decision = rolling_accuracy(session.history, self._limits.rolling_window)
 
         result = self._grading.grade(question, student_answer)
+        # #region agent log
+        _debug_log(
+            hypothesis_id="H3",
+            location="src/iae/application/sessions.py:submit_answer",
+            message="Submit answer grading result",
+            data={
+                "session_id": session_id,
+                "question_id": question.id,
+                "question_type": question.question_type.value,
+                "student_answer": student_answer,
+                "grade_is_correct": result.is_correct,
+                "grade_accuracy_score": result.accuracy_score,
+            },
+        )
+        # #endregion
         attempt = AttemptRecord(
             question_id=question.id,
             question_type=question.question_type,
@@ -167,10 +261,39 @@ class SessionService:
             accuracy_score=result.accuracy_score,
             is_correct=result.is_correct,
             feedback=result.feedback,
+            reasoning=result.reasoning,
+            adaptive_decision=(
+                f"{(action.dok_summary if action else '').strip()} | "
+                f"{(action.type_summary if action else '').strip()}".strip(" |"),
+            ).strip(),
+            decision_rule_triggered=(action.rule_triggered if action else ""),
+            decision_dok_reason=(action.dok_reason if action else ""),
+            decision_question_type_reason=(action.question_type_reason if action else ""),
+            decision_dok_trace=(action.dok_trace if action else None),
+            decision_type_trace=(action.type_trace if action else None),
+            decision_prev_dok=(state.current_difficulty if state else None),
+            decision_target_dok=(action.next_difficulty_level if action else None),
+            decision_rolling_accuracy=rolling_at_decision,
+            decision_last_accuracy=(state.accuracy_score if state else None),
+            decision_last_response_time_seconds=time_taken_seconds,
             time_taken_seconds=time_taken_seconds,
         )
         session.history.append(attempt)
         session.questions_asked += 1
+        # #region agent log
+        _debug_log(
+            hypothesis_id="H4",
+            location="src/iae/application/sessions.py:submit_answer",
+            message="Session history updated after grading",
+            data={
+                "session_id": session_id,
+                "new_questions_asked": session.questions_asked,
+                "history_len": len(session.history),
+                "last_history_is_correct": session.history[-1].is_correct,
+                "last_history_accuracy_score": session.history[-1].accuracy_score,
+            },
+        )
+        # #endregion
         self._sessions.update(session)
         return result, session
 
@@ -189,9 +312,11 @@ class SessionService:
         return RlState(
             current_chapter=session.scope_chapter,
             time_taken=normalized_time,
+            response_time_seconds=last.time_taken_seconds,
             accuracy_score=last.accuracy_score,
             streak=current_streak(session.history),
             current_difficulty=last.dok_level,
+            last_question_type=last.question_type,
             current_sub_concept="ChapterWide",
         )
 

@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import json
 import re
+import time
+from pathlib import Path
+from uuid import uuid4
 
 from iae.core.models import (
     GradeResult,
@@ -21,6 +24,25 @@ from iae.core.protocols import ILlmJson
 from iae.prompts import render
 
 _PASS_THRESHOLD = 0.8
+_DEBUG_LOG_PATH = Path("debug-21ced4.log")
+
+
+def _debug_log(*, hypothesis_id: str, location: str, message: str, data: dict) -> None:
+    payload = {
+        "sessionId": "21ced4",
+        "runId": "initial",
+        "hypothesisId": hypothesis_id,
+        "id": f"log_{uuid4().hex}",
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with _DEBUG_LOG_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
 
 
 class GradingService:
@@ -54,6 +76,20 @@ class GradingService:
         correct = question.payload.correct_answer.strip().lower()
         chosen = student_answer.strip().lower()
         is_correct = chosen.startswith(correct[0])  # accepts T/True, F/False, etc.
+        # #region agent log
+        _debug_log(
+            hypothesis_id="H1",
+            location="src/iae/application/grading.py:_grade_true_false",
+            message="True/False grading computed outcome",
+            data={
+                "question_id": question.id,
+                "correct_answer": correct,
+                "student_answer_raw": student_answer,
+                "student_answer_normalized": chosen,
+                "is_correct": is_correct,
+            },
+        )
+        # #endregion
         return GradeResult(
             accuracy_score=1.0 if is_correct else 0.0,
             is_correct=is_correct,
@@ -105,6 +141,13 @@ class GradingService:
 
     def _grade_short_answer(self, question: Question, student_answer: str) -> GradeResult:
         payload: ShortAnswerPayload = question.payload  # type: ignore[assignment]
+        if not student_answer or not student_answer.strip():
+            return GradeResult(
+                accuracy_score=0.0,
+                is_correct=False,
+                feedback="No answer provided.",
+                reasoning="The response is blank, so no concept evidence could be evaluated.",
+            )
 
         # Deterministic shortcut: an exact (normalized) match against the ideal
         # answer is always 100%. This avoids LLM judges chronically capping at
@@ -116,6 +159,7 @@ class GradingService:
                 accuracy_score=1.0,
                 is_correct=True,
                 feedback="Matches the ideal answer exactly.",
+                reasoning="Exact match to the model answer after normalization.",
             )
 
         prompt = render(
@@ -126,14 +170,15 @@ class GradingService:
             student_answer=student_answer.strip(),
         )
         try:
-            result = self._llm.generate_json(prompt, temperature=0.0)
+            result = self._llm.generate_json(prompt, temperature=0.15)
         except Exception as exc:  # pragma: no cover - surfaced to the caller
             return GradeResult(
                 accuracy_score=0.0,
                 is_correct=False,
                 feedback=f"Grading failed: {exc}",
             )
-        score = float(result.get("accuracy_score", 0.0))
+        raw_score = result.get("accuracy_score", result.get("score", 0.0))
+        score = float(raw_score)
         score = max(0.0, min(1.0, score))
 
         # Keyword sanity floor: if the student covered every required keyword,
@@ -143,13 +188,23 @@ class GradingService:
             1 for kw in payload.keywords
             if kw and kw.lower() in student_norm
         )
-        if payload.keywords and keyword_hits == len(payload.keywords):
-            score = max(score, 0.9)
+        if payload.keywords:
+            keyword_ratio = keyword_hits / len(payload.keywords)
+            if keyword_ratio >= 1.0:
+                score = max(score, 0.9)
+            elif keyword_ratio >= 0.75:
+                score = max(score, 0.75)
+            elif keyword_ratio >= 0.5:
+                score = max(score, 0.55)
 
         is_correct = score >= _PASS_THRESHOLD
+        reasoning = str(result.get("reasoning", "")).strip()
+        if not reasoning:
+            reasoning = str(result.get("feedback", "")).strip()
         return GradeResult(
             accuracy_score=score,
             is_correct=is_correct,
             feedback=self._feedback_matches_outcome(str(result.get("feedback", "")), is_correct=is_correct),
+            reasoning=reasoning,
         )
 

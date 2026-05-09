@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from iae.api.bootstrap import Container
 from iae.api.schemas import (
+    ActionTelemetry,
     ChaptersResponse,
     CreateSessionRequest,
     NextQuestionResponse,
@@ -73,7 +74,24 @@ def next_question(
         question=outcome.question,
         telemetry=TelemetryPayload(
             state=outcome.state,
-            action=outcome.action,
+            action=ActionTelemetry(
+                target_chapter=outcome.action.target_chapter,
+                next_difficulty_level=outcome.action.next_difficulty_level,
+                next_question_type=outcome.action.next_question_type,
+                next_sub_concept=outcome.action.next_sub_concept,
+                rule_triggered=outcome.action.rule_triggered,
+                dok_reason=outcome.action.dok_reason,
+                question_type_reason=outcome.action.question_type_reason,
+                dok_summary=outcome.action.dok_summary,
+                type_summary=outcome.action.type_summary,
+                dok_trace=outcome.action.dok_trace,
+                type_trace=outcome.action.type_trace,
+                estimated_theta=outcome.action.estimated_theta,
+                item_b=outcome.action.item_b,
+                previous_response_time_seconds=outcome.action.previous_response_time_seconds,
+                rapid_guessing_detected=outcome.action.rapid_guessing_detected,
+                format_simplification_triggered=outcome.action.format_simplification_triggered,
+            ),
             rolling_accuracy=outcome.rolling_accuracy,
             questions_asked=session.questions_asked,
         ),

@@ -8,6 +8,8 @@ typed ``Question``.
 from __future__ import annotations
 
 import argparse
+import random
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -56,14 +58,88 @@ class GenerationStats:
     failed: int = 0
 
 
+_BLANK_TOKEN_RE = re.compile(r"\[_+\]|_{3,}|\[\s*blank\s*\d+\s*\]|\[\s*\]", re.IGNORECASE)
+
+
+def _canonicalize_blanks(paragraph: str) -> str:
+    return _BLANK_TOKEN_RE.sub("[_____]", paragraph)
+
+
+def _shuffle_mcq_options(raw: dict) -> dict:
+    options = raw.get("options", {})
+    correct_letter = str(raw.get("correct_answer", "")).strip().upper()
+    if not isinstance(options, dict) or len(options) != 4 or correct_letter not in options:
+        raise ValueError("Invalid MCQ payload shape")
+
+    pairs = [(k, str(v).strip()) for k, v in options.items()]
+    random.shuffle(pairs)
+    letters = ("A", "B", "C", "D")
+
+    new_options: dict[str, str] = {}
+    new_correct = "A"
+    for idx, (old_key, text) in enumerate(pairs):
+        letter = letters[idx]
+        new_options[letter] = text
+        if old_key == correct_letter:
+            new_correct = letter
+
+    return {
+        "question": str(raw.get("question", "")).strip(),
+        "options": new_options,
+        "correct_answer": new_correct,
+    }
+
+
+def _normalize_short_answer(raw: dict) -> dict:
+    keywords = [str(k).strip().lower() for k in raw.get("keywords", []) if str(k).strip()]
+    deduped: list[str] = []
+    for kw in keywords:
+        if kw not in deduped:
+            deduped.append(kw)
+    if len(deduped) < 3:
+        raise ValueError("ShortAnswer requires at least 3 usable keywords")
+    return {
+        "question": str(raw.get("question", "")).strip(),
+        "ideal_answer": str(raw.get("ideal_answer", "")).strip(),
+        "keywords": deduped[:6],
+    }
+
+
+def _normalize_multiblank(raw: dict) -> dict:
+    answers = [str(a).strip().lower() for a in raw.get("answers", []) if str(a).strip()]
+    if not (3 <= len(answers) <= 5):
+        raise ValueError("MultiBlank requires 3-5 non-empty answers")
+
+    paragraph = _canonicalize_blanks(str(raw.get("paragraph", "")).strip())
+    blanks = _BLANK_TOKEN_RE.findall(paragraph)
+    if len(blanks) != len(answers):
+        raise ValueError("MultiBlank paragraph blank count must match answers length")
+
+    return {"paragraph": paragraph, "answers": answers}
+
+
+def _normalize_true_false(raw: dict) -> dict:
+    answer = str(raw.get("correct_answer", "")).strip().lower()
+    if answer in ("t", "true"):
+        canonical = "True"
+    elif answer in ("f", "false"):
+        canonical = "False"
+    else:
+        raise ValueError("TrueFalse correct_answer must be True/False")
+    return {
+        "question": str(raw.get("question", "")).strip(),
+        "correct_answer": canonical,
+    }
+
+
 def _build_payload(qtype: QuestionType, raw: dict):
     if qtype == QuestionType.MCQ:
-        return MCQPayload(**raw)
+        return MCQPayload(**_shuffle_mcq_options(raw))
     if qtype == QuestionType.SHORT_ANSWER:
-        return ShortAnswerPayload(**raw)
+        return ShortAnswerPayload(**_normalize_short_answer(raw))
     if qtype == QuestionType.MULTI_BLANK:
-        return MultiBlankPayload(**raw)
-    return TrueFalsePayload(**raw)
+        return MultiBlankPayload(**_normalize_multiblank(raw))
+    return TrueFalsePayload(**_normalize_true_false(raw))
 
 
 def _format_context(chunk_texts: Iterable[str]) -> str:

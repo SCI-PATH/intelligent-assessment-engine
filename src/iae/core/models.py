@@ -14,6 +14,28 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+RuleTraceCategory = Literal["dok", "type", "cold_start"]
+
+
+class TraceCondition(BaseModel):
+    """One evaluated predicate shown in the adaptive decision trace."""
+
+    label: str
+    required: bool = True
+    met: bool | None = None
+    observed: str = ""
+
+
+class RuleTrace(BaseModel):
+    """Structured IF/THEN explanation for one policy branch (DOK or question type)."""
+
+    rule_id: str
+    title: str
+    category: RuleTraceCategory
+    pedagogy_tag: str = ""
+    conditions: list[TraceCondition] = Field(default_factory=list)
+    outcome: str = ""
+
 
 class QuestionType(str, Enum):
     MCQ = "MCQ"
@@ -96,9 +118,11 @@ class RlState(BaseModel):
 
     current_chapter: str
     time_taken: float = 0.0
+    response_time_seconds: float = 0.0
     accuracy_score: float = 0.0
     streak: int = 0
     current_difficulty: DokLevel = 2
+    last_question_type: QuestionType | None = None
     current_sub_concept: str | None = None
 
 
@@ -107,6 +131,18 @@ class RlAction(BaseModel):
     next_difficulty_level: DokLevel
     next_question_type: QuestionType
     next_sub_concept: str
+    rule_triggered: str = "cold-start"
+    dok_reason: str = ""
+    question_type_reason: str = ""
+    dok_summary: str = ""
+    type_summary: str = ""
+    dok_trace: RuleTrace | None = None
+    type_trace: RuleTrace | None = None
+    estimated_theta: float = 0.0
+    item_b: float = 0.0
+    previous_response_time_seconds: float = 0.0
+    rapid_guessing_detected: bool = False
+    format_simplification_triggered: bool = False
 
 
 class AttemptRecord(BaseModel):
@@ -119,6 +155,18 @@ class AttemptRecord(BaseModel):
     accuracy_score: float
     is_correct: bool
     feedback: str = ""
+    reasoning: str = ""
+    adaptive_decision: str = ""
+    decision_rule_triggered: str = ""
+    decision_dok_reason: str = ""
+    decision_question_type_reason: str = ""
+    decision_prev_dok: DokLevel | None = None
+    decision_target_dok: DokLevel | None = None
+    decision_rolling_accuracy: float | None = None
+    decision_last_accuracy: float | None = None
+    decision_last_response_time_seconds: float | None = None
+    decision_dok_trace: RuleTrace | None = None
+    decision_type_trace: RuleTrace | None = None
     time_taken_seconds: float = 0.0
     asked_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -142,3 +190,4 @@ class GradeResult(BaseModel):
     accuracy_score: float = Field(ge=0.0, le=1.0)
     is_correct: bool
     feedback: str = ""
+    reasoning: str = ""

@@ -1,76 +1,186 @@
-"""Plain-language DDA policy explainer for presentations."""
+"""Interactive preview of the adaptive difficulty policy (same rules as the live assessment)."""
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import streamlit as st
 
-TARGET_ACCURACY_LOWER = 0.80
-TARGET_ACCURACY_UPPER = 0.85
-RESPONSE_TIME_TARGET_SECONDS = 45.0
+_SRC = Path(__file__).resolve().parent.parent / "src"
+if _SRC.is_dir() and str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from iae.adaptive import rule_catalog as rc  # noqa: E402
+
+_LAST_WEAK_ACC = 0.50
+_LAST_STRONG_ACC = 0.85
+_ROLL_UP = 0.80
+_SLOW_SECONDS = 45.0
+_FAST_UP_SECONDS = 30.0
 
 
-def decide_next_dok(current_dok: int, rolling_accuracy: float, response_time_seconds: float) -> tuple[int, str, str]:
-    normalized_time = min(max(response_time_seconds / RESPONSE_TIME_TARGET_SECONDS, 0.0), 2.0)
-    theta = (rolling_accuracy - 0.5) * 2.0
-    item_b = (current_dok - 2.5) / 1.5
-    gap = theta - item_b
+def evaluate(
+    *,
+    current_dok: int,
+    rolling_average: float,
+    last_accuracy: float,
+    weak_streak: int,
+    response_time_seconds: float,
+) -> tuple[int, str, str, str, str, str, str, str]:
+    """next_dok, next_type, dok_id, typ_id, dok_heading, dok_one_liner, type_heading, type_one_liner."""
 
-    if normalized_time >= 0.85 and rolling_accuracy < TARGET_ACCURACY_UPPER:
-        next_dok = max(1, current_dok - 1)
-        reason = (
-            "The student is taking longer than expected and accuracy is not strong, "
-            "so the engine reduces difficulty to avoid overload."
-        )
-        rule = "slow-response safety rule"
-    elif rolling_accuracy < TARGET_ACCURACY_LOWER:
-        next_dok = max(1, current_dok - 1)
-        reason = "Accuracy is below target, so the engine lowers DOK to rebuild confidence."
-        rule = "below-target accuracy rule"
-    elif rolling_accuracy > TARGET_ACCURACY_UPPER and normalized_time <= 0.45 and gap > 0.20:
+    weak_last = last_accuracy < _LAST_WEAK_ACC
+    increase_ok = (
+        rolling_average >= _ROLL_UP
+        and last_accuracy >= _LAST_STRONG_ACC
+        and response_time_seconds <= _FAST_UP_SECONDS
+    )
+    decrease_high_dok = current_dok >= 3 and weak_last
+    decrease_low_dok = (
+        current_dok <= 2
+        and weak_streak >= 2
+        and rolling_average < _LAST_WEAK_ACC
+        and weak_last
+    )
+
+    if increase_ok:
         next_dok = min(4, current_dok + 1)
-        reason = "Accuracy is high and responses are fast, so the engine raises difficulty."
-        rule = "high-performance progression rule"
+        dok_fired_id = rc.RULE_DOK_R1_PROGRESSION.rule_id
+        dok_head = "DOK · Step 1 — step up"
+        dok_line = (
+            f"Rolling {rolling_average:.0%}, last {last_accuracy:.0%}, time {response_time_seconds:.1f}s met the bar → **DOK {current_dok}→{next_dok}**."
+        )
+    elif decrease_high_dok:
+        next_dok = max(1, current_dok - 1)
+        dok_fired_id = rc.RULE_DOK_R2_HIGH_PROTECT.rule_id
+        dok_head = "DOK · Step 2 — help on hard depth"
+        dok_line = f"On DOK {current_dok} with last score {last_accuracy:.0%} → **DOK {current_dok}→{next_dok}**."
+    elif decrease_low_dok:
+        next_dok = max(1, current_dok - 1)
+        dok_fired_id = rc.RULE_DOK_R3_LOW_SUSTAINED.rule_id
+        dok_head = "DOK · Step 3 — ease after repeated struggle"
+        dok_line = f"Weak streak {weak_streak}, rolling {rolling_average:.0%}, last {last_accuracy:.0%} → **DOK {current_dok}→{next_dok}**."
     else:
         next_dok = current_dok
-        reason = "Performance is within the target zone, so the engine keeps difficulty stable."
-        rule = "stability rule"
+        dok_fired_id = rc.RULE_DOK_R4_HOLD.rule_id
+        dok_head = "DOK · Step 4 — no change"
+        dok_line = f"Nothing in steps 1–3 fully matched → stays **{next_dok}**."
 
-    return next_dok, rule, reason
+    if last_accuracy >= _LAST_STRONG_ACC and rolling_average >= _ROLL_UP:
+        if next_dok >= 3:
+            next_type = "MultiBlank"
+            type_fired_id = rc.RULE_TYPE_R1_MULTI_BLANK.rule_id
+            type_head = "Type · Step 1 strong + higher next DOK"
+            type_line = f"Next DOK planned as {next_dok} → **MultiBlank**."
+        else:
+            next_type = "ShortAnswer"
+            type_fired_id = rc.RULE_TYPE_R1_SHORT_ANSWER.rule_id
+            type_head = "Type · Step 1 strong + lower next DOK"
+            type_line = f"Next DOK planned as {next_dok} → **Short answer**."
+    elif last_accuracy < _LAST_WEAK_ACC:
+        next_type = "MCQ"
+        type_fired_id = rc.RULE_TYPE_R2_WEAK.rule_id
+        type_head = "Type · Step 2 weak last answer"
+        type_line = f"Last {last_accuracy:.0%} → **MCQ**."
+    elif response_time_seconds > _SLOW_SECONDS:
+        next_type = "TrueFalse"
+        type_fired_id = rc.RULE_TYPE_R3_SLOW.rule_id
+        type_head = "Type · Step 3 slow response"
+        type_line = f"{response_time_seconds:.1f}s → **True/False**."
+    else:
+        next_type = "Rotate (MCQ / T-F / Multi-blank)"
+        type_fired_id = rc.RULE_TYPE_R4_LEAST_USED.rule_id
+        type_head = "Type · Step 4 middle signals"
+        type_line = "Least-used of MCQ · True/false · Multi-blank in this session."
+
+    return next_dok, next_type, dok_fired_id, type_fired_id, dok_head, dok_line, type_head, type_line
+
+
+_RULES_BOTTOM = """### Rules
+
+Read **top to bottom**. Use the **first** row that fits.
+
+#### Question depth (DOK)
+
+| Rule ID | If… | Then… |
+|:---|:---|:---|
+| `DOK_R0_COLD_START` | No graded attempt in the session yet | Next depth = **starting** value from settings |
+| `DOK_R1_PROGRESSION` | Rolling average ≥ **80%** AND last score ≥ **85%** AND time ≤ **30** s | Depth **goes up by one** (max **4**) |
+| `DOK_R2_HIGH_PROTECT` | Depth is **3 or 4** AND last score **under 50%** | Depth **goes down by one** |
+| `DOK_R3_LOW_SUSTAINED` | Depth is **1 or 2** AND **two** answers in a row **under 50%** AND rolling average **under 50%** AND last **under 50%** | Depth **goes down by one** |
+| `DOK_R4_HOLD` | None of the rows above matched | **Keep** the same depth |
+
+#### Question format
+
+| Rule ID | If… | Then… |
+|:---|:---|:---|
+| `TYPE_R0_COLD_START` | First question — no prior attempts | **Multiple choice** |
+| `TYPE_R1_STRONG_MULTI_BLANK` | Last ≥ **85%** AND rolling average ≥ **80%** AND **planned** next depth is **3 or 4** | **Multi-blank** |
+| `TYPE_R1_STRONG_SHORT_ANSWER` | Last ≥ **85%** AND rolling average ≥ **80%** AND **planned** next depth is **1 or 2** | **Short answer** |
+| `TYPE_R2_WEAK_MCQ` | Last score **under 50%** | **Multiple choice** |
+| `TYPE_R3_SLOW_TRUE_FALSE` | Time **over 45** seconds | **True / false** |
+| `TYPE_R4_LEAST_USED_ROTATION` | None of the rows above matched | **Multiple choice / true-false / multi-blank** — whichever was used **least** in the session |
+"""
 
 
 def main() -> None:
-    st.set_page_config(page_title="DDA Decision Explainer", layout="centered")
-    st.title("Adaptive Difficulty Decision Explainer")
+    st.set_page_config(page_title="Difficulty policy", layout="wide")
+    st.title("What changes next")
 
-    current_dok = st.selectbox("Current DOK", [1, 2, 3, 4], index=1)
-    rolling_accuracy = st.slider("Rolling accuracy", 0.0, 1.0, 0.80, 0.01)
-    response_time_seconds = st.slider("Response time (seconds)", 0, 90, 22, 1)
+    with st.sidebar:
+        st.header("Try numbers")
+        current_dok = st.select_slider("Current DOK", options=[1, 2, 3, 4], value=2)
+        rolling_average = st.slider("Rolling avg (recent scores)", 0.0, 1.0, 0.72, 0.01)
+        last_accuracy = st.slider("Last answer score", 0.0, 1.0, 0.80, 0.01)
+        weak_streak = st.slider(
+            "Runs in a row under 50% (weak streak)",
+            0,
+            5,
+            0,
+            help=(
+                "Count answers with graded score below 50%, from the newest backward until one is 50%+ . "
+                "Only used for DOK step 3. Not the live quiz “correct streak” (consecutive passes / is_correct)—that counts passes, "
+                "not how low numeric scores ran together."
+            ),
+        )
+        response_time_seconds = st.slider("Last response time (s)", 0, 90, 22)
 
-    next_dok, rule, reason = decide_next_dok(
+    (
+        next_dok,
+        next_type,
+        dok_id,
+        typ_id,
+        dok_head,
+        dok_line,
+        type_head,
+        type_line,
+    ) = evaluate(
         current_dok=current_dok,
-        rolling_accuracy=rolling_accuracy,
+        rolling_average=float(rolling_average),
+        last_accuracy=float(last_accuracy),
+        weak_streak=int(weak_streak),
         response_time_seconds=float(response_time_seconds),
     )
 
-    st.divider()
-    st.subheader("Decision")
-    st.markdown(f"- **Triggered rule:** {rule}")
-    st.markdown(f"- **Current DOK:** {current_dok}")
-    st.markdown(f"- **Next DOK:** {next_dok}")
-    st.markdown(f"- **Why:** {reason}")
+    st.caption("Use the sidebar to try values. Below the line: the full rule list.")
 
-    with st.expander("Show technical values"):
-        normalized_time = min(max(float(response_time_seconds) / RESPONSE_TIME_TARGET_SECONDS, 0.0), 2.0)
-        theta = (rolling_accuracy - 0.5) * 2.0
-        item_b = (current_dok - 2.5) / 1.5
-        st.markdown(f"- response time (seconds): `{response_time_seconds}`")
-        st.markdown(
-            f"- normalized response time used by policy: `{normalized_time:.2f}` "
-            f"(seconds / {int(RESPONSE_TIME_TARGET_SECONDS)})"
-        )
-        st.markdown(f"- theta (estimated ability): `{theta:.2f}`")
-        st.markdown(f"- b (current item difficulty proxy): `{item_b:.2f}`")
-        st.markdown(f"- theta - b gap: `{(theta - item_b):.2f}`")
+    lc, rc = st.columns(2, gap="large")
+    with lc:
+        with st.container(border=True):
+            st.markdown(f"###### {dok_head}")
+            st.metric("Depth of knowledge", f"{current_dok}  →  {next_dok}")
+            st.write(dok_line)
+            st.caption(f"Rule **`{dok_id}`**")
+    with rc:
+        with st.container(border=True):
+            st.markdown(f"###### {type_head}")
+            st.metric("Question format", next_type)
+            st.write(type_line)
+            st.caption(f"Rule **`{typ_id}`**")
+
+    st.markdown("---")
+    st.markdown(_RULES_BOTTOM)
 
 
 if __name__ == "__main__":

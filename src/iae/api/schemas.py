@@ -8,13 +8,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from iae.core.models import (
-    AttemptRecord,
-    GradeResult,
-    Question,
-    RlAction,
-    RlState,
-)
+from iae.core.models import AttemptRecord, GradeResult, Question, QuestionType, RlState, RuleTrace
 
 
 class CreateSessionRequest(BaseModel):
@@ -28,11 +22,30 @@ class SessionResponse(BaseModel):
     max_questions: int
 
 
+class ActionTelemetry(BaseModel):
+    target_chapter: str
+    next_difficulty_level: int
+    next_question_type: QuestionType
+    next_sub_concept: str
+    rule_triggered: str
+    dok_reason: str
+    question_type_reason: str
+    dok_summary: str = ""
+    type_summary: str = ""
+    dok_trace: RuleTrace | None = None
+    type_trace: RuleTrace | None = None
+    estimated_theta: float
+    item_b: float
+    previous_response_time_seconds: float
+    rapid_guessing_detected: bool
+    format_simplification_triggered: bool
+
+
 class TelemetryPayload(BaseModel):
     """The 'RL X-ray' shown in the right-hand Streamlit panel."""
 
     state: RlState
-    action: RlAction
+    action: ActionTelemetry
     rolling_accuracy: float = Field(ge=0.0, le=1.0)
     questions_asked: int
 

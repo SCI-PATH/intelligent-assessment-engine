@@ -2,13 +2,34 @@
 
 from __future__ import annotations
 
+import json
+import time
 from typing import Iterable
+from pathlib import Path
 
 from pymongo.database import Database
 
 from iae.core.models import Question, QuestionType
 
 _COLLECTION = "questions"
+_DEBUG_LOG_PATH = Path("debug-b15ee2.log")
+
+
+def _debug_log(*, run_id: str, hypothesis_id: str, location: str, message: str, data: dict) -> None:
+    payload = {
+        "sessionId": "b15ee2",
+        "runId": run_id,
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with _DEBUG_LOG_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
 
 
 class MongoQuestionRepository:
@@ -59,7 +80,33 @@ class MongoQuestionRepository:
         for query in relaxations:
             if excluded_ids:
                 query = {**query, "_id": {"$nin": excluded_ids}}
-            doc = self._db[_COLLECTION].find_one(query)
+            # Randomize candidate selection to avoid deterministic "first doc"
+            # bias (e.g., repeatedly surfacing the same MCQ key pattern).
+            sample = list(
+                self._db[_COLLECTION].aggregate(
+                    [
+                        {"$match": query},
+                        {"$sample": {"size": 1}},
+                    ]
+                )
+            )
+            doc = sample[0] if sample else None
+            # #region agent log
+            _debug_log(
+                run_id="pre-fix",
+                hypothesis_id="H4",
+                location="src/iae/infrastructure/mongo/questions_repo.py:find_one_unused",
+                message="Repository relaxation sample result",
+                data={
+                    "query_keys": sorted(list(query.keys())),
+                    "matched": doc is not None,
+                    "matched_question_type": (doc or {}).get("question_type"),
+                    "matched_dok": (doc or {}).get("dok_level"),
+                    "matched_chapter": (doc or {}).get("chapter_name"),
+                    "matched_correct_answer": ((doc or {}).get("payload") or {}).get("correct_answer"),
+                },
+            )
+            # #endregion
             if doc:
                 return Question(**doc)
         return None

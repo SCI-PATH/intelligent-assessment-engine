@@ -12,10 +12,13 @@ from iae.core.models import AttemptRecord, QuestionType
 
 
 def rolling_accuracy(history: list[AttemptRecord], window: int) -> float:
-    """Mean accuracy over the most recent ``window`` attempts.
+    """Mean ``accuracy_score`` over the most recent ``window`` attempts.
+
+    Matches short-answer partial credit semantics (0.0–1.0) while staying
+    binary for objective items whose scores are 0 or 1.
 
     Returns 0.0 when no attempts have been recorded yet so the policy treats
-    the cold-start path as "no signal" rather than "perfect" or "failing".
+    the cold-start path as ``no signal`` rather than "perfect".
     """
     if not history:
         return 0.0

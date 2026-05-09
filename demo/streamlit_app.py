@@ -15,6 +15,57 @@ API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8001")
 TIMEOUT_SECONDS = 60
 TARGET_ACCURACY_LOWER = 0.80
 TARGET_ACCURACY_UPPER = 0.85
+RESPONSE_TIME_TARGET_SECONDS = 45.0
+
+
+def _as_clean_text(value: Any, fallback: str) -> str:
+    text = str(value or "").strip()
+    return text if text else fallback
+
+
+def _simple_reason(text: str) -> str:
+    cleaned = " ".join(str(text or "").split()).strip()
+    for prefix in ("Why this DOK?", "Why DOK 1?", "Why DOK 2?", "Why DOK 3?", "Why DOK 4?", "Action:"):
+        cleaned = cleaned.replace(prefix, "").strip()
+    return cleaned
+
+
+def _condition_symbol(met: Any) -> str:
+    if met is True:
+        return "✓"
+    if met is False:
+        return "✗"
+    return "—"
+
+
+def _render_rule_trace_block(
+    *,
+    heading: str,
+    trace: dict[str, Any] | None,
+    legacy_line: str = "",
+) -> None:
+    st.markdown(f"**{heading}**")
+    if not trace:
+        if legacy_line:
+            st.caption(_simple_reason(legacy_line))
+        else:
+            st.caption("No structured trace in payload (legacy session).")
+        return
+    rule_id = trace.get("rule_id", "")
+    title = trace.get("title", "")
+    st.markdown(f"{title} (`{rule_id}`)")
+    ped = (trace.get("pedagogy_tag") or "").strip()
+    if ped:
+        st.caption(ped)
+    st.markdown("**IF (evaluated):**")
+    for cond in trace.get("conditions") or []:
+        label = cond.get("label", "")
+        obs = cond.get("observed", "")
+        sym = _condition_symbol(cond.get("met"))
+        st.markdown(f"- {sym} {label}  —  observed: `{obs}`")
+    outcome = (trace.get("outcome") or "").strip()
+    if outcome:
+        st.markdown(f"**{outcome}**")
 
 
 def _api_get(path: str) -> dict[str, Any]:
@@ -40,6 +91,7 @@ def _ensure_state() -> None:
         "question_started_at": None,
         "results": None,
         "show_answers": True,
+        "last_response_time_seconds": None,
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -71,6 +123,7 @@ def _submit_answer(student_answer: str) -> None:
     response = _api_post(f"/assessment/sessions/{st.session_state.session_id}/answer", payload)
     st.session_state.grade = response
     st.session_state.is_complete = response.get("is_complete", False)
+    st.session_state.last_response_time_seconds = float(elapsed)
 
 
 def _load_results() -> None:
@@ -94,7 +147,7 @@ def _answer_key_text(question: dict[str, Any]) -> str:
     return f"Ideal answer: {ideal}\nKeywords: {keywords}"
 
 
-_BLANK_PATTERN = re.compile(r"\[_+\]|_{3,}|\[\s*blank\s*\d+\s*\]", re.IGNORECASE)
+_BLANK_PATTERN = re.compile(r"\[_+\]|_{3,}|\[\s*blank\s*\d+\s*\]|\[\s*\]", re.IGNORECASE)
 
 
 def _count_blanks(paragraph: str) -> int:
@@ -102,58 +155,86 @@ def _count_blanks(paragraph: str) -> int:
 
 
 def _render_paragraph_with_visible_blanks(paragraph: str) -> str:
-    idx = {"i": 0}
-
-    def replace(_m: re.Match[str]) -> str:
-        idx["i"] += 1
-        return f"*[_Blank {idx['i']}_]*"
-
-    return _BLANK_PATTERN.sub(replace, paragraph)
+    # Render as true blank slots, not numbered labels.
+    return _BLANK_PATTERN.sub("[_____]", paragraph)
 
 
-def _decision_for_current_question(payload: dict[str, Any], question: dict[str, Any]) -> tuple[str, str]:
+def render_xray_panel(payload: dict[str, Any]) -> None:
+    """Compact diagnostics panel with plain-English control trace."""
     telemetry = payload["telemetry"]
     state = telemetry["state"]
+    action = telemetry["action"]
+    question = payload["question"]
+
+    prev_dok = int(state.get("current_difficulty", 2))
+    target_dok = int(action.get("next_difficulty_level", prev_dok))
+    served_dok = int(question.get("dok_level", target_dok))
+    served_type = question.get("question_type", "N/A")
+    target_type = action.get("next_question_type", "N/A")
     rolling = float(telemetry.get("rolling_accuracy", 0.0))
-    normalized_time = float(state.get("time_taken", 0.0))
-    current_dok = int(question.get("dok_level", state.get("current_difficulty", 2)))
+    last_acc = float(state.get("accuracy_score", 0.0))
+    response_seconds = float(action.get("previous_response_time_seconds", 0.0) or 0.0)
+    if response_seconds <= 0.0:
+        response_seconds = float(state.get("response_time_seconds", 0.0) or 0.0)
+    if response_seconds <= 0.0 and st.session_state.get("last_response_time_seconds") is not None:
+        response_seconds = float(st.session_state["last_response_time_seconds"])
 
-    if int(telemetry.get("questions_asked", 0)) == 0:
-        return (
-            "cold-start rule",
-            f"Current DOK is {current_dok} because the session always starts from the configured baseline difficulty.",
+    with st.container(border=True):
+        st.markdown("**Adaptive Decision Trace**")
+        time_text = f"{response_seconds:.1f}s" if response_seconds > 0.0 else "N/A (first item)"
+        st.caption(
+            "[ Inputs: "
+            f"Rolling avg (mean score): {rolling:.0%} | "
+            f"Last score: {last_acc:.0%} | "
+            f"Time: {time_text} ]"
+        )
+        st.markdown(f"**Transition:** Previous DOK {prev_dok} -> Target DOK {target_dok}")
+
+        dok_trace = action.get("dok_trace")
+        type_trace = action.get("type_trace")
+        dok_legacy = ""
+        if not dok_trace:
+            dok_r = _as_clean_text(action.get("dok_reason"), "")
+            if not dok_r:
+                if target_dok > prev_dok:
+                    dok_legacy = (
+                        "Difficulty increased because recent scores support stepping up "
+                        "(legacy fallback text)."
+                    )
+                elif target_dok < prev_dok:
+                    dok_legacy = "Difficulty reduced for support (legacy fallback text)."
+                else:
+                    dok_legacy = "Difficulty unchanged (legacy fallback text)."
+            else:
+                dok_legacy = dok_r
+        qt_legacy = ""
+        if not type_trace:
+            qt_r = _as_clean_text(action.get("question_type_reason"), "")
+            qt_legacy = qt_r or "Question type fallback (legacy)."
+
+        _render_rule_trace_block(heading="DOK rule", trace=dok_trace if isinstance(dok_trace, dict) else None, legacy_line=dok_legacy)
+        _render_rule_trace_block(
+            heading="Question type rule",
+            trace=type_trace if isinstance(type_trace, dict) else None,
+            legacy_line=qt_legacy,
         )
 
-    theta = (rolling - 0.5) * 2.0
-    item_b = (current_dok - 2.5) / 1.5
-    gap = theta - item_b
+        summaries = [_as_clean_text(action.get("dok_summary"), ""), _as_clean_text(action.get("type_summary"), "")]
+        short = " | ".join(s for s in summaries if s)
+        if short:
+            st.caption(f"Summaries: {short}")
 
-    if normalized_time >= 0.85 and rolling < TARGET_ACCURACY_UPPER:
-        rule = "slow-response safety rule"
-        why = (
-            f"Current DOK is {current_dok} because the student took longer than expected "
-            "and accuracy was not strong, so the engine reduced difficulty to avoid overload."
-        )
-    elif rolling < TARGET_ACCURACY_LOWER:
-        rule = "below-target accuracy rule"
-        why = (
-            f"Current DOK is {current_dok} because rolling accuracy was below target, "
-            "so the engine lowered difficulty to rebuild confidence."
-        )
-    elif rolling > TARGET_ACCURACY_UPPER and normalized_time <= 0.45 and gap > 0.20:
-        rule = "high-performance progression rule"
-        why = (
-            f"Current DOK is {current_dok} because the student was both accurate and fast, "
-            "so the engine increased challenge."
-        )
-    else:
-        rule = "stability rule"
-        why = (
-            f"Current DOK is {current_dok} because performance was in the target range, "
-            "so the engine kept the difficulty stable."
-        )
-
-    return rule, why
+        if served_type != target_type:
+            st.caption(f"Served type fallback: requested {target_type}, served {served_type}.")
+        if served_dok != target_dok:
+            st.warning(
+                f"Conflict note: policy targeted DOK {target_dok} but question bank served DOK {served_dok} "
+                "(availability fallback, not a policy bug)."
+            )
+        if action.get("rapid_guessing_detected"):
+            st.warning("Rapid guess: DOK increase held.")
+        if action.get("format_simplification_triggered"):
+            st.info("Format simplification at same DOK.")
 
 
 def render_start_screen() -> None:
@@ -194,48 +275,52 @@ def render_question_panel() -> None:
     st.progress(asked / st.session_state.max_questions, text=f"Question {asked} of {st.session_state.max_questions}")
     st.caption(f"Chapter: {question['chapter_name']}  |  DOK {question['dok_level']}  |  Type: {qtype}")
 
-    rule, why = _decision_for_current_question(payload, question)
-    with st.container(border=True):
-        st.markdown("**Decision**")
-        st.markdown(f"Triggered rule: `{rule}`")
-        st.markdown(why)
+    # Two-column layout: quiz left, compact trace right. Render the trace column first so an early
+    # return in the quiz column (after Submit) never skips the side panel on first paint.
+    left, right = st.columns([11, 5], gap="medium")
+    with right:
+        render_xray_panel(payload)
 
-    if st.session_state.get("show_answers", True):
-        with st.expander("Answer key (testing mode)", expanded=False):
-            st.write(_answer_key_text(question))
+    with left:
+        if st.session_state.get("show_answers", True):
+            with st.expander("Answer key (testing mode)", expanded=False):
+                st.write(_answer_key_text(question))
 
-    student_answer = _render_question_inputs(qtype, body)
+        student_answer = _render_question_inputs(qtype, body)
 
-    if st.session_state.grade is None:
-        if st.button("Submit answer", type="primary", disabled=student_answer is None):
-            with st.spinner("Grading..."):
+        if st.session_state.grade is None:
+            if st.button("Submit answer", type="primary", disabled=student_answer is None):
+                with st.spinner("Grading..."):
+                    try:
+                        _submit_answer(student_answer)
+                    except requests.RequestException as exc:
+                        st.error(f"Could not submit answer: {exc}")
+                        return
+                st.rerun()
+            return
+
+        grade = st.session_state.grade["grade"]
+        score_pct = int(round(grade["accuracy_score"] * 100))
+        if qtype == "ShortAnswer" and grade.get("reasoning"):
+            st.info(f"Score: {score_pct}%  |  {grade['feedback']} {grade['reasoning']}")
+        else:
+            if grade["is_correct"]:
+                st.success(f"Score: {score_pct}%  |  {grade['feedback']}")
+            else:
+                st.warning(f"Score: {score_pct}%  |  {grade['feedback']}")
+
+        if st.session_state.is_complete:
+            if st.button("View results", type="primary"):
+                _load_results()
+                st.rerun()
+        else:
+            if st.button("Next question", type="primary"):
                 try:
-                    _submit_answer(student_answer)
+                    _fetch_next_question()
                 except requests.RequestException as exc:
-                    st.error(f"Could not submit answer: {exc}")
+                    st.error(f"Could not fetch next question: {exc}")
                     return
-            st.rerun()
-        return
-
-    grade = st.session_state.grade["grade"]
-    score_pct = int(round(grade["accuracy_score"] * 100))
-    if grade["is_correct"]:
-        st.success(f"Score: {score_pct}%  |  {grade['feedback']}")
-    else:
-        st.warning(f"Score: {score_pct}%  |  {grade['feedback']}")
-
-    if st.session_state.is_complete:
-        if st.button("View results", type="primary"):
-            _load_results()
-            st.rerun()
-    else:
-        if st.button("Next question", type="primary"):
-            try:
-                _fetch_next_question()
-            except requests.RequestException as exc:
-                st.error(f"Could not fetch next question: {exc}")
-                return
-            st.rerun()
+                st.rerun()
 
 
 def _render_question_inputs(qtype: str, body: dict) -> str | None:
@@ -291,8 +376,52 @@ def render_results_screen() -> None:
         badge = "Correct" if attempt["is_correct"] else "Incorrect"
         st.markdown(f"**Q{idx}** ({attempt['question_type']} | DOK {attempt['dok_level']}) - {badge} ({score_pct:.0f}%)")
         st.markdown(f"_Your answer:_ {attempt['student_answer'] or '*(blank)*'}")
-        if attempt.get("feedback"):
+        if attempt.get("question_type") == "ShortAnswer" and attempt.get("reasoning"):
+            st.caption(f"Score rationale: {attempt.get('feedback', '')} {attempt.get('reasoning', '')}".strip())
+        elif attempt.get("feedback"):
             st.caption(attempt["feedback"])
+        trace_rolling = attempt.get("decision_rolling_accuracy")
+        trace_last = attempt.get("decision_last_accuracy")
+        trace_time = attempt.get("time_taken_seconds")
+        trace_prev_dok = attempt.get("decision_prev_dok")
+        trace_target_dok = attempt.get("decision_target_dok")
+        dok_tr = attempt.get("decision_dok_trace")
+        typ_tr = attempt.get("decision_type_trace")
+
+        trace_reason = (attempt.get("decision_dok_reason") or "").strip()
+        trace_format = (attempt.get("decision_question_type_reason") or "").strip()
+        show_block = (
+            trace_rolling is not None
+            or trace_last is not None
+            or trace_time is not None
+            or trace_reason
+            or trace_format
+            or dok_tr
+            or typ_tr
+        )
+        if show_block:
+            st.caption("[ Decision Trace ]")
+            if trace_rolling is not None and trace_last is not None and trace_time is not None:
+                st.caption(
+                    f"Inputs: Rolling avg (mean score): {float(trace_rolling):.0%} | "
+                    f"Last score: {float(trace_last):.0%} | "
+                    f"Time: {float(trace_time):.1f}s"
+                )
+            if trace_prev_dok is not None and trace_target_dok is not None:
+                st.caption(f"Transition: Previous DOK {trace_prev_dok} -> Target DOK {trace_target_dok}")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                _render_rule_trace_block(
+                    heading="DOK",
+                    trace=dok_tr if isinstance(dok_tr, dict) else None,
+                    legacy_line=trace_reason,
+                )
+            with col_b:
+                _render_rule_trace_block(
+                    heading="Type",
+                    trace=typ_tr if isinstance(typ_tr, dict) else None,
+                    legacy_line=trace_format,
+                )
         st.divider()
 
     if st.button("New session", type="primary"):
