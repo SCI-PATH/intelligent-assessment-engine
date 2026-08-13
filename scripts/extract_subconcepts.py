@@ -16,6 +16,11 @@ from pathlib import Path
 import yaml
 from langchain_community.document_loaders import PyPDFLoader
 
+_ROOT = Path(__file__).resolve().parents[1]
+for _p in (str(_ROOT), str(_ROOT / "src")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from iae.core.curriculum import (
     DEFAULT_GRADE,
     UnknownGradeError,

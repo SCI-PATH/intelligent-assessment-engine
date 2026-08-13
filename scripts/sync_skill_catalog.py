@@ -10,6 +10,11 @@ import argparse
 import sys
 from pathlib import Path
 
+_ROOT = Path(__file__).resolve().parents[1]
+for _p in (str(_ROOT), str(_ROOT / "src")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from iae.core.settings import get_settings
 from iae.core.skills import dump_topics_yaml, match_curriculum_chapters, parse_skill_workbook
 

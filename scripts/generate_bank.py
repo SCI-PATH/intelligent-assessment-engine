@@ -9,6 +9,12 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[1]
+for _p in (str(_ROOT), str(_ROOT / "src")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 from iae.application.question_generation import (
     RateLimitExceeded,
