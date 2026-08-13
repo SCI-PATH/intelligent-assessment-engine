@@ -35,6 +35,7 @@ class AppSettings(BaseSettings):
         default="data/skills/Skill-Heirarchies-G6-G9-Full-Chapters.xlsx",
         alias="SKILLS_XLSX_PATH",
     )
+    analytics_base_url: str = Field(default="", alias="ANALYTICS_BASE_URL")
 
 
 class AppConfig:

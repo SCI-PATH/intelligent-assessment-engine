@@ -23,10 +23,12 @@ from iae.core.models import (
 class CreateSessionRequest(BaseModel):
     chapter_name: str
     grade: int = 6
+    user_id: str | None = None
 
 
 class SessionResponse(BaseModel):
     session_id: str
+    user_id: str
     scope_chapter: str
     questions_asked: int
     max_questions: int

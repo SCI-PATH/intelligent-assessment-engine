@@ -21,8 +21,12 @@ from iae.core.models import (
     RlState,
     SessionState,
 )
+from iae.application.analytics_payload import build_analytics_payload, send_analytics_event
 from iae.core.protocols import (
+    IAnalyticsRepository,
+    IEmbedder,
     IGradingService,
+    ILlmJson,
     IQuestionRepository,
     IRlPolicy,
     ISessionRepository,
@@ -77,17 +81,26 @@ class SessionService:
         grading: IGradingService,
         policy: IRlPolicy,
         limits: SessionLimits,
+        analytics: IAnalyticsRepository | None = None,
+        embedder: IEmbedder | None = None,
+        analytics_llm: ILlmJson | None = None,
     ) -> None:
         self._sessions = sessions
         self._questions = questions
         self._grading = grading
         self._policy = policy
         self._limits = limits
+        self._analytics = analytics
+        self._embedder = embedder
+        self._analytics_llm = analytics_llm
 
     # ---- lifecycle -------------------------------------------------------------
 
-    def create_session(self, scope_chapter: str) -> SessionState:
-        session = SessionState(scope_chapter=scope_chapter)
+    def create_session(self, scope_chapter: str, user_id: str | None = None) -> SessionState:
+        session = SessionState(
+            scope_chapter=scope_chapter,
+            user_id=(user_id or "").strip() or str(uuid4()),
+        )
         return self._sessions.create(session)
 
     def get_session(self, session_id: str) -> SessionState:
@@ -280,6 +293,7 @@ class SessionService:
         )
         session.history.append(attempt)
         session.questions_asked += 1
+        self._record_analytics(session, question, result, student_answer)
         # #region agent log
         _debug_log(
             hypothesis_id="H4",
@@ -296,6 +310,28 @@ class SessionService:
         # #endregion
         self._sessions.update(session)
         return result, session
+
+    def _record_analytics(
+        self,
+        session: SessionState,
+        question: Question,
+        result: GradeResult,
+        student_answer: str,
+    ) -> None:
+        payload = build_analytics_payload(
+            user_id=session.user_id,
+            question=question,
+            grade=result,
+            student_answer=student_answer,
+            embedder=self._embedder,
+            llm=self._analytics_llm,
+        )
+        if self._analytics is not None:
+            try:
+                self._analytics.insert(payload, session_id=session.session_id)
+            except Exception:
+                pass
+        send_analytics_event(payload)
 
     # ---- internal --------------------------------------------------------------
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -31,6 +31,28 @@ class QuestionRow(Base):
     chunk_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     origin: Mapped[str] = mapped_column(String(16), nullable=False, default="ai")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class AnalyticsEventRow(Base):
+    __tablename__ = "analytics_events"
+    __table_args__ = {"schema": "question_engine"}
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False)
+    topic_id: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    question_id: Mapped[str] = mapped_column(Text, nullable=False)
+    question_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    similarity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    distractor_tag: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    distractor_label: Mapped[str | None] = mapped_column(Text, nullable=True)
+    session_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

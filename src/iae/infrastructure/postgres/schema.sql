@@ -27,3 +27,23 @@ CREATE INDEX IF NOT EXISTS questions_topic_status
 
 CREATE INDEX IF NOT EXISTS questions_grade_created
     ON question_engine.questions (grade, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS question_engine.analytics_events (
+    id UUID PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    topic_id TEXT NOT NULL DEFAULT '',
+    is_correct BOOLEAN NOT NULL,
+    question_id TEXT NOT NULL,
+    question_type TEXT NOT NULL,
+    similarity_score DOUBLE PRECISION,
+    distractor_tag TEXT,
+    distractor_label TEXT,
+    session_id TEXT,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT analytics_distractor_tag_chk
+        CHECK (distractor_tag IS NULL OR distractor_tag IN ('NEAR_MISS', 'MISCONCEPTION', 'COMPLETE_MISS'))
+);
+
+CREATE INDEX IF NOT EXISTS analytics_events_user_topic
+    ON question_engine.analytics_events (user_id, topic_id, created_at DESC);

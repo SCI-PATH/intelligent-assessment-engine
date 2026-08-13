@@ -66,9 +66,13 @@ def create_session(
             status_code=400,
             detail=f"Unknown chapter for grade {payload.grade}. Available grades: {available}.",
         )
-    session = container.session_service.create_session(payload.chapter_name)
+    session = container.session_service.create_session(
+        payload.chapter_name,
+        user_id=payload.user_id,
+    )
     return SessionResponse(
         session_id=session.session_id,
+        user_id=session.user_id,
         scope_chapter=session.scope_chapter,
         questions_asked=session.questions_asked,
         max_questions=get_config().max_questions,

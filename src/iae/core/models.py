@@ -195,6 +195,7 @@ class SessionState(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     session_id: str = Field(default_factory=lambda: str(uuid4()), alias="_id")
+    user_id: str = Field(default_factory=lambda: str(uuid4()))
     scope_chapter: str
     used_question_ids: list[str] = Field(default_factory=list)
     asked_signatures: list[str] = Field(default_factory=list)

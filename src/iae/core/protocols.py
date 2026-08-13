@@ -7,7 +7,7 @@ live in `iae.infrastructure.*` and `iae.adaptive.*` and are wired in
 
 from __future__ import annotations
 
-from typing import Iterable, Protocol, runtime_checkable
+from typing import Any, Iterable, Protocol, runtime_checkable
 
 from iae.core.models import (
     AttemptRecord,
@@ -123,4 +123,9 @@ class IRlPolicy(Protocol):
 @runtime_checkable
 class IGradingService(Protocol):
     def grade(self, question: Question, student_answer: str) -> GradeResult: ...
+
+
+@runtime_checkable
+class IAnalyticsRepository(Protocol):
+    def insert(self, payload: dict[str, Any], *, session_id: str | None = None) -> str: ...
 
