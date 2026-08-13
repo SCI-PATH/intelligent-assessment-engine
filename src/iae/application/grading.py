@@ -108,21 +108,28 @@ class GradingService:
         )
         if is_correct:
             return result
-        if self._embedder is None:
-            tag = DistractorTag.COMPLETE_MISS
-        else:
-            tag, _ = classify_mcq_distractor(
+        tag = DistractorTag.COMPLETE_MISS
+        if self._embedder is not None:
+            try:
+                tag, _ = classify_mcq_distractor(
+                    question=question,
+                    student_answer=student_answer,
+                    embedder=self._embedder,
+                )
+            except Exception:
+                tag = DistractorTag.COMPLETE_MISS
+        result.distractor_tag = tag.value
+        try:
+            result.distractor_label = explain_mcq_distractor(
                 question=question,
                 student_answer=student_answer,
-                embedder=self._embedder,
+                tag=tag,
+                llm=self._llm,
             )
-        result.distractor_tag = tag.value
-        result.distractor_label = explain_mcq_distractor(
-            question=question,
-            student_answer=student_answer,
-            tag=tag,
-            llm=self._llm,
-        )
+        except Exception:
+            result.distractor_label = (
+                f"The chosen option differs from {correct}, indicating a complete miss."
+            )
         return result
 
     def _grade_true_false(self, question: Question, student_answer: str) -> GradeResult:

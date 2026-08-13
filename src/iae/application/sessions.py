@@ -300,8 +300,8 @@ class SessionService:
             distractor_label=result.distractor_label,
             adaptive_decision=(
                 f"{(action.dok_summary if action else '').strip()} | "
-                f"{(action.type_summary if action else '').strip()}".strip(" |"),
-            ).strip(),
+                f"{(action.type_summary if action else '').strip()}"
+            ).strip(" |"),
             decision_rule_triggered=(action.rule_triggered if action else ""),
             decision_dok_reason=(action.dok_reason if action else ""),
             decision_question_type_reason=(action.question_type_reason if action else ""),
