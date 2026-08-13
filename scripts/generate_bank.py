@@ -1,8 +1,7 @@
-"""Pre-generate the chapter-level question bank into MongoDB Atlas.
+"""Pre-generate the chapter-level question bank.
 
-For each (chapter, DOK 1-4, question type) combination we render a
-chapter-grounded prompt against cached chunks and persist parsed JSON as a
-typed ``Question``.
+RAG context is retrieved from local Chroma (Topic ID metadata). Parsed
+questions are still written to Mongo until the Phase 3 Postgres cutover.
 """
 
 from __future__ import annotations
@@ -12,6 +11,7 @@ import random
 import re
 import sys
 import time
+from collections import Counter
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -19,6 +19,7 @@ from pydantic import ValidationError
 
 from iae.core.curriculum import DEFAULT_GRADE, get_chapter_names
 from iae.core.models import (
+    Chunk,
     MCQPayload,
     MultiBlankPayload,
     Question,
@@ -27,10 +28,12 @@ from iae.core.models import (
     TrueFalsePayload,
 )
 from iae.core.settings import get_config, get_settings
+from iae.core.skills import get_topic, normalize_chapter_name, topics_for_chapter
 from iae.infrastructure.llm.factory import build_json_llm
-from iae.infrastructure.mongo.chunks_repo import MongoChunkRepository
 from iae.infrastructure.mongo.client import ensure_indexes, get_database
 from iae.infrastructure.mongo.questions_repo import MongoQuestionRepository
+from iae.infrastructure.rag.chroma_store import ChromaChunkStore
+from iae.infrastructure.rag.embeddings import HuggingFaceEmbedder
 from iae.prompts import render
 
 DOK_DESCRIPTORS: dict[int, str] = {
@@ -146,10 +149,63 @@ def _format_context(chunk_texts: Iterable[str]) -> str:
     return "\n\n---\n\n".join(t.strip() for t in chunk_texts)
 
 
+def _majority_topic(chunks: list[Chunk]) -> tuple[str, str]:
+    tagged = [(c.topic_id, c.skill) for c in chunks if c.topic_id]
+    if not tagged:
+        return "", ""
+    topic_id = Counter(pair[0] for pair in tagged).most_common(1)[0][0]
+    skill = next(skill for tid, skill in tagged if tid == topic_id)
+    return topic_id, skill
+
+
+def _retrieve_chunks(
+    *,
+    store: ChromaChunkStore,
+    embedder: HuggingFaceEmbedder,
+    grade: int,
+    chapter: str,
+    topic_ids: list[str | None],
+    top_k: int,
+) -> list[Chunk]:
+    """Pull RAG context from Chroma, preferring Topic ID filters."""
+    collected: list[Chunk] = []
+    seen: set[str] = set()
+    query_bits = [chapter]
+    for topic_id in topic_ids:
+        if topic_id:
+            topic = get_topic(topic_id)
+            if topic and topic.skill:
+                query_bits.append(topic.skill)
+    query_embedding = embedder.embed([" ".join(query_bits)])[0]
+
+    for topic_id in topic_ids:
+        hits = store.query(
+            query_embedding,
+            n_results=top_k,
+            grade=grade,
+            chapter_name=None if topic_id else chapter,
+            topic_id=topic_id,
+        )
+        if not hits and topic_id:
+            hits = store.find(grade=grade, topic_id=topic_id, limit=top_k)
+        for chunk in hits:
+            if chunk.id in seen:
+                continue
+            seen.add(chunk.id)
+            collected.append(chunk)
+            if len(collected) >= top_k:
+                return collected
+
+    if not collected:
+        collected = store.find(grade=grade, chapter_name=chapter, limit=top_k)
+    return collected[:top_k]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chapter", action="append", help="Limit generation to a chapter (repeatable).")
     parser.add_argument("--grade", type=int, default=DEFAULT_GRADE, help="Curriculum grade to generate for (default: 6).")
+    parser.add_argument("--topic-id", dest="topic_id", default=None, help="Retrieve RAG context for one canonical Topic ID.")
     parser.add_argument("--per-combo", type=int, default=None, help="Override questions_per_combo from app.yaml.")
     parser.add_argument("--stop-on-rate-limit", action="store_true", default=True, help="Stop immediately on provider 429/TPD limit.")
     args = parser.parse_args()
@@ -158,15 +214,30 @@ def main() -> int:
     config = get_config()
     db = get_database()
     ensure_indexes(db)
-    chunks_repo = MongoChunkRepository(db)
     questions_repo = MongoQuestionRepository(db)
-    if chunks_repo.count() == 0:
-        print("No chunks in Mongo. Run scripts/ingest_and_tag_chunks.py first.", file=sys.stderr)
+    store = ChromaChunkStore(settings.chroma_persist_dir)
+    if store.count(grade=args.grade) == 0:
+        print(
+            f"No Chroma chunks for grade {args.grade}. Run scripts/ingest_and_tag_chunks.py first.",
+            file=sys.stderr,
+        )
         return 1
 
     llm = build_json_llm(model=config.llm_model)
+    embedder = HuggingFaceEmbedder(config.embedding_model)
     per_combo = args.per_combo or config.questions_per_combo
     chapters = args.chapter or get_chapter_names(args.grade)
+    if args.topic_id:
+        topic = get_topic(args.topic_id)
+        if topic is None:
+            print(f"Unknown Topic ID: {args.topic_id}", file=sys.stderr)
+            return 2
+        needle = normalize_chapter_name(topic.chapter_title)
+        chapters = [topic.chapter_title]
+        for name in get_chapter_names(args.grade):
+            if normalize_chapter_name(name) == needle:
+                chapters = [name]
+                break
     if not chapters:
         print(
             f"Grade {args.grade} has no chapters in curriculum.yaml yet.",
@@ -179,14 +250,25 @@ def main() -> int:
 
     try:
         for chapter in chapters:
-            chunks = chunks_repo.find(chapter_name=chapter, limit=config.retrieval_top_k)
+            topic_ids = [args.topic_id] if args.topic_id else [t.topic_id for t in topics_for_chapter(chapter, args.grade)]
+            if not topic_ids:
+                topic_ids = [None]
+            chunks = _retrieve_chunks(
+                store=store,
+                embedder=embedder,
+                grade=args.grade,
+                chapter=chapter,
+                topic_ids=topic_ids,
+                top_k=config.retrieval_top_k,
+            )
             if not chunks:
-                print(f"  skip {chapter}: no chunks tagged")
+                print(f"  skip {chapter}: no Chroma chunks")
                 continue
 
             context = _format_context(c.text for c in chunks)
             chunk_ids = [c.id for c in chunks]
-            chapter_scope = "ChapterWide"
+            topic_id, skill = _majority_topic(chunks)
+            chapter_scope = skill or "ChapterWide"
 
             for dok in (1, 2, 3, 4):
                 for qtype in QuestionType:
@@ -200,6 +282,8 @@ def main() -> int:
                             context=context,
                             chunk_ids=chunk_ids,
                             grade=args.grade,
+                            topic_id=topic_id,
+                            skill=skill,
                             max_retries=config.generation_max_retries,
                             stop_on_rate_limit=args.stop_on_rate_limit,
                         )
@@ -232,6 +316,8 @@ def _generate_one(
     context: str,
     chunk_ids: list[str],
     grade: int,
+    topic_id: str,
+    skill: str,
     max_retries: int,
     stop_on_rate_limit: bool,
 ) -> Question | None:
@@ -256,6 +342,8 @@ def _generate_one(
                 payload=payload,
                 chunk_ids=chunk_ids,
                 grade=grade,
+                topic_id=topic_id,
+                skill=skill,
             )
         except (ValidationError, ValueError, KeyError) as exc:
             last_error = exc

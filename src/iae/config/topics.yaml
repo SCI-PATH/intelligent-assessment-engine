@@ -1,0 +1,1281 @@
+topics:
+- grade: 6
+  topic_id: G6_C1_ORG_CHARS
+  chapter_title: Wonders of the Living World
+  skill: 'Ch.1: Characteristics of organisms'
+  chapter_number: 1
+  part: full
+  core_concept: Wonders of the Living World
+  domain: ORG
+  concept_code: CHARS
+  extra: {}
+- grade: 6
+  topic_id: G6_C1_ORG_DIFF
+  chapter_title: Wonders of the Living World
+  skill: 'Ch.1: Differences between plants and animals'
+  chapter_number: 1
+  part: full
+  core_concept: Wonders of the Living World
+  domain: ORG
+  concept_code: DIFF
+  extra: {}
+- grade: 6
+  topic_id: G6_C2_MAT_STATES
+  chapter_title: Things Around Us
+  skill: 'Ch.2: States of matter'
+  chapter_number: 2
+  part: full
+  core_concept: Things Around Us
+  domain: MAT
+  concept_code: STATES
+  extra: {}
+- grade: 6
+  topic_id: G6_C2_MAT_PROPS
+  chapter_title: Things Around Us
+  skill: 'Ch.2: Specific properties of solid matter'
+  chapter_number: 2
+  part: full
+  core_concept: Things Around Us
+  domain: MAT
+  concept_code: PROPS
+  extra: {}
+- grade: 6
+  topic_id: G6_C3_WAT_STATES
+  chapter_title: Water as a Natural Resource
+  skill: 'Ch.3: States and types of water'
+  chapter_number: 3
+  part: full
+  core_concept: Water as a Natural Resource
+  domain: WAT
+  concept_code: STATES
+  extra: {}
+- grade: 6
+  topic_id: G6_C3_WAT_IMPORT
+  chapter_title: Water as a Natural Resource
+  skill: 'Ch.3: Importance of water and conservation'
+  chapter_number: 3
+  part: full
+  core_concept: Water as a Natural Resource
+  domain: WAT
+  concept_code: IMPORT
+  extra: {}
+- grade: 6
+  topic_id: G6_C4_ENE_SOURCES
+  chapter_title: Energy in Day to Day Life
+  skill: 'Ch.4: Energy sources and their applications'
+  chapter_number: 4
+  part: full
+  core_concept: Energy in Day to Day Life
+  domain: ENE
+  concept_code: SOURCES
+  extra: {}
+- grade: 6
+  topic_id: G6_C4_ENE_FORMS
+  chapter_title: Energy in Day to Day Life
+  skill: 'Ch.4: Forms of energy in daily life'
+  chapter_number: 4
+  part: full
+  core_concept: Energy in Day to Day Life
+  domain: ENE
+  concept_code: FORMS
+  extra: {}
+- grade: 6
+  topic_id: G6_C5_LIG_SEE
+  chapter_title: Light and Vision
+  skill: 'Ch.5: How we see; sources and transmission of light'
+  chapter_number: 5
+  part: full
+  core_concept: Light and Vision
+  domain: LIG
+  concept_code: SEE
+  extra: {}
+- grade: 6
+  topic_id: G6_C5_LIG_RAYS
+  chapter_title: Light and Vision
+  skill: 'Ch.5: Light rays, beams, and applications'
+  chapter_number: 5
+  part: full
+  core_concept: Light and Vision
+  domain: LIG
+  concept_code: RAYS
+  extra: {}
+- grade: 6
+  topic_id: G6_C6_SOU_PRODUCE
+  chapter_title: Sound and Hearing
+  skill: 'Ch.6: Producing and hearing sounds'
+  chapter_number: 6
+  part: full
+  core_concept: Sound and Hearing
+  domain: SOU
+  concept_code: PRODUCE
+  extra: {}
+- grade: 6
+  topic_id: G6_C6_SOU_DIVERSE
+  chapter_title: Sound and Hearing
+  skill: 'Ch.6: Diversity of sounds; music and noise'
+  chapter_number: 6
+  part: full
+  core_concept: Sound and Hearing
+  domain: SOU
+  concept_code: DIVERSE
+  extra: {}
+- grade: 6
+  topic_id: G6_C7_MAG_POLES
+  chapter_title: Magnets
+  skill: 'Ch.7: Magnetic poles, types, and behaviour'
+  chapter_number: 7
+  part: full
+  core_concept: Magnets
+  domain: MAG
+  concept_code: POLES
+  extra: {}
+- grade: 6
+  topic_id: G6_C7_MAG_FORCES
+  chapter_title: Magnets
+  skill: 'Ch.7: Magnetic interactions and forces'
+  chapter_number: 7
+  part: full
+  core_concept: Magnets
+  domain: MAG
+  concept_code: FORCES
+  extra: {}
+- grade: 6
+  topic_id: G6_C8_ELE_CIRCUITS
+  chapter_title: Electricity for a Comfortable Life
+  skill: 'Ch.8: Preparation of circuits and generating electricity'
+  chapter_number: 8
+  part: full
+  core_concept: Electricity for a Comfortable Life
+  domain: ELE
+  concept_code: CIRCUITS
+  extra: {}
+- grade: 6
+  topic_id: G6_C8_ELE_CONDINS
+  chapter_title: Electricity for a Comfortable Life
+  skill: 'Ch.8: Conductors and insulators; safety'
+  chapter_number: 8
+  part: full
+  core_concept: Electricity for a Comfortable Life
+  domain: ELE
+  concept_code: CONDINS
+  extra: {}
+- grade: 6
+  topic_id: G6_C9_HEA_GEN
+  chapter_title: Heat and Its Effects
+  skill: 'Ch.9: Heat generation and effects'
+  chapter_number: 9
+  part: full
+  core_concept: Heat and Its Effects
+  domain: HEA
+  concept_code: GEN
+  extra: {}
+- grade: 6
+  topic_id: G6_C9_HEA_ENV
+  chapter_title: Heat and Its Effects
+  skill: 'Ch.9: Effects of heat on the environment'
+  chapter_number: 9
+  part: full
+  core_concept: Heat and Its Effects
+  domain: HEA
+  concept_code: ENV
+  extra: {}
+- grade: 6
+  topic_id: G6_C10_FOO_INTER
+  chapter_title: Food Related Interactions
+  skill: 'Ch.10: Food related interactions in ecosystems'
+  chapter_number: 10
+  part: full
+  core_concept: Food Related Interactions
+  domain: FOO
+  concept_code: INTER
+  extra: {}
+- grade: 6
+  topic_id: G6_C10_FOO_NUTR
+  chapter_title: Food Related Interactions
+  skill: 'Ch.10: Nutrition relationships among organisms'
+  chapter_number: 10
+  part: full
+  core_concept: Food Related Interactions
+  domain: FOO
+  concept_code: NUTR
+  extra: {}
+- grade: 6
+  topic_id: G6_C11_WEA_WEATHER
+  chapter_title: Weather and Climate
+  skill: 'Ch.11: Weather, climate, and measurement'
+  chapter_number: 11
+  part: full
+  core_concept: Weather and Climate
+  domain: WEA
+  concept_code: WEATHER
+  extra: {}
+- grade: 6
+  topic_id: G6_C11_WEA_DISASTER
+  chapter_title: Weather and Climate
+  skill: 'Ch.11: Natural disasters from climatic changes'
+  chapter_number: 11
+  part: full
+  core_concept: Weather and Climate
+  domain: WEA
+  concept_code: DISASTER
+  extra: {}
+- grade: 7
+  topic_id: G7_C1_PLA_DIVER
+  chapter_title: Plant Diversity
+  skill: 'Ch.1: Morphological features and plant diversity'
+  chapter_number: 1
+  part: I
+  core_concept: Plant Diversity
+  domain: PLA
+  concept_code: DIVER
+  extra: {}
+- grade: 7
+  topic_id: G7_C1_PLA_CLASSIF
+  chapter_title: Plant Diversity
+  skill: 'Ch.1: Monocotyledonous and dicotyledonous plants'
+  chapter_number: 1
+  part: I
+  core_concept: Plant Diversity
+  domain: PLA
+  concept_code: CLASSIF
+  extra: {}
+- grade: 7
+  topic_id: G7_C2_STA_CHARGES
+  chapter_title: Static Electricity
+  skill: 'Ch.2: Charging objects and types of static charge'
+  chapter_number: 2
+  part: I
+  core_concept: Static Electricity
+  domain: STA
+  concept_code: CHARGES
+  extra: {}
+- grade: 7
+  topic_id: G7_C2_STA_CAPACIT
+  chapter_title: Static Electricity
+  skill: 'Ch.2: Capacitors and static electricity phenomena'
+  chapter_number: 2
+  part: I
+  core_concept: Static Electricity
+  domain: STA
+  concept_code: CAPACIT
+  extra: {}
+- grade: 7
+  topic_id: G7_C3_ELE_SOURCES
+  chapter_title: Generation of Electricity
+  skill: 'Ch.3: Sources of electricity generation'
+  chapter_number: 3
+  part: I
+  core_concept: Generation of Electricity
+  domain: ELE
+  concept_code: SOURCES
+  extra: {}
+- grade: 7
+  topic_id: G7_C3_ELE_CURRENTS
+  chapter_title: Generation of Electricity
+  skill: 'Ch.3: Direct current and alternating current'
+  chapter_number: 3
+  part: I
+  core_concept: Generation of Electricity
+  domain: ELE
+  concept_code: CURRENTS
+  extra: {}
+- grade: 7
+  topic_id: G7_C4_WAT_SOLVENT
+  chapter_title: Functions of Water
+  skill: 'Ch.4: Water as a solvent and medium of life'
+  chapter_number: 4
+  part: I
+  core_concept: Functions of Water
+  domain: WAT
+  concept_code: SOLVENT
+  extra: {}
+- grade: 7
+  topic_id: G7_C4_WAT_COOLANT
+  chapter_title: Functions of Water
+  skill: 'Ch.4: Water as a coolant'
+  chapter_number: 4
+  part: I
+  core_concept: Functions of Water
+  domain: WAT
+  concept_code: COOLANT
+  extra: {}
+- grade: 7
+  topic_id: G7_C5_ACI_IDENTIF
+  chapter_title: Acids and Bases
+  skill: 'Ch.5: Identification of acids and bases'
+  chapter_number: 5
+  part: I
+  core_concept: Acids and Bases
+  domain: ACI
+  concept_code: IDENTIF
+  extra: {}
+- grade: 7
+  topic_id: G7_C5_ACI_INDICAT
+  chapter_title: Acids and Bases
+  skill: 'Ch.5: Indicators and neutralization ideas'
+  chapter_number: 5
+  part: I
+  core_concept: Acids and Bases
+  domain: ACI
+  concept_code: INDICAT
+  extra: {}
+- grade: 7
+  topic_id: G7_C6_ANI_CLASSIF
+  chapter_title: Animal Diversity
+  skill: 'Ch.6: Vertebrates, invertebrates, dichotomous keys'
+  chapter_number: 6
+  part: I
+  core_concept: Animal Diversity
+  domain: ANI
+  concept_code: CLASSIF
+  extra: {}
+- grade: 7
+  topic_id: G7_C6_ANI_ADAPTAT
+  chapter_title: Animal Diversity
+  skill: 'Ch.6: Animal adaptations to environment'
+  chapter_number: 6
+  part: I
+  core_concept: Animal Diversity
+  domain: ANI
+  concept_code: ADAPTAT
+  extra: {}
+- grade: 7
+  topic_id: G7_C7_ENE_FORMS
+  chapter_title: Forms of Energy and Uses
+  skill: 'Ch.7: Forms of energy (kinetic, potential, thermal, …)'
+  chapter_number: 7
+  part: I
+  core_concept: Forms of Energy and Uses
+  domain: ENE
+  concept_code: FORMS
+  extra: {}
+- grade: 7
+  topic_id: G7_C7_ENE_TRANSF
+  chapter_title: Forms of Energy and Uses
+  skill: 'Ch.7: Energy transformation and uses'
+  chapter_number: 7
+  part: I
+  core_concept: Forms of Energy and Uses
+  domain: ENE
+  concept_code: TRANSF
+  extra: {}
+- grade: 7
+  topic_id: G7_C8_EAR_STRUCT
+  chapter_title: The Nature of the Earth
+  skill: 'Ch.8: Structure of the Earth'
+  chapter_number: 8
+  part: I
+  core_concept: The Nature of the Earth
+  domain: EAR
+  concept_code: STRUCT
+  extra: {}
+- grade: 7
+  topic_id: G7_C8_EAR_TECTON
+  chapter_title: The Nature of the Earth
+  skill: 'Ch.8: Tectonic plates and plate tectonics'
+  chapter_number: 8
+  part: I
+  core_concept: The Nature of the Earth
+  domain: EAR
+  concept_code: TECTON
+  extra: {}
+- grade: 7
+  topic_id: G7_C9_LIG_SHADOWS
+  chapter_title: Light
+  skill: 'Ch.9: Formation of umbra and penumbra'
+  chapter_number: 9
+  part: I
+  core_concept: Light
+  domain: LIG
+  concept_code: SHADOWS
+  extra: {}
+- grade: 7
+  topic_id: G7_C9_LIG_MIRRORS
+  chapter_title: Light
+  skill: 'Ch.9: Images in plane and curved mirrors'
+  chapter_number: 9
+  part: I
+  core_concept: Light
+  domain: LIG
+  concept_code: MIRRORS
+  extra: {}
+- grade: 7
+  topic_id: G7_C10_MIC_LIGHT
+  chapter_title: The Correct Use of the Microscope
+  skill: 'Ch.10: Simple and compound light microscopes'
+  chapter_number: 10
+  part: I
+  core_concept: The Correct Use of the Microscope
+  domain: MIC
+  concept_code: LIGHT
+  extra: {}
+- grade: 7
+  topic_id: G7_C10_MIC_ELECTR
+  chapter_title: The Correct Use of the Microscope
+  skill: 'Ch.10: Electron microscope characteristics'
+  chapter_number: 10
+  part: I
+  core_concept: The Correct Use of the Microscope
+  domain: MIC
+  concept_code: ELECTR
+  extra: {}
+- grade: 7
+  topic_id: G7_C11_SOU_PRODUCE
+  chapter_title: Sound
+  skill: 'Ch.11: Production of sound'
+  chapter_number: 11
+  part: II
+  core_concept: Sound
+  domain: SOU
+  concept_code: PRODUCE
+  extra: {}
+- grade: 7
+  topic_id: G7_C11_SOU_PROPAG
+  chapter_title: Sound
+  skill: 'Ch.11: Propagation of sound'
+  chapter_number: 11
+  part: II
+  core_concept: Sound
+  domain: SOU
+  concept_code: PROPAG
+  extra: {}
+- grade: 7
+  topic_id: G7_C12_BIO_LEVELS
+  chapter_title: Biological Processes
+  skill: 'Ch.12: Organisational levels of life'
+  chapter_number: 12
+  part: II
+  core_concept: Biological Processes
+  domain: BIO
+  concept_code: LEVELS
+  extra: {}
+- grade: 7
+  topic_id: G7_C12_BIO_SYSTEMS
+  chapter_title: Biological Processes
+  skill: 'Ch.12: Systems of the human body'
+  chapter_number: 12
+  part: II
+  core_concept: Biological Processes
+  domain: BIO
+  concept_code: SYSTEMS
+  extra: {}
+- grade: 7
+  topic_id: G7_C13_ATM_LAYERS
+  chapter_title: Atmosphere
+  skill: 'Ch.13: Layers of the atmosphere'
+  chapter_number: 13
+  part: II
+  core_concept: Atmosphere
+  domain: ATM
+  concept_code: LAYERS
+  extra: {}
+- grade: 7
+  topic_id: G7_C13_ATM_AIR
+  chapter_title: Atmosphere
+  skill: 'Ch.13: Air and its components'
+  chapter_number: 13
+  part: II
+  core_concept: Atmosphere
+  domain: ATM
+  concept_code: AIR
+  extra: {}
+- grade: 7
+  topic_id: G7_C14_HEA_MEASURE
+  chapter_title: Heat and Temperature
+  skill: 'Ch.14: Measuring temperature and thermometers'
+  chapter_number: 14
+  part: II
+  core_concept: Heat and Temperature
+  domain: HEA
+  concept_code: MEASURE
+  extra: {}
+- grade: 7
+  topic_id: G7_C14_HEA_TRANSF
+  chapter_title: Heat and Temperature
+  skill: 'Ch.14: Heat transfer and convection applications'
+  chapter_number: 14
+  part: II
+  core_concept: Heat and Temperature
+  domain: HEA
+  concept_code: TRANSF
+  extra: {}
+- grade: 7
+  topic_id: G7_C15_SOI_TYPES
+  chapter_title: Soil
+  skill: 'Ch.15: Types and composition of soil'
+  chapter_number: 15
+  part: II
+  core_concept: Soil
+  domain: SOI
+  concept_code: TYPES
+  extra: {}
+- grade: 7
+  topic_id: G7_C15_SOI_EROSION
+  chapter_title: Soil
+  skill: 'Ch.15: Soil erosion'
+  chapter_number: 15
+  part: II
+  core_concept: Soil
+  domain: SOI
+  concept_code: EROSION
+  extra: {}
+- grade: 7
+  topic_id: G7_C16_FOR_DIST
+  chapter_title: Force and Motion
+  skill: 'Ch.16: Distance and displacement'
+  chapter_number: 16
+  part: II
+  core_concept: Force and Motion
+  domain: FOR
+  concept_code: DIST
+  extra: {}
+- grade: 7
+  topic_id: G7_C16_FOR_FORCE
+  chapter_title: Force and Motion
+  skill: 'Ch.16: Force basics'
+  chapter_number: 16
+  part: II
+  core_concept: Force and Motion
+  domain: FOR
+  concept_code: FORCE
+  extra: {}
+- grade: 7
+  topic_id: G7_C17_NUT_FOOD
+  chapter_title: Nutrients in Food
+  skill: 'Ch.17: Food and nutrients'
+  chapter_number: 17
+  part: II
+  core_concept: Nutrients in Food
+  domain: NUT
+  concept_code: FOOD
+  extra: {}
+- grade: 7
+  topic_id: G7_C17_NUT_TESTS
+  chapter_title: Nutrients in Food
+  skill: 'Ch.17: Food tests to identify nutrients'
+  chapter_number: 17
+  part: II
+  core_concept: Nutrients in Food
+  domain: NUT
+  concept_code: TESTS
+  extra: {}
+- grade: 7
+  topic_id: G7_C18_ROC_KINDS
+  chapter_title: Minerals and Rocks
+  skill: 'Ch.18: Features and kinds of rocks and minerals'
+  chapter_number: 18
+  part: II
+  core_concept: Minerals and Rocks
+  domain: ROC
+  concept_code: KINDS
+  extra: {}
+- grade: 7
+  topic_id: G7_C18_ROC_CYCLE
+  chapter_title: Minerals and Rocks
+  skill: 'Ch.18: Rock weathering and rock cycle'
+  chapter_number: 18
+  part: II
+  core_concept: Minerals and Rocks
+  domain: ROC
+  concept_code: CYCLE
+  extra: {}
+- grade: 7
+  topic_id: G7_C19_ENE_RENEW
+  chapter_title: Sources of Energy
+  skill: 'Ch.19: Renewable and non-renewable energy sources'
+  chapter_number: 19
+  part: II
+  core_concept: Sources of Energy
+  domain: ENE
+  concept_code: RENEW
+  extra: {}
+- grade: 7
+  topic_id: G7_C19_ENE_SUSTAIN
+  chapter_title: Sources of Energy
+  skill: 'Ch.19: Sustainable usage of energy sources'
+  chapter_number: 19
+  part: II
+  core_concept: Sources of Energy
+  domain: ENE
+  concept_code: SUSTAIN
+  extra: {}
+- grade: 8
+  topic_id: G8_C1_MIC_INTRO
+  chapter_title: Importance of Microorganisms
+  skill: 'Ch.1: Microorganisms and their diversity'
+  chapter_number: 1
+  part: I
+  core_concept: Importance of Microorganisms
+  domain: MIC
+  concept_code: INTRO
+  extra: {}
+- grade: 8
+  topic_id: G8_C1_MIC_EFFECTS
+  chapter_title: Importance of Microorganisms
+  skill: 'Ch.1: Effects of microorganisms on food and humans'
+  chapter_number: 1
+  part: I
+  core_concept: Importance of Microorganisms
+  domain: MIC
+  concept_code: EFFECTS
+  extra: {}
+- grade: 8
+  topic_id: G8_C2_ANI_INVERT
+  chapter_title: Animal Classification
+  skill: 'Ch.2: Main invertebrate groups'
+  chapter_number: 2
+  part: I
+  core_concept: Animal Classification
+  domain: ANI
+  concept_code: INVERT
+  extra: {}
+- grade: 8
+  topic_id: G8_C2_ANI_VERT
+  chapter_title: Animal Classification
+  skill: 'Ch.2: Main vertebrate groups'
+  chapter_number: 2
+  part: I
+  core_concept: Animal Classification
+  domain: ANI
+  concept_code: VERT
+  extra: {}
+- grade: 8
+  topic_id: G8_C3_PLA_LEAVES
+  chapter_title: Diversity and Functions of Plant Parts
+  skill: 'Ch.3: Diversity and functions of plant leaves'
+  chapter_number: 3
+  part: I
+  core_concept: Diversity and Functions of Plant Parts
+  domain: PLA
+  concept_code: LEAVES
+  extra: {}
+- grade: 8
+  topic_id: G8_C3_PLA_STEMROOT
+  chapter_title: Diversity and Functions of Plant Parts
+  skill: 'Ch.3: Diversity and functions of stems and roots'
+  chapter_number: 3
+  part: I
+  core_concept: Diversity and Functions of Plant Parts
+  domain: PLA
+  concept_code: STEMROOT
+  extra: {}
+- grade: 8
+  topic_id: G8_C4_MAT_PARTICLE
+  chapter_title: Properties of Matter
+  skill: 'Ch.4: Discontinuous nature of matter'
+  chapter_number: 4
+  part: I
+  core_concept: Properties of Matter
+  domain: MAT
+  concept_code: PARTICLE
+  extra: {}
+- grade: 8
+  topic_id: G8_C4_MAT_PROPS
+  chapter_title: Properties of Matter
+  skill: 'Ch.4: Utilizing physical properties of matter'
+  chapter_number: 4
+  part: I
+  core_concept: Properties of Matter
+  domain: MAT
+  concept_code: PROPS
+  extra: {}
+- grade: 8
+  topic_id: G8_C5_SOU_INSTR
+  chapter_title: Sound
+  skill: 'Ch.5: Musical instruments and sound production'
+  chapter_number: 5
+  part: I
+  core_concept: Sound
+  domain: SOU
+  concept_code: INSTR
+  extra: {}
+- grade: 8
+  topic_id: G8_C5_SOU_VIBRATE
+  chapter_title: Sound
+  skill: 'Ch.5: Vibration types that produce sound'
+  chapter_number: 5
+  part: I
+  core_concept: Sound
+  domain: SOU
+  concept_code: VIBRATE
+  extra: {}
+- grade: 8
+  topic_id: G8_C6_MAG_FIELD
+  chapter_title: Magnets
+  skill: 'Ch.6: Magnetic poles, field, and compass'
+  chapter_number: 6
+  part: I
+  core_concept: Magnets
+  domain: MAG
+  concept_code: FIELD
+  extra: {}
+- grade: 8
+  topic_id: G8_C6_MAG_TYPES
+  chapter_title: Magnets
+  skill: 'Ch.6: Temporary and permanent magnets'
+  chapter_number: 6
+  part: I
+  core_concept: Magnets
+  domain: MAG
+  concept_code: TYPES
+  extra: {}
+- grade: 8
+  topic_id: G8_C7_ELE_CURRENT
+  chapter_title: Measurements Associated with Electricity
+  skill: 'Ch.7: Electric current and potential difference'
+  chapter_number: 7
+  part: I
+  core_concept: Measurements Associated with Electricity
+  domain: ELE
+  concept_code: CURRENT
+  extra: {}
+- grade: 8
+  topic_id: G8_C7_ELE_RESIST
+  chapter_title: Measurements Associated with Electricity
+  skill: 'Ch.7: Resistance of a conductor'
+  chapter_number: 7
+  part: I
+  core_concept: Measurements Associated with Electricity
+  domain: ELE
+  concept_code: RESIST
+  extra: {}
+- grade: 8
+  topic_id: G8_C8_CHA_PHYSCHEM
+  chapter_title: Changes in Matter
+  skill: 'Ch.8: Physical and chemical changes'
+  chapter_number: 8
+  part: I
+  core_concept: Changes in Matter
+  domain: CHA
+  concept_code: PHYSCHEM
+  extra: {}
+- grade: 8
+  topic_id: G8_C8_CHA_COMBUST
+  chapter_title: Changes in Matter
+  skill: 'Ch.8: Combustion, tarnishing, and neutralisation'
+  chapter_number: 8
+  part: I
+  core_concept: Changes in Matter
+  domain: CHA
+  concept_code: COMBUST
+  extra: {}
+- grade: 8
+  topic_id: G8_C9_HUM_EXCRET
+  chapter_title: Human Organ Systems
+  skill: 'Ch.9: Human excretory system'
+  chapter_number: 9
+  part: II
+  core_concept: Human Organ Systems
+  domain: HUM
+  concept_code: EXCRET
+  extra: {}
+- grade: 8
+  topic_id: G8_C9_HUM_NERVSKIN
+  chapter_title: Human Organ Systems
+  skill: 'Ch.9: Nervous system and human skin'
+  chapter_number: 9
+  part: II
+  core_concept: Human Organ Systems
+  domain: HUM
+  concept_code: NERVSKIN
+  extra: {}
+- grade: 8
+  topic_id: G8_C10_ELE_CIRCUITS
+  chapter_title: Electricity
+  skill: 'Ch.10: Simple circuits and cell/bulb connections'
+  chapter_number: 10
+  part: II
+  core_concept: Electricity
+  domain: ELE
+  concept_code: CIRCUITS
+  extra: {}
+- grade: 8
+  topic_id: G8_C10_ELE_EFFECTS
+  chapter_title: Electricity
+  skill: 'Ch.10: Heating, light, magnetic, chemical effects of current'
+  chapter_number: 10
+  part: II
+  core_concept: Electricity
+  domain: ELE
+  concept_code: EFFECTS
+  extra: {}
+- grade: 8
+  topic_id: G8_C11_PHO_PROCESS
+  chapter_title: Main Biological Processes in Plants
+  skill: 'Ch.11: Photosynthesis process'
+  chapter_number: 11
+  part: II
+  core_concept: Main Biological Processes in Plants
+  domain: PHO
+  concept_code: PROCESS
+  extra: {}
+- grade: 8
+  topic_id: G8_C11_PHO_TRANSP
+  chapter_title: Main Biological Processes in Plants
+  skill: 'Ch.11: Transportation, transpiration, and guttation'
+  chapter_number: 11
+  part: II
+  core_concept: Main Biological Processes in Plants
+  domain: PHO
+  concept_code: TRANSP
+  extra: {}
+- grade: 8
+  topic_id: G8_C12_LIF_ANIMAL
+  chapter_title: Life Cycles of Living Organisms
+  skill: 'Ch.12: Life cycles of animals'
+  chapter_number: 12
+  part: II
+  core_concept: Life Cycles of Living Organisms
+  domain: LIF
+  concept_code: ANIMAL
+  extra: {}
+- grade: 8
+  topic_id: G8_C12_LIF_PLANT
+  chapter_title: Life Cycles of Living Organisms
+  skill: 'Ch.12: Life cycles of plants and their importance'
+  chapter_number: 12
+  part: II
+  core_concept: Life Cycles of Living Organisms
+  domain: LIF
+  concept_code: PLANT
+  extra: {}
+- grade: 8
+  topic_id: G8_C13_FOO_METHODS
+  chapter_title: Food Preservation
+  skill: 'Ch.13: Need and methods of food preservation'
+  chapter_number: 13
+  part: II
+  core_concept: Food Preservation
+  domain: FOO
+  concept_code: METHODS
+  extra: {}
+- grade: 8
+  topic_id: G8_C13_FOO_LABEL
+  chapter_title: Food Preservation
+  skill: 'Ch.13: Advantages of preservation and food labels'
+  chapter_number: 13
+  part: II
+  core_concept: Food Preservation
+  domain: FOO
+  concept_code: LABEL
+  extra: {}
+- grade: 8
+  topic_id: G8_C14_SOL_SYSTEM
+  chapter_title: Solar System Phenomena
+  skill: 'Ch.14: The solar system and seasonal/lunar phenomena'
+  chapter_number: 14
+  part: II
+  core_concept: Solar System Phenomena
+  domain: SOL
+  concept_code: SYSTEM
+  extra: {}
+- grade: 8
+  topic_id: G8_C14_SOL_EXPLORE
+  chapter_title: Solar System Phenomena
+  skill: 'Ch.14: Exploring the universe, satellites, constellations'
+  chapter_number: 14
+  part: II
+  core_concept: Solar System Phenomena
+  domain: SOL
+  concept_code: EXPLORE
+  extra: {}
+- grade: 8
+  topic_id: G8_C15_DIS_HYDRO
+  chapter_title: Natural Disasters
+  skill: 'Ch.15: Drought, floods, and landslides'
+  chapter_number: 15
+  part: II
+  core_concept: Natural Disasters
+  domain: DIS
+  concept_code: HYDRO
+  extra: {}
+- grade: 8
+  topic_id: G8_C15_DIS_LIGHTNG
+  chapter_title: Natural Disasters
+  skill: 'Ch.15: Lightning and thundering'
+  chapter_number: 15
+  part: II
+  core_concept: Natural Disasters
+  domain: DIS
+  concept_code: LIGHTNG
+  extra: {}
+- grade: 9
+  topic_id: G9_C1_MIC_ENV
+  chapter_title: Applications of Micro-organisms
+  skill: 'Ch.1: Micro-organisms, substrates, and environments'
+  chapter_number: 1
+  part: I
+  core_concept: Applications of Micro-organisms
+  domain: MIC
+  concept_code: ENV
+  extra: {}
+- grade: 9
+  topic_id: G9_C1_MIC_EFFECTS
+  chapter_title: Applications of Micro-organisms
+  skill: 'Ch.1: Effects and applications of micro-organisms'
+  chapter_number: 1
+  part: I
+  core_concept: Applications of Micro-organisms
+  domain: MIC
+  concept_code: EFFECTS
+  extra: {}
+- grade: 9
+  topic_id: G9_C2_SEN_EYE
+  chapter_title: Eye and Ear
+  skill: 'Ch.2: Structure and defects of the human eye'
+  chapter_number: 2
+  part: I
+  core_concept: Eye and Ear
+  domain: SEN
+  concept_code: EYE
+  extra: {}
+- grade: 9
+  topic_id: G9_C2_SEN_EAR
+  chapter_title: Eye and Ear
+  skill: 'Ch.2: Structure and defects of the human ear'
+  chapter_number: 2
+  part: I
+  core_concept: Eye and Ear
+  domain: SEN
+  concept_code: EAR
+  extra: {}
+- grade: 9
+  topic_id: G9_C3_MAT_ELEMENTS
+  chapter_title: Nature and Properties of Matter
+  skill: 'Ch.3: Elements, compounds, and mixtures'
+  chapter_number: 3
+  part: I
+  core_concept: Nature and Properties of Matter
+  domain: MAT
+  concept_code: ELEMENTS
+  extra: {}
+- grade: 9
+  topic_id: G9_C3_MAT_MIXTURES
+  chapter_title: Nature and Properties of Matter
+  skill: 'Ch.3: Mixtures and separation ideas'
+  chapter_number: 3
+  part: I
+  core_concept: Nature and Properties of Matter
+  domain: MAT
+  concept_code: MIXTURES
+  extra: {}
+- grade: 9
+  topic_id: G9_C4_FOR_FORCE
+  chapter_title: Basic Concepts Associated with Force
+  skill: 'Ch.4: Force, magnitude, direction, and point of application'
+  chapter_number: 4
+  part: I
+  core_concept: Basic Concepts Associated with Force
+  domain: FOR
+  concept_code: FORCE
+  extra: {}
+- grade: 9
+  topic_id: G9_C4_FOR_GRAPH
+  chapter_title: Basic Concepts Associated with Force
+  skill: 'Ch.4: Graphical representation of force'
+  chapter_number: 4
+  part: I
+  core_concept: Basic Concepts Associated with Force
+  domain: FOR
+  concept_code: GRAPH
+  extra: {}
+- grade: 9
+  topic_id: G9_C5_PRE_PRESSURE
+  chapter_title: Pressure Exerted by Solid
+  skill: 'Ch.5: Pressure and factors affecting pressure'
+  chapter_number: 5
+  part: I
+  core_concept: Pressure Exerted by Solid
+  domain: PRE
+  concept_code: PRESSURE
+  extra: {}
+- grade: 9
+  topic_id: G9_C5_PRE_APPLY
+  chapter_title: Pressure Exerted by Solid
+  skill: 'Ch.5: Changing pressure factors as needed'
+  chapter_number: 5
+  part: I
+  core_concept: Pressure Exerted by Solid
+  domain: PRE
+  concept_code: APPLY
+  extra: {}
+- grade: 9
+  topic_id: G9_C6_CIR_HEART
+  chapter_title: The Human Circulatory System
+  skill: 'Ch.6: Structure of the heart; vessels'
+  chapter_number: 6
+  part: I
+  core_concept: The Human Circulatory System
+  domain: CIR
+  concept_code: HEART
+  extra: {}
+- grade: 9
+  topic_id: G9_C6_CIR_BLOOD
+  chapter_title: The Human Circulatory System
+  skill: 'Ch.6: Blood components and transfusion'
+  chapter_number: 6
+  part: I
+  core_concept: The Human Circulatory System
+  domain: CIR
+  concept_code: BLOOD
+  extra: {}
+- grade: 9
+  topic_id: G9_C7_PGS_INTRO
+  chapter_title: Plant Growth Substances
+  skill: 'Ch.7: Introduction to plant growth substances'
+  chapter_number: 7
+  part: I
+  core_concept: Plant Growth Substances
+  domain: PGS
+  concept_code: INTRO
+  extra: {}
+- grade: 9
+  topic_id: G9_C7_PGS_ARTIF
+  chapter_title: Plant Growth Substances
+  skill: 'Ch.7: Uses of artificial growth substances'
+  chapter_number: 7
+  part: I
+  core_concept: Plant Growth Substances
+  domain: PGS
+  concept_code: ARTIF
+  extra: {}
+- grade: 9
+  topic_id: G9_C8_MOV_ANIMAL
+  chapter_title: Support and Movements of Organisms
+  skill: 'Ch.8: Bones, muscles, joints; animal movement'
+  chapter_number: 8
+  part: I
+  core_concept: Support and Movements of Organisms
+  domain: MOV
+  concept_code: ANIMAL
+  extra: {}
+- grade: 9
+  topic_id: G9_C8_MOV_PLANT
+  chapter_title: Support and Movements of Organisms
+  skill: 'Ch.8: Support and movements of plants'
+  chapter_number: 8
+  part: I
+  core_concept: Support and Movements of Organisms
+  domain: MOV
+  concept_code: PLANT
+  extra: {}
+- grade: 9
+  topic_id: G9_C9_EVO_ORIGIN
+  chapter_title: The Evolutionary Process
+  skill: 'Ch.9: Origin of Earth and life'
+  chapter_number: 9
+  part: I
+  core_concept: The Evolutionary Process
+  domain: EVO
+  concept_code: ORIGIN
+  extra: {}
+- grade: 9
+  topic_id: G9_C9_EVO_BIODIV
+  chapter_title: The Evolutionary Process
+  skill: 'Ch.9: Evolution and importance for biodiversity'
+  chapter_number: 9
+  part: I
+  core_concept: The Evolutionary Process
+  domain: EVO
+  concept_code: BIODIV
+  extra: {}
+- grade: 9
+  topic_id: G9_C10_ELE_LYSIS
+  chapter_title: Electrolysis
+  skill: 'Ch.10: Electrolysis and solution changes by current'
+  chapter_number: 10
+  part: II
+  core_concept: Electrolysis
+  domain: ELE
+  concept_code: LYSIS
+  extra: {}
+- grade: 9
+  topic_id: G9_C10_ELE_PLATE
+  chapter_title: Electrolysis
+  skill: 'Ch.10: Electroplating'
+  chapter_number: 10
+  part: II
+  core_concept: Electrolysis
+  domain: ELE
+  concept_code: PLATE
+  extra: {}
+- grade: 9
+  topic_id: G9_C11_DEN_INTRO
+  chapter_title: Density
+  skill: 'Ch.11: Introduction to density and units'
+  chapter_number: 11
+  part: II
+  core_concept: Density
+  domain: DEN
+  concept_code: INTRO
+  extra: {}
+- grade: 9
+  topic_id: G9_C11_DEN_HYDRO
+  chapter_title: Density
+  skill: 'Ch.11: Hydrometers'
+  chapter_number: 11
+  part: II
+  core_concept: Density
+  domain: DEN
+  concept_code: HYDRO
+  extra: {}
+- grade: 9
+  topic_id: G9_C12_BIO_INTRO
+  chapter_title: Bio-diversity
+  skill: 'Ch.12: Bio-diversity and its importance'
+  chapter_number: 12
+  part: II
+  core_concept: Bio-diversity
+  domain: BIO
+  concept_code: INTRO
+  extra: {}
+- grade: 9
+  topic_id: G9_C12_BIO_ECO
+  chapter_title: Bio-diversity
+  skill: 'Ch.12: Ecosystems, threats, and built vs natural environments'
+  chapter_number: 12
+  part: II
+  core_concept: Bio-diversity
+  domain: BIO
+  concept_code: ECO
+  extra: {}
+- grade: 9
+  topic_id: G9_C13_GRN_CONCEPT
+  chapter_title: Artificial Environment and Green Concept
+  skill: 'Ch.13: Artificial environment and green concept'
+  chapter_number: 13
+  part: II
+  core_concept: Artificial Environment and Green Concept
+  domain: GRN
+  concept_code: CONCEPT
+  extra: {}
+- grade: 9
+  topic_id: G9_C13_GRN_AGRI
+  chapter_title: Artificial Environment and Green Concept
+  skill: 'Ch.13: Agricultural and industrial processes (green)'
+  chapter_number: 13
+  part: II
+  core_concept: Artificial Environment and Green Concept
+  domain: GRN
+  concept_code: AGRI
+  extra: {}
+- grade: 9
+  topic_id: G9_C14_WAV_REFLECT
+  chapter_title: Reflection and Refraction of Waves
+  skill: 'Ch.14: Reflection of light and sound'
+  chapter_number: 14
+  part: II
+  core_concept: Reflection and Refraction of Waves
+  domain: WAV
+  concept_code: REFLECT
+  extra: {}
+- grade: 9
+  topic_id: G9_C14_WAV_REFRACT
+  chapter_title: Reflection and Refraction of Waves
+  skill: 'Ch.14: Refraction of light'
+  chapter_number: 14
+  part: II
+  core_concept: Reflection and Refraction of Waves
+  domain: WAV
+  concept_code: REFRACT
+  extra: {}
+- grade: 9
+  topic_id: G9_C15_MAC_LEVER
+  chapter_title: Simple Machines
+  skill: 'Ch.15: Lever and inclined plane'
+  chapter_number: 15
+  part: II
+  core_concept: Simple Machines
+  domain: MAC
+  concept_code: LEVER
+  extra: {}
+- grade: 9
+  topic_id: G9_C15_MAC_PULLEY
+  chapter_title: Simple Machines
+  skill: 'Ch.15: Wheel and axle; pulleys'
+  chapter_number: 15
+  part: II
+  core_concept: Simple Machines
+  domain: MAC
+  concept_code: PULLEY
+  extra: {}
+- grade: 9
+  topic_id: G9_C16_NANO_INTRO
+  chapter_title: Nanotechnology and its Applications
+  skill: 'Ch.16: Nanometer and nanotechnology basics'
+  chapter_number: 16
+  part: II
+  core_concept: Nanotechnology and its Applications
+  domain: NANO
+  concept_code: INTRO
+  extra: {}
+- grade: 9
+  topic_id: G9_C16_NANO_APPS
+  chapter_title: Nanotechnology and its Applications
+  skill: 'Ch.16: Applications and future of nanotechnology'
+  chapter_number: 16
+  part: II
+  core_concept: Nanotechnology and its Applications
+  domain: NANO
+  concept_code: APPS
+  extra: {}
+- grade: 9
+  topic_id: G9_C17_LIG_OCCUR
+  chapter_title: Lightning Accidents
+  skill: 'Ch.17: How lightning occurs'
+  chapter_number: 17
+  part: II
+  core_concept: Lightning Accidents
+  domain: LIG
+  concept_code: OCCUR
+  extra: {}
+- grade: 9
+  topic_id: G9_C17_LIG_PREVENT
+  chapter_title: Lightning Accidents
+  skill: 'Ch.17: Prevention of lightning accidents'
+  chapter_number: 17
+  part: II
+  core_concept: Lightning Accidents
+  domain: LIG
+  concept_code: PREVENT
+  extra: {}
+- grade: 9
+  topic_id: G9_C18_DIS_TYPES
+  chapter_title: Natural Disasters
+  skill: 'Ch.18: Cyclones, earthquakes, tsunami, wild fires'
+  chapter_number: 18
+  part: II
+  core_concept: Natural Disasters
+  domain: DIS
+  concept_code: TYPES
+  extra: {}
+- grade: 9
+  topic_id: G9_C18_DIS_WARMING
+  chapter_title: Natural Disasters
+  skill: 'Ch.18: Global warming and disasters'
+  chapter_number: 18
+  part: II
+  core_concept: Natural Disasters
+  domain: DIS
+  concept_code: WARMING
+  extra: {}
+- grade: 9
+  topic_id: G9_C19_RES_WATER
+  chapter_title: Sustainable Use of Natural Resources
+  skill: 'Ch.19: Sustainable use of water'
+  chapter_number: 19
+  part: II
+  core_concept: Sustainable Use of Natural Resources
+  domain: RES
+  concept_code: WATER
+  extra: {}
+- grade: 9
+  topic_id: G9_C19_RES_MINERAL
+  chapter_title: Sustainable Use of Natural Resources
+  skill: 'Ch.19: Sustainable use of minerals, rocks, and trees'
+  chapter_number: 19
+  part: II
+  core_concept: Sustainable Use of Natural Resources
+  domain: RES
+  concept_code: MINERAL
+  extra: {}

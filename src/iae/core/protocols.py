@@ -27,6 +27,39 @@ class IEmbedder(Protocol):
 
 
 @runtime_checkable
+class IVectorStore(Protocol):
+    """Persistent embedding store for RAG chunks (Chroma)."""
+
+    def replace_grade(
+        self,
+        grade: int,
+        chunks: Iterable[Chunk],
+        embeddings: list[list[float]],
+    ) -> int: ...
+
+    def query(
+        self,
+        query_embedding: list[float],
+        *,
+        n_results: int,
+        grade: int | None = None,
+        chapter_name: str | None = None,
+        topic_id: str | None = None,
+    ) -> list[Chunk]: ...
+
+    def find(
+        self,
+        *,
+        grade: int | None = None,
+        chapter_name: str | None = None,
+        topic_id: str | None = None,
+        limit: int | None = None,
+    ) -> list[Chunk]: ...
+
+    def count(self, *, grade: int | None = None) -> int: ...
+
+
+@runtime_checkable
 class ILlmJson(Protocol):
     """LLM client constrained to return parsed JSON objects."""
 

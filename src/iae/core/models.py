@@ -66,6 +66,8 @@ class Chunk(BaseModel):
     page_end: int
     source: str
     grade: int = 6
+    topic_id: str = ""
+    skill: str = ""
 
 
 class MCQPayload(BaseModel):
@@ -113,6 +115,8 @@ class Question(BaseModel):
     payload: QuestionPayload
     chunk_ids: list[str] = Field(default_factory=list)
     grade: int = 6
+    topic_id: str = ""
+    skill: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

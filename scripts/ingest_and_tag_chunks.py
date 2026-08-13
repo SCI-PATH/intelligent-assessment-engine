@@ -1,8 +1,8 @@
-"""PDF -> tagged chunks (legacy Mongo write still used until Phase 3).
+"""PDF -> Chroma ``curriculum_chunks`` collection.
 
-Run after ``scripts/extract_subconcepts.py`` has produced (and you have
-reviewed) ``src/iae/config/subconcepts.yaml``. PDF path and chapter page
-ranges are read from ``curriculum.yaml`` for the selected ``--grade``.
+Run after ``scripts/extract_subconcepts.py`` and ``scripts/sync_skill_catalog.py``.
+PDF path and chapter page ranges come from ``curriculum.yaml`` for ``--grade``.
+Re-running a grade deletes only that grade's Chroma vectors.
 """
 
 from __future__ import annotations
@@ -20,11 +20,12 @@ from iae.core.curriculum import (
     get_subconcepts,
 )
 from iae.core.settings import get_config
-from iae.infrastructure.mongo.chunks_repo import MongoChunkRepository
-from iae.infrastructure.mongo.client import ensure_indexes, get_database
+from iae.core.skills import get_topics, match_curriculum_chapters
+from iae.infrastructure.rag.chroma_store import ChromaChunkStore
 from iae.infrastructure.rag.chunk_tagger import assign_subconcepts
 from iae.infrastructure.rag.embeddings import HuggingFaceEmbedder
 from iae.infrastructure.rag.pdf_loader import load_and_chunk_pdf
+from iae.infrastructure.rag.topic_tagger import assign_topic_ids
 
 
 def main() -> int:
@@ -67,26 +68,38 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
+    if not get_topics():
+        print(
+            "Topic catalog is empty. Run scripts/sync_skill_catalog.py first.",
+            file=sys.stderr,
+        )
+        return 2
+
+    matched, unmatched = match_curriculum_chapters(args.grade)
+    print(f"Excel Topic IDs matched {len(matched)} curriculum chapters.")
+    for title in unmatched:
+        print(f"  unmatched Excel chapter (no PDF map yet): {title}")
 
     print(f"Loading and splitting {pdf_path} (grade {args.grade})...")
     chunks = load_and_chunk_pdf(pdf_path, grade=args.grade)
     print(f"Produced {len(chunks)} chapter-tagged chunks.")
 
-    print("Embedding chunks and assigning sub-concepts...")
+    print("Embedding chunks and assigning sub-concepts + Topic IDs...")
     embedder = HuggingFaceEmbedder(get_config().embedding_model)
     chunks = assign_subconcepts(chunks, embedder)
+    chunks = assign_topic_ids(chunks, embedder)
 
-    db = get_database()
-    ensure_indexes(db)
-    repo = MongoChunkRepository(db)
-    written = repo.replace_all(chunks)
+    print("Writing embeddings to Chroma...")
+    embeddings = embedder.embed([chunk.text for chunk in chunks])
+    store = ChromaChunkStore()
+    written = store.replace_grade(args.grade, chunks, embeddings)
 
     summary: Counter[tuple[int, str, str]] = Counter(
-        (c.grade, c.chapter_name, c.sub_concept) for c in chunks
+        (c.grade, c.chapter_name, c.topic_id or "(none)") for c in chunks
     )
-    print(f"\nWrote {written} chunks to Mongo. Coverage:")
-    for (grade, chapter, sub), count in sorted(summary.items()):
-        print(f"  G{grade}  {chapter:40s}  {sub:30s}  {count}")
+    print(f"\nWrote {written} chunks to Chroma (grade {args.grade} replaced). Coverage:")
+    for (grade, chapter, topic_id), count in sorted(summary.items()):
+        print(f"  G{grade}  {chapter:40s}  {topic_id:22s}  {count}")
     return 0
 
 
