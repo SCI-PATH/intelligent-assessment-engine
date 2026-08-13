@@ -112,6 +112,29 @@ class ISessionRepository(Protocol):
 
     def update(self, session: SessionState) -> None: ...
 
+    def served_question_ids(self, user_id: str) -> list[str]: ...
+
+    def mark_served(
+        self,
+        *,
+        user_id: str,
+        question_id: str,
+        session_id: str,
+        topic_id: str = "",
+        source: str = "bank",
+    ) -> None: ...
+
+    def record_attempt(
+        self,
+        attempt: AttemptRecord,
+        *,
+        user_id: str,
+        session_id: str,
+        topic_id: str = "",
+        similarity_score: float | None = None,
+        distractor_tag: str | None = None,
+    ) -> None: ...
+
 
 @runtime_checkable
 class IRlPolicy(Protocol):

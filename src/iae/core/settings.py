@@ -1,6 +1,6 @@
 """Application configuration loaded from environment + YAML.
 
-Secrets (Mongo URI, LLM keys) come from environment variables / .env.
+Secrets (LLM keys) come from environment variables / .env.
 Tunable knobs (max questions, accuracy band, model names) come from
 `iae/config/app.yaml` so they can be edited without touching code.
 """
@@ -23,8 +23,6 @@ class AppSettings(BaseSettings):
     llm_provider: str = Field(default="groq", alias="LLM_PROVIDER")
     openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
 
-    mongodb_uri: str = Field(default="", alias="MONGODB_URI")
-    mongodb_db_name: str = Field(default="iae", alias="MONGODB_DB_NAME")
     api_base_url: str = Field(default="http://localhost:8001", alias="API_BASE_URL")
     database_url: str = Field(
         default="postgresql+psycopg://iae:iae@localhost:5432/iae",

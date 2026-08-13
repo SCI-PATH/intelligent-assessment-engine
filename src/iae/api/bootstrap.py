@@ -20,11 +20,10 @@ from iae.core.protocols import (
 )
 from iae.core.settings import get_config, get_settings
 from iae.infrastructure.llm.factory import build_json_llm
-from iae.infrastructure.mongo.client import ensure_indexes, get_database
-from iae.infrastructure.mongo.sessions_repo import MongoSessionRepository
 from iae.infrastructure.postgres.analytics_repo import PostgresAnalyticsRepository
 from iae.infrastructure.postgres.engine import get_session_factory, init_schema
 from iae.infrastructure.postgres.questions_repo import PostgresQuestionRepository
+from iae.infrastructure.postgres.sessions_repo import PostgresSessionRepository
 from iae.infrastructure.rag.chroma_store import ChromaChunkStore
 from iae.infrastructure.rag.embeddings import HuggingFaceEmbedder
 
@@ -47,10 +46,7 @@ def build_container() -> Container:
     session_factory = get_session_factory()
     questions_repo = PostgresQuestionRepository(session_factory)
     analytics_repo = PostgresAnalyticsRepository(session_factory)
-
-    db = get_database()
-    ensure_indexes(db)
-    sessions_repo = MongoSessionRepository(db)
+    sessions_repo = PostgresSessionRepository(session_factory)
 
     llm = build_json_llm(model=config.llm_grader_model)
     generator_llm = build_json_llm(model=config.llm_model)

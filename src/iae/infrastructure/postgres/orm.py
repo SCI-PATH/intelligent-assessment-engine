@@ -1,4 +1,4 @@
-"""SQLAlchemy mappings for ``question_engine`` tables used in this phase."""
+"""SQLAlchemy mappings for ``question_engine`` tables."""
 
 from __future__ import annotations
 
@@ -54,6 +54,85 @@ class AnalyticsEventRow(Base):
     session_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class UserRow(Base):
+    __tablename__ = "users"
+    __table_args__ = {"schema": "question_engine"}
+
+    user_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class AssessmentSessionRow(Base):
+    __tablename__ = "assessment_sessions"
+    __table_args__ = {"schema": "question_engine"}
+
+    session_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False)
+    grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    topic_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scope_chapter: Mapped[str] = mapped_column(Text, nullable=False)
+    used_question_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    asked_signatures: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    history: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    last_state: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    last_action: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    questions_asked: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_questions: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class ServedQuestionRow(Base):
+    __tablename__ = "served_questions"
+    __table_args__ = {"schema": "question_engine"}
+
+    user_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    question_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    session_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    topic_id: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="bank")
+    served_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class AttemptRow(Base):
+    __tablename__ = "attempts"
+    __table_args__ = {"schema": "question_engine"}
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False)
+    session_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    question_id: Mapped[str] = mapped_column(Text, nullable=False)
+    topic_id: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    accuracy_score: Mapped[float] = mapped_column(Float, nullable=False)
+    similarity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    distractor_tag: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    student_answer: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    trace: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    answered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),

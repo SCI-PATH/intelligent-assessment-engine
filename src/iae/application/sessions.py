@@ -1,7 +1,7 @@
 """Use cases for diagnostic sessions.
 
 The service orchestrates the policy, the question repository, and the session
-repository; it knows nothing about HTTP, Streamlit, or Mongo specifics.
+repository; it knows nothing about HTTP, Streamlit, or storage specifics.
 """
 
 from __future__ import annotations
@@ -96,10 +96,17 @@ class SessionService:
 
     # ---- lifecycle -------------------------------------------------------------
 
-    def create_session(self, scope_chapter: str, user_id: str | None = None) -> SessionState:
+    def create_session(
+        self,
+        scope_chapter: str,
+        user_id: str | None = None,
+        grade: int = 6,
+    ) -> SessionState:
         session = SessionState(
             scope_chapter=scope_chapter,
             user_id=(user_id or "").strip() or str(uuid4()),
+            grade=grade,
+            max_questions=self._limits.max_questions,
         )
         return self._sessions.create(session)
 
@@ -145,9 +152,11 @@ class SessionService:
         )
         # #endregion
 
-        # Avoid repeating semantically identical prompts (same stem/paragraph),
-        # not just duplicate question IDs.
-        excluded_ids = list(session.used_question_ids)
+        # Never re-serve a question this user has already seen (any session),
+        # and also skip near-duplicate stems within the current session.
+        excluded_ids = list(
+            dict.fromkeys(list(session.used_question_ids) + self._sessions.served_question_ids(session.user_id))
+        )
         seen_signatures = set(session.asked_signatures)
         question = None
         for _ in range(12):
@@ -174,6 +183,13 @@ class SessionService:
         session.last_action = action
         session.used_question_ids.append(question.id)
         session.asked_signatures.append(self._question_signature(question))
+        self._sessions.mark_served(
+            user_id=session.user_id,
+            question_id=question.id,
+            session_id=session.session_id,
+            topic_id=question.topic_id,
+            source="bank",
+        )
         self._sessions.update(session)
 
         # #region agent log
@@ -293,7 +309,15 @@ class SessionService:
         )
         session.history.append(attempt)
         session.questions_asked += 1
-        self._record_analytics(session, question, result, student_answer)
+        payload = self._record_analytics(session, question, result, student_answer)
+        self._sessions.record_attempt(
+            attempt,
+            user_id=session.user_id,
+            session_id=session.session_id,
+            topic_id=question.topic_id,
+            similarity_score=payload.get("similarity_score") if payload else None,
+            distractor_tag=payload.get("distractor_tag") if payload else None,
+        )
         # #region agent log
         _debug_log(
             hypothesis_id="H4",
@@ -317,7 +341,7 @@ class SessionService:
         question: Question,
         result: GradeResult,
         student_answer: str,
-    ) -> None:
+    ) -> dict:
         payload = build_analytics_payload(
             user_id=session.user_id,
             question=question,
@@ -332,6 +356,7 @@ class SessionService:
             except Exception:
                 pass
         send_analytics_event(payload)
+        return payload
 
     # ---- internal --------------------------------------------------------------
 

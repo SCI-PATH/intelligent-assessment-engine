@@ -203,6 +203,8 @@ class SessionState(BaseModel):
     last_state: RlState | None = None
     last_action: RlAction | None = None
     questions_asked: int = 0
+    grade: int = 6
+    max_questions: int = 5
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

@@ -69,6 +69,7 @@ def create_session(
     session = container.session_service.create_session(
         payload.chapter_name,
         user_id=payload.user_id,
+        grade=payload.grade,
     )
     return SessionResponse(
         session_id=session.session_id,

@@ -162,7 +162,12 @@ class PostgresQuestionRepository:
     @staticmethod
     def _approved_query(filters: dict, excluded_ids: list[str]) -> Select[tuple[QuestionRow]]:
         stmt = select(QuestionRow).filter_by(status=QuestionStatus.APPROVED.value, **filters)
-        if excluded_ids:
-            excluded = [UUID(qid) for qid in excluded_ids]
+        excluded: list[UUID] = []
+        for qid in excluded_ids:
+            try:
+                excluded.append(UUID(qid))
+            except ValueError:
+                continue
+        if excluded:
             stmt = stmt.where(QuestionRow.id.not_in(excluded))
         return stmt

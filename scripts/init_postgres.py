@@ -1,4 +1,4 @@
-"""Create the ``question_engine`` schema and ``questions`` table.
+"""Create the ``question_engine`` schema and tables.
 
 Prereq (local Docker)::
 

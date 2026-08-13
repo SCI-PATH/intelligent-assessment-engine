@@ -47,3 +47,97 @@ CREATE TABLE IF NOT EXISTS question_engine.analytics_events (
 
 CREATE INDEX IF NOT EXISTS analytics_events_user_topic
     ON question_engine.analytics_events (user_id, topic_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS question_engine.users (
+    user_id TEXT PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS question_engine.assessment_sessions (
+    session_id UUID PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
+    grade INTEGER,
+    topic_id TEXT,
+    scope_chapter TEXT NOT NULL,
+    used_question_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    asked_signatures JSONB NOT NULL DEFAULT '[]'::jsonb,
+    history JSONB NOT NULL DEFAULT '[]'::jsonb,
+    last_state JSONB,
+    last_action JSONB,
+    questions_asked INTEGER NOT NULL DEFAULT 0,
+    max_questions INTEGER NOT NULL DEFAULT 5,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ended_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS assessment_sessions_user
+    ON question_engine.assessment_sessions (user_id, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS question_engine.served_questions (
+    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
+    question_id TEXT NOT NULL,
+    session_id UUID,
+    topic_id TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'bank',
+    served_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, question_id),
+    CONSTRAINT served_questions_source_chk CHECK (source IN ('bank', 'past_paper'))
+);
+
+CREATE INDEX IF NOT EXISTS served_questions_session
+    ON question_engine.served_questions (session_id);
+
+CREATE TABLE IF NOT EXISTS question_engine.attempts (
+    id UUID PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
+    session_id UUID NOT NULL REFERENCES question_engine.assessment_sessions (session_id),
+    question_id TEXT NOT NULL,
+    topic_id TEXT NOT NULL DEFAULT '',
+    is_correct BOOLEAN NOT NULL,
+    accuracy_score DOUBLE PRECISION NOT NULL,
+    similarity_score DOUBLE PRECISION,
+    distractor_tag TEXT,
+    student_answer TEXT NOT NULL DEFAULT '',
+    trace JSONB NOT NULL DEFAULT '{}'::jsonb,
+    answered_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS attempts_session
+    ON question_engine.attempts (session_id, answered_at);
+
+CREATE INDEX IF NOT EXISTS attempts_user_topic
+    ON question_engine.attempts (user_id, topic_id, answered_at DESC);
+
+-- Placeholder: no writers yet. Future frustration / affective signals.
+CREATE TABLE IF NOT EXISTS question_engine.frustration_cues (
+    id UUID PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
+    session_id UUID REFERENCES question_engine.assessment_sessions (session_id),
+    cue_type TEXT NOT NULL,
+    cue_value JSONB NOT NULL DEFAULT '{}'::jsonb,
+    recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Placeholder: no BKT updates yet.
+CREATE TABLE IF NOT EXISTS question_engine.bkt_mastery (
+    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
+    topic_id TEXT NOT NULL,
+    p_l DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    p_t DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    p_g DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    p_s DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, topic_id)
+);
+
+-- Placeholder: past-paper ingest/serving is not implemented.
+CREATE TABLE IF NOT EXISTS question_engine.past_paper_items (
+    item_id UUID PRIMARY KEY,
+    grade INTEGER,
+    topic_id TEXT,
+    year INTEGER,
+    paper_code TEXT,
+    prompt TEXT,
+    marking_scheme JSONB NOT NULL DEFAULT '{}'::jsonb
+);
