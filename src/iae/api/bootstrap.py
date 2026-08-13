@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from iae.adaptive.policy import ConceptAwareNavigationPolicy, PolicyConfig
 from iae.application.grading import GradingService
+from iae.application.placement import PlacementService
 from iae.application.sessions import SessionLimits, SessionService
 from iae.application.teacher import TeacherService
 from iae.core.protocols import (
@@ -23,6 +24,7 @@ from iae.infrastructure.llm.factory import build_json_llm
 from iae.infrastructure.postgres.analytics_repo import PostgresAnalyticsRepository
 from iae.infrastructure.postgres.engine import get_session_factory, init_schema
 from iae.infrastructure.postgres.questions_repo import PostgresQuestionRepository
+from iae.infrastructure.postgres.placement_repo import PostgresPlacementRepository
 from iae.infrastructure.postgres.sessions_repo import PostgresSessionRepository
 from iae.infrastructure.rag.chroma_store import ChromaChunkStore
 from iae.infrastructure.rag.embeddings import HuggingFaceEmbedder
@@ -36,6 +38,7 @@ class Container:
     policy: IRlPolicy
     session_service: SessionService
     teacher_service: TeacherService
+    placement_service: PlacementService
 
 
 def build_container() -> Container:
@@ -47,6 +50,7 @@ def build_container() -> Container:
     questions_repo = PostgresQuestionRepository(session_factory)
     analytics_repo = PostgresAnalyticsRepository(session_factory)
     sessions_repo = PostgresSessionRepository(session_factory)
+    placement_repo = PostgresPlacementRepository(session_factory)
 
     llm = build_json_llm(model=config.llm_grader_model)
     generator_llm = build_json_llm(model=config.llm_model)
@@ -82,6 +86,7 @@ def build_container() -> Container:
         retrieval_top_k=config.retrieval_top_k,
         generation_max_retries=config.generation_max_retries,
     )
+    placement_service = PlacementService(store=placement_repo, questions=questions_repo)
     return Container(
         sessions_repo=sessions_repo,
         questions_repo=questions_repo,
@@ -89,4 +94,5 @@ def build_container() -> Container:
         policy=policy,
         session_service=session_service,
         teacher_service=teacher_service,
+        placement_service=placement_service,
     )

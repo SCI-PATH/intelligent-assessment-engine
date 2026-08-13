@@ -70,6 +70,34 @@ class UserRow(Base):
     __table_args__ = {"schema": "question_engine"}
 
     user_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completed_chapters_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    past_grade_marks_range: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    placement_category: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    placement_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PlacementEvaluationRow(Base):
+    __tablename__ = "placement_evaluations"
+    __table_args__ = {"schema": "question_engine"}
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False)
+    grade: Mapped[int] = mapped_column(Integer, nullable=False)
+    completed_chapters_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    past_grade_marks_range: Mapped[str] = mapped_column(String(16), nullable=False)
+    quiz_correct: Mapped[int] = mapped_column(Integer, nullable=False)
+    quiz_total: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    quiz_score: Mapped[float] = mapped_column(Float, nullable=False)
+    past_score: Mapped[float] = mapped_column(Float, nullable=False)
+    weighted_score: Mapped[float] = mapped_column(Float, nullable=False)
+    category: Mapped[str] = mapped_column(String(16), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

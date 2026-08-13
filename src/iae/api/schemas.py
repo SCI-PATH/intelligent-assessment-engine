@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from iae.core.models import (
     AttemptRecord,
     GradeResult,
+    PastGradeMarksRange,
     Question,
     QuestionPayload,
     QuestionStatus,
@@ -134,3 +135,36 @@ class CreateTeacherQuestionRequest(BaseModel):
     question_type: QuestionType
     payload: QuestionPayload
     sub_concept: str = ""
+
+
+class PlacementSurveyRequest(BaseModel):
+    user_id: str
+    grade: int = Field(ge=6, le=9)
+    completed_chapters_count: int = Field(ge=0)
+    past_grade_marks_range: PastGradeMarksRange
+
+
+class PlacementQuizItem(BaseModel):
+    id: str
+    chapter_name: str
+    topic_id: str = ""
+    skill: str = ""
+    dok_level: int
+    question_type: QuestionType
+    grade: int
+    prompt: dict
+
+
+class PlacementQuizResponse(BaseModel):
+    grade: int
+    count: int
+    questions: list[PlacementQuizItem]
+
+
+class PlacementEvaluateRequest(BaseModel):
+    user_id: str
+    grade: int = Field(ge=6, le=9)
+    completed_chapters_count: int = Field(ge=0)
+    past_grade_marks_range: PastGradeMarksRange
+    quiz_correct: int = Field(ge=0)
+    quiz_total: int = Field(default=10, ge=1, le=50)

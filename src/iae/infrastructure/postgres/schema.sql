@@ -64,6 +64,42 @@ CREATE TABLE IF NOT EXISTS question_engine.users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS grade INTEGER;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS completed_chapters_count INTEGER;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS past_grade_marks_range TEXT;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS placement_category TEXT;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS placement_score DOUBLE PRECISION;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS question_engine.placement_evaluations (
+    id UUID PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
+    grade INTEGER NOT NULL,
+    completed_chapters_count INTEGER NOT NULL DEFAULT 0,
+    past_grade_marks_range TEXT NOT NULL,
+    quiz_correct INTEGER NOT NULL,
+    quiz_total INTEGER NOT NULL DEFAULT 10,
+    quiz_score DOUBLE PRECISION NOT NULL,
+    past_score DOUBLE PRECISION NOT NULL,
+    weighted_score DOUBLE PRECISION NOT NULL,
+    category TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT placement_eval_marks_chk
+        CHECK (past_grade_marks_range IN ('BELOW_50', '50_75', 'ABOVE_75')),
+    CONSTRAINT placement_eval_category_chk
+        CHECK (category IN ('WEAK', 'AVERAGE', 'ADVANCED')),
+    CONSTRAINT placement_eval_grade_chk CHECK (grade BETWEEN 6 AND 9)
+);
+
+CREATE INDEX IF NOT EXISTS placement_evaluations_user
+    ON question_engine.placement_evaluations (user_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS question_engine.assessment_sessions (
     session_id UUID PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),

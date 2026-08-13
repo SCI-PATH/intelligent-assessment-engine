@@ -248,3 +248,41 @@ class GradeResult(BaseModel):
     concept_explanation: str | None = None
     distractor_tag: str | None = None
     distractor_label: str | None = None
+
+
+class PastGradeMarksRange(str, Enum):
+    BELOW_50 = "BELOW_50"
+    BAND_50_75 = "50_75"
+    ABOVE_75 = "ABOVE_75"
+
+
+class PlacementCategory(str, Enum):
+    WEAK = "WEAK"
+    AVERAGE = "AVERAGE"
+    ADVANCED = "ADVANCED"
+
+
+class StudentProfile(BaseModel):
+    user_id: str
+    grade: int | None = None
+    completed_chapters_count: int | None = None
+    past_grade_marks_range: PastGradeMarksRange | None = None
+    placement_category: PlacementCategory | None = None
+    placement_score: float | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PlacementEvaluation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    user_id: str
+    grade: int
+    completed_chapters_count: int = 0
+    past_grade_marks_range: PastGradeMarksRange
+    quiz_correct: int
+    quiz_total: int = 10
+    quiz_score: float
+    past_score: float
+    weighted_score: float
+    category: PlacementCategory
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

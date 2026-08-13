@@ -13,12 +13,15 @@ from iae.core.models import (
     AttemptRecord,
     Chunk,
     GradeResult,
+    PastGradeMarksRange,
+    PlacementEvaluation,
     Question,
     QuestionStatus,
     QuestionType,
     RlAction,
     RlState,
     SessionState,
+    StudentProfile,
 )
 
 
@@ -152,4 +155,18 @@ class IGradingService(Protocol):
 @runtime_checkable
 class IAnalyticsRepository(Protocol):
     def insert(self, payload: dict[str, Any], *, session_id: str | None = None) -> str: ...
+
+
+@runtime_checkable
+class IPlacementRepository(Protocol):
+    def upsert_survey(
+        self,
+        *,
+        user_id: str,
+        grade: int,
+        completed_chapters_count: int,
+        past_grade_marks_range: PastGradeMarksRange,
+    ) -> StudentProfile: ...
+
+    def save_evaluation(self, evaluation: PlacementEvaluation) -> PlacementEvaluation: ...
 
