@@ -7,10 +7,9 @@ the analytics service is wired. Persistence is handled separately.
 from __future__ import annotations
 
 import math
-from enum import Enum
 from typing import Any
 
-from iae.core.models import GradeResult, MCQPayload, Question, QuestionType
+from iae.core.models import DistractorTag, GradeResult, MCQPayload, Question, QuestionType
 from iae.core.protocols import IEmbedder, ILlmJson
 from iae.core.settings import get_settings
 from iae.prompts import render
@@ -20,13 +19,6 @@ import httpx  # noqa: F401
 
 _NEAR_MISS_MIN = 0.72
 _MISCONCEPTION_MIN = 0.40
-
-
-class DistractorTag(str, Enum):
-    NEAR_MISS = "NEAR_MISS"
-    MISCONCEPTION = "MISCONCEPTION"
-    COMPLETE_MISS = "COMPLETE_MISS"
-
 
 _TAG_CUE = {
     DistractorTag.NEAR_MISS: "a near-miss: the chosen idea is close to the correct concept but not quite right",
@@ -126,29 +118,35 @@ def build_analytics_payload(
         "question_id": question.id,
         "question_type": question.question_type.value,
         "similarity_score": None,
-        "distractor_tag": None,
-        "distractor_label": None,
+        "distractor_tag": grade.distractor_tag,
+        "distractor_label": grade.distractor_label,
+        "error_category": grade.error_category,
+        "missing_keywords": grade.missing_keywords,
+        "detailed_explanation": grade.detailed_explanation,
+        "missed_blanks": grade.missed_blanks,
+        "concept_explanation": grade.concept_explanation,
     }
 
     if question.question_type in (QuestionType.SHORT_ANSWER, QuestionType.MULTI_BLANK):
         payload["similarity_score"] = float(grade.accuracy_score)
 
     if question.question_type == QuestionType.MCQ and not grade.is_correct:
-        if embedder is None:
-            tag = DistractorTag.COMPLETE_MISS
-        else:
-            tag, _ = classify_mcq_distractor(
+        if not payload["distractor_tag"]:
+            if embedder is None:
+                tag = DistractorTag.COMPLETE_MISS
+            else:
+                tag, _ = classify_mcq_distractor(
+                    question=question,
+                    student_answer=student_answer,
+                    embedder=embedder,
+                )
+            payload["distractor_tag"] = tag.value
+            payload["distractor_label"] = explain_mcq_distractor(
                 question=question,
                 student_answer=student_answer,
-                embedder=embedder,
+                tag=tag,
+                llm=llm,
             )
-        payload["distractor_tag"] = tag.value
-        payload["distractor_label"] = explain_mcq_distractor(
-            question=question,
-            student_answer=student_answer,
-            tag=tag,
-            llm=llm,
-        )
 
     return payload
 

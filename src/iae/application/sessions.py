@@ -291,6 +291,13 @@ class SessionService:
             is_correct=result.is_correct,
             feedback=result.feedback,
             reasoning=result.reasoning,
+            error_category=result.error_category,
+            missing_keywords=result.missing_keywords,
+            detailed_explanation=result.detailed_explanation,
+            missed_blanks=result.missed_blanks,
+            concept_explanation=result.concept_explanation,
+            distractor_tag=result.distractor_tag,
+            distractor_label=result.distractor_label,
             adaptive_decision=(
                 f"{(action.dok_summary if action else '').strip()} | "
                 f"{(action.type_summary if action else '').strip()}".strip(" |"),
@@ -317,6 +324,7 @@ class SessionService:
             topic_id=question.topic_id,
             similarity_score=payload.get("similarity_score") if payload else None,
             distractor_tag=payload.get("distractor_tag") if payload else None,
+            distractor_label=payload.get("distractor_label") if payload else None,
         )
         # #region agent log
         _debug_log(

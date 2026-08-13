@@ -48,6 +48,17 @@ CREATE TABLE IF NOT EXISTS question_engine.analytics_events (
 CREATE INDEX IF NOT EXISTS analytics_events_user_topic
     ON question_engine.analytics_events (user_id, topic_id, created_at DESC);
 
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS error_category TEXT;
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS missing_keywords JSONB;
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS detailed_explanation TEXT;
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS missed_blanks JSONB;
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS concept_explanation TEXT;
+
 CREATE TABLE IF NOT EXISTS question_engine.users (
     user_id TEXT PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -108,6 +119,19 @@ CREATE INDEX IF NOT EXISTS attempts_session
 
 CREATE INDEX IF NOT EXISTS attempts_user_topic
     ON question_engine.attempts (user_id, topic_id, answered_at DESC);
+
+ALTER TABLE question_engine.attempts
+    ADD COLUMN IF NOT EXISTS error_category TEXT;
+ALTER TABLE question_engine.attempts
+    ADD COLUMN IF NOT EXISTS missing_keywords JSONB;
+ALTER TABLE question_engine.attempts
+    ADD COLUMN IF NOT EXISTS detailed_explanation TEXT;
+ALTER TABLE question_engine.attempts
+    ADD COLUMN IF NOT EXISTS missed_blanks JSONB;
+ALTER TABLE question_engine.attempts
+    ADD COLUMN IF NOT EXISTS concept_explanation TEXT;
+ALTER TABLE question_engine.attempts
+    ADD COLUMN IF NOT EXISTS distractor_label TEXT;
 
 -- Placeholder: no writers yet. Future frustration / affective signals.
 CREATE TABLE IF NOT EXISTS question_engine.frustration_cues (

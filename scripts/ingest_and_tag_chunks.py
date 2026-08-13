@@ -1,7 +1,9 @@
 """PDF -> Chroma ``curriculum_chunks`` collection.
 
 Run after ``scripts/extract_subconcepts.py`` and ``scripts/sync_skill_catalog.py``.
-PDF path and chapter page ranges come from ``curriculum.yaml`` for ``--grade``.
+PDF path(s) and chapter page ranges come from ``curriculum.yaml`` for ``--grade``.
+A grade may have several PDFs (Part 1 / Part 2); all configured parts are
+loaded unless ``--pdf`` / ``--pdf-id`` narrows the set.
 Re-running a grade deletes only that grade's Chroma vectors.
 """
 
@@ -19,17 +21,18 @@ for _p in (str(_ROOT), str(_ROOT / "src")):
 
 from iae.core.curriculum import (
     DEFAULT_GRADE,
+    CurriculumConfigError,
     UnknownGradeError,
     get_chapters,
-    get_grade_pdf_path,
     get_subconcepts,
+    select_pdf_parts,
 )
 from iae.core.settings import get_config
 from iae.core.skills import get_topics, match_curriculum_chapters
 from iae.infrastructure.rag.chroma_store import ChromaChunkStore
 from iae.infrastructure.rag.chunk_tagger import assign_subconcepts
 from iae.infrastructure.rag.embeddings import HuggingFaceEmbedder
-from iae.infrastructure.rag.pdf_loader import load_and_chunk_pdf
+from iae.infrastructure.rag.pdf_loader import load_and_chunk_grade
 from iae.infrastructure.rag.topic_tagger import assign_topic_ids
 
 
@@ -45,27 +48,39 @@ def main() -> int:
         "--pdf",
         type=Path,
         default=None,
-        help="Override the PDF path from curriculum.yaml.",
+        help="Ingest only this configured PDF path (Part 1 or Part 2).",
+    )
+    parser.add_argument(
+        "--pdf-id",
+        dest="pdf_id",
+        default=None,
+        help="Ingest only this part id from curriculum.yaml (e.g. part1).",
     )
     args = parser.parse_args()
 
     try:
-        pdf_path = args.pdf or get_grade_pdf_path(args.grade)
         chapters = get_chapters(args.grade)
-    except UnknownGradeError as exc:
+        parts = select_pdf_parts(args.grade, pdf_id=args.pdf_id, pdf_path=args.pdf)
+    except (UnknownGradeError, CurriculumConfigError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
+
+    allowed_ids = {part.id for part in parts}
+    chapters = [chapter for chapter in chapters if chapter.pdf_id in allowed_ids]
+    parts = tuple(part for part in parts if any(chapter.pdf_id == part.id for chapter in chapters))
 
     if not chapters:
         print(
             f"Grade {args.grade} has no chapter page ranges in curriculum.yaml yet. "
-            "Fill page_start/page_end from the PDF Table of Contents first.",
+            "Fill page_start/page_end (and pdf_id for multi-part grades) from each PDF ToC first.",
             file=sys.stderr,
         )
         return 3
 
-    if not pdf_path.exists():
-        print(f"PDF not found: {pdf_path}", file=sys.stderr)
+    missing = [part.path for part in parts if not part.path.exists()]
+    if missing:
+        for path in missing:
+            print(f"PDF not found: {path}", file=sys.stderr)
         return 1
     if not get_subconcepts():
         print(
@@ -85,9 +100,10 @@ def main() -> int:
     for title in unmatched:
         print(f"  unmatched Excel chapter (no PDF map yet): {title}")
 
-    print(f"Loading and splitting {pdf_path} (grade {args.grade})...")
-    chunks = load_and_chunk_pdf(pdf_path, grade=args.grade)
-    print(f"Produced {len(chunks)} chapter-tagged chunks.")
+    for part in parts:
+        print(f"Loading {part.path} (grade {args.grade}, {part.id})...")
+    chunks = load_and_chunk_grade(args.grade, parts=list(parts))
+    print(f"Produced {len(chunks)} chapter-tagged chunks from {len(parts)} PDF(s).")
 
     print("Embedding chunks and assigning sub-concepts + Topic IDs...")
     embedder = HuggingFaceEmbedder(get_config().embedding_model)
@@ -95,9 +111,15 @@ def main() -> int:
     chunks = assign_topic_ids(chunks, embedder)
 
     print("Writing embeddings to Chroma...")
-    embeddings = embedder.embed([chunk.text for chunk in chunks])
+    embeddings = embedder.embed([chunk.text for chunk in chunks]) if chunks else []
     store = ChromaChunkStore()
-    written = store.replace_grade(args.grade, chunks, embeddings)
+    partial = bool(args.pdf or args.pdf_id)
+    if partial:
+        removed = store.delete_by_sources(args.grade, [part.path.name for part in parts])
+        written = store.add_chunks(chunks, embeddings)
+        print(f"Partial ingest ({', '.join(part.id for part in parts)}): removed {removed} old vectors.")
+    else:
+        written = store.replace_grade(args.grade, chunks, embeddings)
 
     summary: Counter[tuple[int, str, str]] = Counter(
         (c.grade, c.chapter_name, c.topic_id or "(none)") for c in chunks

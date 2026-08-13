@@ -133,6 +133,7 @@ class ISessionRepository(Protocol):
         topic_id: str = "",
         similarity_score: float | None = None,
         distractor_tag: str | None = None,
+        distractor_label: str | None = None,
     ) -> None: ...
 
 

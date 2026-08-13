@@ -55,6 +55,26 @@ class QuestionOrigin(str, Enum):
     TEACHER = "teacher"
 
 
+class ShortAnswerErrorCategory(str, Enum):
+    NO_ERROR = "NO_ERROR"
+    SPELLING_GRAMMAR_ERROR = "SPELLING_GRAMMAR_ERROR"
+    MISSING_KEYWORDS = "MISSING_KEYWORDS"
+    CONCEPTUAL_MISCONCEPTION = "CONCEPTUAL_MISCONCEPTION"
+    COMPLETELY_IRRELEVANT = "COMPLETELY_IRRELEVANT"
+
+
+class MultiBlankErrorCategory(str, Enum):
+    NO_ERROR = "NO_ERROR"
+    PARTIAL_MASTERY = "PARTIAL_MASTERY"
+    FULL_MISCONCEPTION = "FULL_MISCONCEPTION"
+
+
+class DistractorTag(str, Enum):
+    NEAR_MISS = "NEAR_MISS"
+    MISCONCEPTION = "MISCONCEPTION"
+    COMPLETE_MISS = "COMPLETE_MISS"
+
+
 DokLevel = Annotated[int, Field(ge=1, le=4)]
 
 
@@ -189,6 +209,13 @@ class AttemptRecord(BaseModel):
     decision_type_trace: RuleTrace | None = None
     time_taken_seconds: float = 0.0
     asked_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    error_category: str | None = None
+    missing_keywords: list[str] | None = None
+    detailed_explanation: str | None = None
+    missed_blanks: dict[str, str] | None = None
+    concept_explanation: str | None = None
+    distractor_tag: str | None = None
+    distractor_label: str | None = None
 
 
 class SessionState(BaseModel):
@@ -214,3 +241,10 @@ class GradeResult(BaseModel):
     is_correct: bool
     feedback: str = ""
     reasoning: str = ""
+    error_category: str | None = None
+    missing_keywords: list[str] | None = None
+    detailed_explanation: str | None = None
+    missed_blanks: dict[str, str] | None = None
+    concept_explanation: str | None = None
+    distractor_tag: str | None = None
+    distractor_label: str | None = None

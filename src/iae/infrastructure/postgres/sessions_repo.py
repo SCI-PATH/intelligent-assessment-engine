@@ -150,6 +150,7 @@ class PostgresSessionRepository:
         topic_id: str = "",
         similarity_score: float | None = None,
         distractor_tag: str | None = None,
+        distractor_label: str | None = None,
     ) -> None:
         self.ensure_user(user_id)
         row = AttemptRow(
@@ -161,7 +162,13 @@ class PostgresSessionRepository:
             is_correct=attempt.is_correct,
             accuracy_score=attempt.accuracy_score,
             similarity_score=similarity_score,
-            distractor_tag=distractor_tag,
+            distractor_tag=distractor_tag or attempt.distractor_tag,
+            distractor_label=distractor_label or attempt.distractor_label,
+            error_category=attempt.error_category,
+            missing_keywords=attempt.missing_keywords,
+            detailed_explanation=attempt.detailed_explanation,
+            missed_blanks=attempt.missed_blanks,
+            concept_explanation=attempt.concept_explanation,
             student_answer=attempt.student_answer,
             trace=attempt.model_dump(mode="json"),
             answered_at=attempt.asked_at,

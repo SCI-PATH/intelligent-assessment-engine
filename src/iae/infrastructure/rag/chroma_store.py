@@ -72,6 +72,12 @@ class ChromaChunkStore:
         if len(chunk_list) != len(embeddings):
             raise ValueError("chunks and embeddings must be the same length")
         self.delete_by_grade(grade)
+        return self.add_chunks(chunk_list, embeddings)
+
+    def add_chunks(self, chunks: Iterable[Chunk], embeddings: list[list[float]]) -> int:
+        chunk_list = list(chunks)
+        if len(chunk_list) != len(embeddings):
+            raise ValueError("chunks and embeddings must be the same length")
         if not chunk_list:
             return 0
         self._collection.add(
@@ -81,6 +87,20 @@ class ChromaChunkStore:
             metadatas=[self._metadata(chunk) for chunk in chunk_list],
         )
         return len(chunk_list)
+
+    def delete_by_sources(self, grade: int, sources: Iterable[str]) -> int:
+        wanted = {str(source) for source in sources}
+        if not wanted:
+            return 0
+        existing = self._collection.get(where={"grade": grade}, include=["metadatas"])
+        ids = [
+            chunk_id
+            for chunk_id, meta in zip(existing.get("ids") or [], existing.get("metadatas") or [])
+            if str((meta or {}).get("source") or "") in wanted
+        ]
+        if ids:
+            self._collection.delete(ids=ids)
+        return len(ids)
 
     def delete_by_grade(self, grade: int) -> int:
         existing = self._collection.get(where={"grade": grade}, include=[])

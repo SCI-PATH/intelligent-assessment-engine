@@ -51,7 +51,7 @@ def build_container() -> Container:
     llm = build_json_llm(model=config.llm_grader_model)
     generator_llm = build_json_llm(model=config.llm_model)
     embedder = HuggingFaceEmbedder(config.embedding_model)
-    grading = GradingService(llm=llm)
+    grading = GradingService(llm=llm, embedder=embedder)
     policy = ConceptAwareNavigationPolicy(
         PolicyConfig(
             cold_start_dok=config.cold_start_dok,

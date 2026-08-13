@@ -23,9 +23,10 @@ for _p in (str(_ROOT), str(_ROOT / "src")):
 
 from iae.core.curriculum import (
     DEFAULT_GRADE,
+    CurriculumConfigError,
     UnknownGradeError,
     get_chapters,
-    get_grade_pdf_path,
+    select_pdf_parts,
 )
 from iae.core.settings import get_config, get_settings
 from iae.infrastructure.llm.groq_client import GroqJsonLlm
@@ -66,16 +67,27 @@ def main() -> int:
         "--pdf",
         type=Path,
         default=None,
-        help="Override the PDF path from curriculum.yaml.",
+        help="Extract only chapters that belong to this configured PDF.",
+    )
+    parser.add_argument(
+        "--pdf-id",
+        dest="pdf_id",
+        default=None,
+        help="Extract only this part id (e.g. part1).",
     )
     args = parser.parse_args()
 
     try:
-        pdf_path = args.pdf or get_grade_pdf_path(args.grade)
-        chapters = get_chapters(args.grade)
-    except UnknownGradeError as exc:
+        chapters = list(get_chapters(args.grade))
+        parts = select_pdf_parts(args.grade, pdf_id=args.pdf_id, pdf_path=args.pdf)
+    except (UnknownGradeError, CurriculumConfigError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
+
+    subset = bool(args.pdf or args.pdf_id)
+    if subset:
+        allowed = {part.id for part in parts}
+        chapters = [chapter for chapter in chapters if chapter.pdf_id in allowed]
 
     if not chapters:
         print(
@@ -84,19 +96,39 @@ def main() -> int:
         )
         return 3
 
-    if not pdf_path.exists():
-        print(f"PDF not found: {pdf_path}", file=sys.stderr)
+    needed = {chapter.pdf_path for chapter in chapters}
+    missing = [path for path in needed if not path.exists()]
+    if missing:
+        for path in missing:
+            print(f"PDF not found: {path}", file=sys.stderr)
         return 1
 
     settings = get_settings()
     config = get_config()
     llm = GroqJsonLlm(model=config.llm_model, api_key=settings.groq_api_key)
 
-    existing = [entry for entry in _load_existing_manifest() if int(entry.get("grade", DEFAULT_GRADE)) != args.grade]
+    previous = _load_existing_manifest()
+    if subset:
+        replaced = {chapter.name for chapter in chapters}
+        existing = [
+            entry
+            for entry in previous
+            if int(entry.get("grade", DEFAULT_GRADE)) != args.grade
+            or entry.get("chapter_name") not in replaced
+        ]
+    else:
+        existing = [
+            entry
+            for entry in previous
+            if int(entry.get("grade", DEFAULT_GRADE)) != args.grade
+        ]
     manifest: list[dict] = []
     for chapter in chapters:
-        print(f"-> G{args.grade} {chapter.name} (pp. {chapter.page_start}-{chapter.page_end})")
-        excerpt = _chapter_text(pdf_path, chapter.page_start, chapter.page_end)
+        print(
+            f"-> G{args.grade} {chapter.name} "
+            f"({chapter.pdf_id} {chapter.pdf_path.name} pp. {chapter.page_start}-{chapter.page_end})"
+        )
+        excerpt = _chapter_text(chapter.pdf_path, chapter.page_start, chapter.page_end)
         # Trim aggressively: only the first ~12k chars are needed to recover topics.
         prompt = render(
             "subconcepts/extract_subconcepts.jinja",

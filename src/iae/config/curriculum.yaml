@@ -1,9 +1,13 @@
-# Page ranges use 1-based PDF page numbers (not printed textbook pages).
-# When a new PDF's ToC does not match print pages, record the PDF offsets here.
+# Page ranges use 1-based PDF viewer pages (not printed textbook folios),
+# scoped to one file. Grades 7-9 ship as Part 1 + Part 2; each part has its
+# own cover/ToC, so page 15 in part2 is not page 15 in part1.
 #
-# To add a grade later:
-#   1. Drop the textbook PDF at the `pdf` path below.
-#   2. Fill `chapters` from that file's Table of Contents (1-based PDF pages).
+# Single-file grades may use `pdf:`. Multi-file grades use `pdfs:` with
+# stable ids. Every chapter in a multi-file grade must set `pdf_id`.
+#
+# To add / finish a grade:
+#   1. Drop the PDF(s) at the paths below.
+#   2. Fill `chapters` from each file's Table of Contents (1-based PDF pages).
 #   3. Run: python -m scripts.extract_subconcepts --grade N
 #   4. Hand-review src/iae/config/subconcepts.yaml
 #   5. Run: python -m scripts.ingest_and_tag_chunks --grade N
@@ -46,14 +50,35 @@ grades:
         page_start: 173
         page_end: 190
   7:
-    pdf: data/grade_7_science.pdf
     subject: Science
+    pdfs:
+      - id: part1
+        path: data/grade_7_science_part1.pdf
+      - id: part2
+        path: data/grade_7_science_part2.pdf
     chapters: []
+    # Example once the PDFs are mapped:
+    # - name: Diversity of Plants
+    #   pdf_id: part1
+    #   page_start: 15
+    #   page_end: 40
+    # - name: Heat
+    #   pdf_id: part2
+    #   page_start: 12
+    #   page_end: 28
   8:
-    pdf: data/grade_8_science.pdf
     subject: Science
+    pdfs:
+      - id: part1
+        path: data/grade_8_science_part1.pdf
+      - id: part2
+        path: data/grade_8_science_part2.pdf
     chapters: []
   9:
-    pdf: data/grade_9_science.pdf
     subject: Science
+    pdfs:
+      - id: part1
+        path: data/grade_9_science_part1.pdf
+      - id: part2
+        path: data/grade_9_science_part2.pdf
     chapters: []
