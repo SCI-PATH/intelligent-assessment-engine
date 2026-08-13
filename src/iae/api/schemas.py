@@ -8,7 +8,16 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from iae.core.models import AttemptRecord, GradeResult, Question, QuestionType, RlState, RuleTrace
+from iae.core.models import (
+    AttemptRecord,
+    GradeResult,
+    Question,
+    QuestionPayload,
+    QuestionStatus,
+    QuestionType,
+    RlState,
+    RuleTrace,
+)
 
 
 class CreateSessionRequest(BaseModel):
@@ -80,3 +89,46 @@ class ChaptersResponse(BaseModel):
     grade: int
     chapters: list[str]
     max_questions: int
+
+
+class TeacherTopicItem(BaseModel):
+    grade: int
+    topic_id: str
+    chapter_title: str
+    skill: str
+    chapter_number: int | None = None
+    domain: str = ""
+    concept_code: str = ""
+
+
+class TeacherTopicsResponse(BaseModel):
+    grade: int
+    topics: list[TeacherTopicItem]
+
+
+class GenerateQuestionsRequest(BaseModel):
+    topic_id: str
+    skill: str | None = None
+    dok_level: int = Field(default=2, ge=1, le=4)
+    question_type: QuestionType = QuestionType.MCQ
+    count: int = Field(default=1, ge=1, le=8)
+
+
+class GenerateQuestionsResponse(BaseModel):
+    created: int
+    questions: list[Question]
+
+
+class TeacherQuestionListResponse(BaseModel):
+    questions: list[Question]
+
+
+class CreateTeacherQuestionRequest(BaseModel):
+    grade: int = 6
+    chapter_name: str = ""
+    topic_id: str
+    skill: str = ""
+    dok_level: int = Field(ge=1, le=4)
+    question_type: QuestionType
+    payload: QuestionPayload
+    sub_concept: str = ""

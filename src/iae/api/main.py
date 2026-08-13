@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from iae.api.bootstrap import build_container
-from iae.api.routes import assessment, health
+from iae.api.routes import assessment, health, teacher
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router)
     app.include_router(assessment.router)
+    app.include_router(teacher.router)
     return app
 
 

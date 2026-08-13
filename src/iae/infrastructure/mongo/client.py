@@ -1,9 +1,4 @@
-"""MongoDB Atlas connection plumbing.
-
-A single ``MongoClient`` instance per process is sufficient for our scale; the
-driver multiplexes server selection internally. Tests can swap in any other
-``Database`` that satisfies the repository protocols.
-"""
+"""MongoDB Atlas connection plumbing (sessions only until Phase 5)."""
 
 from __future__ import annotations
 
@@ -30,25 +25,10 @@ def get_database() -> Database:
 
 
 def ensure_indexes(db: Database) -> None:
-    """Create the indexes the application relies on. Idempotent."""
+    """Create the indexes the remaining Mongo session store relies on."""
 
-    db["chunks"].create_index([("chapter_name", 1), ("sub_concept", 1)])
-    db["questions"].create_index(
-        [
-            ("chapter_name", 1),
-            ("sub_concept", 1),
-            ("dok_level", 1),
-            ("question_type", 1),
-        ],
-        name="bank_lookup",
-    )
-    # Legacy fix: early versions created a unique index on `session_id`, but
-    # session docs use `_id` as the canonical identifier. That old index causes
-    # duplicate-key errors on new sessions (`session_id: null`).
     try:
         db["sessions"].drop_index("session_id_1")
     except Exception:
         pass
-
-    # `_id` is already unique by Mongo default; keep one helpful secondary index.
     db["sessions"].create_index([("updated_at", -1)], name="sessions_updated_at")

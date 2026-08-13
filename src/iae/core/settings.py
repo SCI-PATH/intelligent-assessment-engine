@@ -26,6 +26,10 @@ class AppSettings(BaseSettings):
     mongodb_uri: str = Field(default="", alias="MONGODB_URI")
     mongodb_db_name: str = Field(default="iae", alias="MONGODB_DB_NAME")
     api_base_url: str = Field(default="http://localhost:8001", alias="API_BASE_URL")
+    database_url: str = Field(
+        default="postgresql+psycopg://iae:iae@localhost:5432/iae",
+        alias="DATABASE_URL",
+    )
     chroma_persist_dir: str = Field(default="data/chroma_db", alias="CHROMA_PERSIST_DIR")
     skills_xlsx_path: str = Field(
         default="data/skills/Skill-Heirarchies-G6-G9-Full-Chapters.xlsx",

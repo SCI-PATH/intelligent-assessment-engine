@@ -14,6 +14,7 @@ from iae.core.models import (
     Chunk,
     GradeResult,
     Question,
+    QuestionStatus,
     QuestionType,
     RlAction,
     RlState,
@@ -67,21 +68,6 @@ class ILlmJson(Protocol):
 
 
 @runtime_checkable
-class IChunkRepository(Protocol):
-    def replace_all(self, chunks: Iterable[Chunk]) -> int: ...
-
-    def find(
-        self,
-        *,
-        chapter_name: str | None = None,
-        sub_concept: str | None = None,
-        limit: int | None = None,
-    ) -> list[Chunk]: ...
-
-    def count(self) -> int: ...
-
-
-@runtime_checkable
 class IQuestionRepository(Protocol):
     def insert_many(self, questions: Iterable[Question]) -> int: ...
 
@@ -105,6 +91,17 @@ class IQuestionRepository(Protocol):
     ) -> int: ...
 
     def get(self, question_id: str) -> Question | None: ...
+
+    def list_questions(
+        self,
+        *,
+        status: QuestionStatus | None = None,
+        topic_id: str | None = None,
+        grade: int | None = None,
+        limit: int = 100,
+    ) -> list[Question]: ...
+
+    def set_status(self, question_id: str, status: QuestionStatus) -> Question | None: ...
 
 
 @runtime_checkable

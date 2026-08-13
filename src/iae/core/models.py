@@ -44,6 +44,17 @@ class QuestionType(str, Enum):
     TRUE_FALSE = "TrueFalse"
 
 
+class QuestionStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class QuestionOrigin(str, Enum):
+    AI = "ai"
+    TEACHER = "teacher"
+
+
 DokLevel = Annotated[int, Field(ge=1, le=4)]
 
 
@@ -117,6 +128,8 @@ class Question(BaseModel):
     grade: int = 6
     topic_id: str = ""
     skill: str = ""
+    status: QuestionStatus = QuestionStatus.PENDING
+    origin: QuestionOrigin = QuestionOrigin.AI
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

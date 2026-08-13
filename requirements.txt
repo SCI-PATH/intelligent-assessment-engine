@@ -5,6 +5,8 @@ pydantic-settings==2.6.1
 python-dotenv==1.0.1
 
 pymongo==4.10.1
+sqlalchemy==2.0.35
+psycopg[binary]==3.2.3
 
 langchain==0.3.7
 langchain-community==0.3.7
