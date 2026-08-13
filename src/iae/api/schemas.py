@@ -13,6 +13,7 @@ from iae.core.models import AttemptRecord, GradeResult, Question, QuestionType, 
 
 class CreateSessionRequest(BaseModel):
     chapter_name: str
+    grade: int = 6
 
 
 class SessionResponse(BaseModel):
@@ -76,5 +77,6 @@ class ResultsResponse(BaseModel):
 
 
 class ChaptersResponse(BaseModel):
+    grade: int
     chapters: list[str]
     max_questions: int

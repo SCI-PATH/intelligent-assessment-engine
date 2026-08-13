@@ -2,8 +2,8 @@
 to ``src/iae/config/subconcepts.yaml``.
 
 The output is intended to be hand-reviewed before running the ingest pipeline.
-Re-running the script overwrites the file, so make local edits *after* the
-final run.
+Re-running for one ``--grade`` replaces that grade's entries only and keeps
+other grades intact.
 """
 
 from __future__ import annotations
@@ -16,12 +16,16 @@ from pathlib import Path
 import yaml
 from langchain_community.document_loaders import PyPDFLoader
 
-from iae.core.curriculum import get_chapters
+from iae.core.curriculum import (
+    DEFAULT_GRADE,
+    UnknownGradeError,
+    get_chapters,
+    get_grade_pdf_path,
+)
 from iae.core.settings import get_config, get_settings
 from iae.infrastructure.llm.groq_client import GroqJsonLlm
 from iae.prompts import render
 
-DEFAULT_PDF = Path("data/grade_6_science.pdf")
 OUTPUT_PATH = Path(__file__).resolve().parents[1] / "src" / "iae" / "config" / "subconcepts.yaml"
 
 
@@ -35,27 +39,64 @@ def _chapter_text(pdf_path: Path, page_start: int, page_end: int) -> str:
     return "\n\n".join(pages)
 
 
+def _load_existing_manifest() -> list[dict]:
+    if not OUTPUT_PATH.exists():
+        return []
+    data = yaml.safe_load(OUTPUT_PATH.read_text(encoding="utf-8")) or {}
+    entries = list(data.get("subconcepts") or [])
+    for entry in entries:
+        entry.setdefault("grade", DEFAULT_GRADE)
+    return entries
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pdf", type=Path, default=DEFAULT_PDF)
+    parser.add_argument(
+        "--grade",
+        type=int,
+        default=DEFAULT_GRADE,
+        help="Curriculum grade to extract (default: 6).",
+    )
+    parser.add_argument(
+        "--pdf",
+        type=Path,
+        default=None,
+        help="Override the PDF path from curriculum.yaml.",
+    )
     args = parser.parse_args()
 
-    if not args.pdf.exists():
-        print(f"PDF not found: {args.pdf}", file=sys.stderr)
+    try:
+        pdf_path = args.pdf or get_grade_pdf_path(args.grade)
+        chapters = get_chapters(args.grade)
+    except UnknownGradeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    if not chapters:
+        print(
+            f"Grade {args.grade} has no chapter page ranges in curriculum.yaml yet.",
+            file=sys.stderr,
+        )
+        return 3
+
+    if not pdf_path.exists():
+        print(f"PDF not found: {pdf_path}", file=sys.stderr)
         return 1
 
     settings = get_settings()
     config = get_config()
     llm = GroqJsonLlm(model=config.llm_model, api_key=settings.groq_api_key)
 
+    existing = [entry for entry in _load_existing_manifest() if int(entry.get("grade", DEFAULT_GRADE)) != args.grade]
     manifest: list[dict] = []
-    for chapter in get_chapters():
-        print(f"-> {chapter.name} (pp. {chapter.page_start}-{chapter.page_end})")
-        excerpt = _chapter_text(args.pdf, chapter.page_start, chapter.page_end)
+    for chapter in chapters:
+        print(f"-> G{args.grade} {chapter.name} (pp. {chapter.page_start}-{chapter.page_end})")
+        excerpt = _chapter_text(pdf_path, chapter.page_start, chapter.page_end)
         # Trim aggressively: only the first ~12k chars are needed to recover topics.
         prompt = render(
             "subconcepts/extract_subconcepts.jinja",
             chapter_name=chapter.name,
+            grade=args.grade,
             context=textwrap.shorten(excerpt, width=12000, placeholder=" ..."),
         )
         result = llm.generate_json(prompt, temperature=0.2)
@@ -63,7 +104,8 @@ def main() -> int:
             name = entry["name"].strip()
             manifest.append(
                 {
-                    "id": f"{_slugify(chapter.name)}::{_slugify(name)}",
+                    "id": f"g{args.grade}::{_slugify(chapter.name)}::{_slugify(name)}",
+                    "grade": args.grade,
                     "chapter_name": chapter.name,
                     "name": name,
                     "description": entry["description"].strip(),
@@ -71,10 +113,14 @@ def main() -> int:
             )
 
     OUTPUT_PATH.write_text(
-        yaml.safe_dump({"subconcepts": manifest}, sort_keys=False, allow_unicode=True),
+        yaml.safe_dump(
+            {"subconcepts": existing + manifest},
+            sort_keys=False,
+            allow_unicode=True,
+        ),
         encoding="utf-8",
     )
-    print(f"\nWrote {len(manifest)} sub-concepts to {OUTPUT_PATH}")
+    print(f"\nWrote {len(manifest)} Grade {args.grade} sub-concepts to {OUTPUT_PATH}")
     print("Review/edit the file before running scripts/ingest_and_tag_chunks.py.")
     return 0
 

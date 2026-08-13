@@ -17,7 +17,7 @@ from typing import Iterable
 
 from pydantic import ValidationError
 
-from iae.core.curriculum import get_chapter_names
+from iae.core.curriculum import DEFAULT_GRADE, get_chapter_names
 from iae.core.models import (
     MCQPayload,
     MultiBlankPayload,
@@ -149,6 +149,7 @@ def _format_context(chunk_texts: Iterable[str]) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chapter", action="append", help="Limit generation to a chapter (repeatable).")
+    parser.add_argument("--grade", type=int, default=DEFAULT_GRADE, help="Curriculum grade to generate for (default: 6).")
     parser.add_argument("--per-combo", type=int, default=None, help="Override questions_per_combo from app.yaml.")
     parser.add_argument("--stop-on-rate-limit", action="store_true", default=True, help="Stop immediately on provider 429/TPD limit.")
     args = parser.parse_args()
@@ -165,7 +166,13 @@ def main() -> int:
 
     llm = build_json_llm(model=config.llm_model)
     per_combo = args.per_combo or config.questions_per_combo
-    chapters = args.chapter or get_chapter_names()
+    chapters = args.chapter or get_chapter_names(args.grade)
+    if not chapters:
+        print(
+            f"Grade {args.grade} has no chapters in curriculum.yaml yet.",
+            file=sys.stderr,
+        )
+        return 2
 
     stats = GenerationStats()
     pending: list[Question] = []
@@ -192,6 +199,7 @@ def main() -> int:
                             qtype=qtype,
                             context=context,
                             chunk_ids=chunk_ids,
+                            grade=args.grade,
                             max_retries=config.generation_max_retries,
                             stop_on_rate_limit=args.stop_on_rate_limit,
                         )
@@ -223,6 +231,7 @@ def _generate_one(
     qtype: QuestionType,
     context: str,
     chunk_ids: list[str],
+    grade: int,
     max_retries: int,
     stop_on_rate_limit: bool,
 ) -> Question | None:
@@ -246,6 +255,7 @@ def _generate_one(
                 question_type=qtype,
                 payload=payload,
                 chunk_ids=chunk_ids,
+                grade=grade,
             )
         except (ValidationError, ValueError, KeyError) as exc:
             last_error = exc

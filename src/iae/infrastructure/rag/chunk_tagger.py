@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
-from iae.core.curriculum import subconcepts_for_chapter
+from iae.core.curriculum import DEFAULT_GRADE, subconcepts_for_chapter
 from iae.core.models import Chunk, SubConcept
 from iae.core.protocols import IEmbedder
 
@@ -28,12 +28,12 @@ def assign_subconcepts(chunks: list[Chunk], embedder: IEmbedder) -> list[Chunk]:
     Chunks belonging to a chapter without any defined sub-concepts are tagged
     ``UNKNOWN`` so they remain queryable but never get picked for generation.
     """
-    by_chapter: dict[str, list[int]] = defaultdict(list)
+    by_chapter: dict[tuple[int, str], list[int]] = defaultdict(list)
     for idx, chunk in enumerate(chunks):
-        by_chapter[chunk.chapter_name].append(idx)
+        by_chapter[(chunk.grade or DEFAULT_GRADE, chunk.chapter_name)].append(idx)
 
-    for chapter, indices in by_chapter.items():
-        concepts = subconcepts_for_chapter(chapter)
+    for (grade, chapter), indices in by_chapter.items():
+        concepts = subconcepts_for_chapter(chapter, grade=grade)
         if not concepts:
             for i in indices:
                 chunks[i].sub_concept = "UNKNOWN"

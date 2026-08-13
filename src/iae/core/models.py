@@ -52,6 +52,7 @@ class SubConcept(BaseModel):
     chapter_name: str
     name: str
     description: str
+    grade: int = 6
 
 
 class Chunk(BaseModel):
@@ -63,7 +64,8 @@ class Chunk(BaseModel):
     sub_concept: str
     page_start: int
     page_end: int
-    source: str = "grade_6_science.pdf"
+    source: str
+    grade: int = 6
 
 
 class MCQPayload(BaseModel):
@@ -110,6 +112,7 @@ class Question(BaseModel):
     question_type: QuestionType
     payload: QuestionPayload
     chunk_ids: list[str] = Field(default_factory=list)
+    grade: int = 6
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

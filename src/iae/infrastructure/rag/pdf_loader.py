@@ -13,7 +13,7 @@ from pathlib import Path
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from iae.core.curriculum import chapter_for_page
+from iae.core.curriculum import DEFAULT_GRADE, chapter_for_page
 from iae.core.models import Chunk
 
 DEFAULT_CHUNK_SIZE = 900
@@ -23,6 +23,7 @@ DEFAULT_CHUNK_OVERLAP = 150
 def load_and_chunk_pdf(
     pdf_path: str | Path,
     *,
+    grade: int = DEFAULT_GRADE,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> list[Chunk]:
@@ -45,7 +46,7 @@ def load_and_chunk_pdf(
     chunks: list[Chunk] = []
     for doc in split_docs:
         page = int(doc.metadata.get("page", 0)) + 1
-        chapter = chapter_for_page(page)
+        chapter = chapter_for_page(page, grade=grade)
         if chapter is None:
             continue
         text = doc.page_content.strip()
@@ -59,6 +60,7 @@ def load_and_chunk_pdf(
                 page_start=page,
                 page_end=page,
                 source=Path(pdf_path).name,
+                grade=grade,
             )
         )
     return chunks

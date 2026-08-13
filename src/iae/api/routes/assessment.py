@@ -23,7 +23,12 @@ from iae.api.schemas import (
     TelemetryPayload,
 )
 from iae.application.sessions import NoQuestionAvailable
-from iae.core.curriculum import get_chapter_names
+from iae.core.curriculum import (
+    DEFAULT_GRADE,
+    UnknownGradeError,
+    get_available_grades,
+    get_chapter_names,
+)
 from iae.core.settings import get_config
 
 router = APIRouter(prefix="/assessment", tags=["assessment"])
@@ -34,9 +39,14 @@ def get_container(request: Request) -> Container:
 
 
 @router.get("/chapters", response_model=ChaptersResponse)
-def list_chapters() -> ChaptersResponse:
+def list_chapters(grade: int = DEFAULT_GRADE) -> ChaptersResponse:
+    try:
+        chapters = get_chapter_names(grade)
+    except UnknownGradeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return ChaptersResponse(
-        chapters=get_chapter_names(),
+        grade=grade,
+        chapters=chapters,
         max_questions=get_config().max_questions,
     )
 
@@ -46,8 +56,16 @@ def create_session(
     payload: CreateSessionRequest,
     container: Container = Depends(get_container),
 ) -> SessionResponse:
-    if payload.chapter_name not in get_chapter_names():
-        raise HTTPException(status_code=400, detail="Unknown chapter.")
+    try:
+        chapter_names = get_chapter_names(payload.grade)
+    except UnknownGradeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if payload.chapter_name not in chapter_names:
+        available = get_available_grades()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown chapter for grade {payload.grade}. Available grades: {available}.",
+        )
     session = container.session_service.create_session(payload.chapter_name)
     return SessionResponse(
         session_id=session.session_id,
