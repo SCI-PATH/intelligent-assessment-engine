@@ -1,7 +1,11 @@
-"""Build the Component 3 analytics event after a graded answer.
+"""Build the Component 4 (BKT Analytics) event after a graded answer.
+
+Required contract fields: ``user_id``, ``topic_id``, ``is_correct``,
+``question_id``, ``question_type``, ``similarity_score``, ``distractor_tag``,
+``distractor_label``. Extra diagnostic fields may also be present.
 
 ``send_analytics_event`` contains the real HTTP call, commented out until
-the analytics service is wired. Persistence is handled separately.
+the analytics service is wired. Persistence writes ``question_engine.analytics_events``.
 """
 
 from __future__ import annotations
@@ -110,7 +114,7 @@ def build_analytics_payload(
     embedder: IEmbedder | None = None,
     llm: ILlmJson | None = None,
 ) -> dict[str, Any]:
-    """Exact JSON Component 3 will consume."""
+    """Exact JSON Component 4 (BKT Analytics) will consume."""
     payload: dict[str, Any] = {
         "user_id": user_id,
         "topic_id": question.topic_id or "",
@@ -152,7 +156,7 @@ def build_analytics_payload(
 
 
 def send_analytics_event(payload: dict[str, Any]) -> None:
-    """POST the event to Component 3. Left commented until that service exists."""
+    """POST the event to Component 4. Left commented until that service exists."""
     url = get_settings().analytics_base_url
     if not url:
         return

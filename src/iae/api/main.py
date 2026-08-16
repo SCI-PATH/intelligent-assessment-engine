@@ -12,31 +12,36 @@ from iae.api.routes import assessment, health, placement, teacher
 
 OPENAPI_TAGS = [
     {
-        "name": "health",
+        "name": "Health",
         "description": "Liveness / service identity checks.",
     },
     {
-        "name": "placement",
+        "name": "Placement",
         "description": (
-            "Initial student placement: survey, 10-item diagnostic quiz, "
-            "and weighted WEAK / AVERAGE / ADVANCED category."
+            "**Cross-component integration point.** Survey → 10-item quiz → "
+            "`POST /assessment/placement/evaluate` returns student classification "
+            "`WEAK` | `AVERAGE` | `ADVANCED` plus `weighted_score`, `quiz_score`, and `past_score` "
+            "(70% quiz + 30% past marks)."
         ),
     },
     {
-        "name": "assessment",
+        "name": "Diagnostic Assessment",
         "description": (
-            "Adaptive diagnostic sessions: create a session, fetch the next "
-            "question, submit an answer for grading, and read final results. "
-            "Grading is `POST /assessment/sessions/{session_id}/answer` "
-            "(there is no `/submit` endpoint)."
+            "Adaptive diagnostic sessions: create → `next` → `answer` → `results`. "
+            "**Component 4 / BKT Analytics:** every "
+            "`POST /assessment/sessions/{session_id}/answer` builds and persists an "
+            "analytics event with `user_id`, `topic_id`, `is_correct`, `question_id`, "
+            "`question_type`, `similarity_score`, `distractor_tag` "
+            "(`NEAR_MISS` | `MISCONCEPTION` | `COMPLETE_MISS` for wrong MCQs), and "
+            "`distractor_label`."
         ),
     },
     {
-        "name": "teacher",
+        "name": "Teacher Hub",
         "description": (
-            "Teacher question-bank tools: list Excel Topic IDs, generate "
-            "pending items from Chroma RAG, approve/reject, and add custom "
-            "questions. No auth in this research phase."
+            "Question-bank tools: list Excel Topic IDs, generate pending items from "
+            "Chroma RAG, approve/reject, and add custom questions. No auth in this "
+            "research phase."
         ),
     },
 ]
@@ -44,10 +49,22 @@ OPENAPI_TAGS = [
 API_DESCRIPTION = """
 Intelligent Assessment Engine (IAE) HTTP API for Sri Lankan science grades 6–9.
 
+## Team integration day — critical contracts
+
+| Consumer | Endpoint | What you get |
+|----------|----------|--------------|
+| Frontend / recommender | `POST /assessment/placement/evaluate` | `category`: `WEAK` \\| `AVERAGE` \\| `ADVANCED`, plus `weighted_score`, `quiz_score`, `past_score` |
+| Component 4 (BKT Analytics) | `POST /assessment/sessions/{session_id}/answer` | Graded attempt **and** a row in `question_engine.analytics_events` with distractor tags / similarity |
+
 ## Quick start
 1. **Placement** — survey → quiz → evaluate → store category on the student profile.
 2. **Diagnostic** — create session → loop `next` / `answer` until `is_complete`.
-3. **Teacher** — generate or upload bank items; only `approved` items are served to students.
+3. **Teacher Hub** — generate or upload bank items; only `approved` items are served to students.
+
+## Stability for frontend
+Public path URLs and JSON field names are the integration contract. Internal Postgres /
+Chroma logic may change without breaking these routes. Sync types from
+[`/openapi.json`](/openapi.json).
 
 ## Notes
 - **Base URL (local):** `http://localhost:8001`
@@ -74,7 +91,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
-        contact={"name": "IAE Research Project"},
+        contact={"name": "IAE Research Project — Component 3"},
         license_info={"name": "Research / internal use"},
     )
     app.add_middleware(

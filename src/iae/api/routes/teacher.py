@@ -19,7 +19,7 @@ from iae.application.teacher import NoRagContextError, UnknownTopicError
 from iae.core.curriculum import DEFAULT_GRADE
 from iae.core.models import Question, QuestionStatus
 
-router = APIRouter(prefix="/teacher", tags=["teacher"])
+router = APIRouter(prefix="/teacher", tags=["Teacher Hub"])
 
 
 def get_container(request: Request) -> Container:
@@ -46,6 +46,7 @@ def list_topics(
     ),
     container: Container = Depends(get_container),
 ) -> TeacherTopicsResponse:
+    """List Excel Topic IDs and skills for a grade."""
     topics = container.teacher_service.list_topics(grade)
     return TeacherTopicsResponse(
         grade=grade,
@@ -83,6 +84,7 @@ def generate_questions(
     payload: GenerateQuestionsRequest,
     container: Container = Depends(get_container),
 ) -> GenerateQuestionsResponse:
+    """Generate pending bank items from Chroma RAG for one Topic ID."""
     try:
         created = container.teacher_service.generate(
             topic_id=payload.topic_id,
@@ -122,6 +124,7 @@ def list_questions(
     limit: int = Query(default=100, ge=1, le=500, description="Max rows to return."),
     container: Container = Depends(get_container),
 ) -> TeacherQuestionListResponse:
+    """List bank questions filtered by status, topic_id, and/or grade."""
     return TeacherQuestionListResponse(
         questions=container.teacher_service.list_questions(
             status=status,
@@ -146,6 +149,7 @@ def approve_question(
     question_id: str,
     container: Container = Depends(get_container),
 ) -> Question:
+    """Mark a bank item approved so students can be served it."""
     try:
         return container.teacher_service.set_status(question_id, QuestionStatus.APPROVED)
     except KeyError:
@@ -166,6 +170,7 @@ def reject_question(
     question_id: str,
     container: Container = Depends(get_container),
 ) -> Question:
+    """Mark a bank item rejected (not served to students)."""
     try:
         return container.teacher_service.set_status(question_id, QuestionStatus.REJECTED)
     except KeyError:
@@ -189,6 +194,7 @@ def add_custom_question(
     payload: CreateTeacherQuestionRequest,
     container: Container = Depends(get_container),
 ) -> Question:
+    """Insert a teacher-authored pending bank item for a known Topic ID."""
     try:
         return container.teacher_service.add_custom(
             grade=payload.grade,

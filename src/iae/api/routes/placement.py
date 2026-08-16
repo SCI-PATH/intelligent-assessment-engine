@@ -16,7 +16,7 @@ from iae.application.placement import PlacementQuizUnavailable
 from iae.core.curriculum import DEFAULT_GRADE
 from iae.core.models import PlacementEvaluation, Question, StudentProfile
 
-router = APIRouter(prefix="/assessment/placement", tags=["placement"])
+router = APIRouter(prefix="/assessment/placement", tags=["Placement"])
 
 
 def get_container(request: Request) -> Container:
@@ -57,6 +57,7 @@ def submit_survey(
     payload: PlacementSurveyRequest,
     container: Container = Depends(get_container),
 ) -> StudentProfile:
+    """Persist placement survey fields on the student profile."""
     return container.placement_service.save_survey(
         user_id=payload.user_id,
         grade=payload.grade,
@@ -91,6 +92,7 @@ def diagnostic_quiz(
     ),
     container: Container = Depends(get_container),
 ) -> PlacementQuizResponse:
+    """Return a 10-item foundational quiz with answer keys stripped."""
     try:
         questions = container.placement_service.diagnostic_quiz(grade)
     except PlacementQuizUnavailable as exc:
@@ -105,19 +107,32 @@ def diagnostic_quiz(
 @router.post(
     "/evaluate",
     response_model=PlacementEvaluation,
-    summary="Evaluate placement category",
+    summary="Evaluate placement category (team integration)",
     description=(
-        "Computes a weighted score (70% quiz + 30% past marks), maps it to "
-        "WEAK / AVERAGE / ADVANCED, persists the evaluation, and updates the "
-        "student profile. Integration hook for the team recommender lives in "
-        "the service layer."
+        "**Cross-component contract.** Computes a weighted score "
+        "(70% quiz + 30% past marks), maps it to `WEAK` | `AVERAGE` | `ADVANCED`, "
+        "persists `question_engine.placement_evaluations`, and updates "
+        "`question_engine.users.placement_category` / `placement_score`.\n\n"
+        "Response always includes:\n"
+        "- `category` — exact enum string `WEAK` | `AVERAGE` | `ADVANCED`\n"
+        "- `weighted_score` — final blended score in `[0, 1]`\n"
+        "- `quiz_score` — `quiz_correct / quiz_total`\n"
+        "- `past_score` — mapped from `past_grade_marks_range`"
     ),
-    responses={200: {"description": "Placement category and score breakdown."}},
+    responses={
+        200: {
+            "description": (
+                "Placement evaluation with category WEAK | AVERAGE | ADVANCED "
+                "and score breakdown."
+            )
+        }
+    },
 )
 def evaluate_placement(
     payload: PlacementEvaluateRequest,
     container: Container = Depends(get_container),
 ) -> PlacementEvaluation:
+    """Return WEAK / AVERAGE / ADVANCED plus weighted/quiz/past scores for integrators."""
     return container.placement_service.evaluate(
         user_id=payload.user_id,
         grade=payload.grade,

@@ -32,7 +32,7 @@ from iae.core.curriculum import (
 )
 from iae.core.settings import get_config
 
-router = APIRouter(prefix="/assessment", tags=["assessment"])
+router = APIRouter(prefix="/assessment", tags=["Diagnostic Assessment"])
 
 
 def get_container(request: Request) -> Container:
@@ -61,6 +61,7 @@ def list_chapters(
         examples=[6],
     ),
 ) -> ChaptersResponse:
+    """List curriculum chapter titles and session max_questions for a grade."""
     try:
         chapters = get_chapter_names(grade)
     except UnknownGradeError as exc:
@@ -90,6 +91,7 @@ def create_session(
     payload: CreateSessionRequest,
     container: Container = Depends(get_container),
 ) -> SessionResponse:
+    """Create a chapter-scoped adaptive diagnostic session."""
     try:
         chapter_names = get_chapter_names(payload.grade)
     except UnknownGradeError as exc:
@@ -136,6 +138,7 @@ def next_question(
     session_id: str,
     container: Container = Depends(get_container),
 ) -> NextQuestionResponse:
+    """Serve the next adaptive bank question (includes answer keys — strip for UI)."""
     try:
         outcome = container.session_service.next_question(session_id)
     except KeyError:
@@ -175,14 +178,25 @@ def next_question(
 @router.post(
     "/sessions/{session_id}/answer",
     response_model=SubmitAnswerResponse,
-    summary="Submit answer and grade",
+    summary="Submit answer and emit Component 4 analytics",
     description=(
-        "Grades the student's answer with type-specific diagnostics "
-        "(MCQ distractor tags, short-answer categories, multi-blank misses, etc.), "
-        "persists the attempt, and returns whether the session is complete."
+        "**Component 4 / BKT Analytics contract.** Grades the student's answer, "
+        "persists `question_engine.attempts`, and writes `question_engine.analytics_events` "
+        "with at least:\n"
+        "- `user_id`, `topic_id`, `is_correct`, `question_id`, `question_type`\n"
+        "- `similarity_score` (set for ShortAnswer / MultiBlank; MCQ cosine used internally)\n"
+        "- `distractor_tag` — `NEAR_MISS` | `MISCONCEPTION` | `COMPLETE_MISS` for wrong MCQs\n"
+        "- `distractor_label` — short natural-language explanation of the miss\n\n"
+        "Also returns type-specific diagnostic fields on `grade` and whether the "
+        "session is complete (`is_complete`)."
     ),
     responses={
-        200: {"description": "Graded attempt."},
+        200: {
+            "description": (
+                "Graded attempt. Analytics event with distractor tags / similarity "
+                "is persisted for Component 4."
+            )
+        },
         404: {"model": ErrorDetail, "description": "Session or question not found."},
     },
 )
@@ -191,6 +205,7 @@ def submit_answer(
     payload: SubmitAnswerRequest,
     container: Container = Depends(get_container),
 ) -> SubmitAnswerResponse:
+    """Grade one answer and persist the Component 4 analytics payload."""
     try:
         result, session = container.session_service.submit_answer(
             session_id=session_id,
@@ -223,6 +238,7 @@ def session_results(
     session_id: str,
     container: Container = Depends(get_container),
 ) -> ResultsResponse:
+    """Return aggregate accuracy and full attempt history for a session."""
     try:
         session = container.session_service.get_session(session_id)
     except KeyError:
