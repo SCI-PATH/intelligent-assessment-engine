@@ -8,13 +8,14 @@ stays stateless.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from iae.api.bootstrap import Container
 from iae.api.schemas import (
     ActionTelemetry,
     ChaptersResponse,
     CreateSessionRequest,
+    ErrorDetail,
     NextQuestionResponse,
     ResultsResponse,
     SessionResponse,
@@ -38,8 +39,28 @@ def get_container(request: Request) -> Container:
     return request.app.state.container  # type: ignore[no-any-return]
 
 
-@router.get("/chapters", response_model=ChaptersResponse)
-def list_chapters(grade: int = DEFAULT_GRADE) -> ChaptersResponse:
+@router.get(
+    "/chapters",
+    response_model=ChaptersResponse,
+    summary="List curriculum chapters",
+    description=(
+        "Returns chapter titles for a grade year plus the configured "
+        "`max_questions` for diagnostic sessions."
+    ),
+    responses={
+        200: {"description": "Chapter list for the requested grade."},
+        400: {"model": ErrorDetail, "description": "Unknown or unsupported grade."},
+    },
+)
+def list_chapters(
+    grade: int = Query(
+        default=DEFAULT_GRADE,
+        ge=6,
+        le=9,
+        description="Curriculum grade year.",
+        examples=[6],
+    ),
+) -> ChaptersResponse:
     try:
         chapters = get_chapter_names(grade)
     except UnknownGradeError as exc:
@@ -51,7 +72,20 @@ def list_chapters(grade: int = DEFAULT_GRADE) -> ChaptersResponse:
     )
 
 
-@router.post("/sessions", response_model=SessionResponse)
+@router.post(
+    "/sessions",
+    response_model=SessionResponse,
+    status_code=200,
+    summary="Create diagnostic session",
+    description=(
+        "Opens a new adaptive diagnostic session scoped to one chapter. "
+        "Persist `session_id` on the client for subsequent `/next` and `/answer` calls."
+    ),
+    responses={
+        200: {"description": "Session created."},
+        400: {"model": ErrorDetail, "description": "Unknown grade or chapter name."},
+    },
+)
 def create_session(
     payload: CreateSessionRequest,
     container: Container = Depends(get_container),
@@ -80,7 +114,24 @@ def create_session(
     )
 
 
-@router.post("/sessions/{session_id}/next", response_model=NextQuestionResponse)
+@router.post(
+    "/sessions/{session_id}/next",
+    response_model=NextQuestionResponse,
+    summary="Get next adaptive question",
+    description=(
+        "Serves the next bank question for the session using the adaptive policy. "
+        "The returned `question.payload` includes answer keys — strip them before "
+        "showing the item to a student."
+    ),
+    responses={
+        200: {"description": "Next question and adaptive telemetry."},
+        404: {"model": ErrorDetail, "description": "Session not found."},
+        409: {
+            "model": ErrorDetail,
+            "description": "No eligible approved question left for this session.",
+        },
+    },
+)
 def next_question(
     session_id: str,
     container: Container = Depends(get_container),
@@ -121,7 +172,20 @@ def next_question(
     )
 
 
-@router.post("/sessions/{session_id}/answer", response_model=SubmitAnswerResponse)
+@router.post(
+    "/sessions/{session_id}/answer",
+    response_model=SubmitAnswerResponse,
+    summary="Submit answer and grade",
+    description=(
+        "Grades the student's answer with type-specific diagnostics "
+        "(MCQ distractor tags, short-answer categories, multi-blank misses, etc.), "
+        "persists the attempt, and returns whether the session is complete."
+    ),
+    responses={
+        200: {"description": "Graded attempt."},
+        404: {"model": ErrorDetail, "description": "Session or question not found."},
+    },
+)
 def submit_answer(
     session_id: str,
     payload: SubmitAnswerRequest,
@@ -145,7 +209,16 @@ def submit_answer(
     )
 
 
-@router.get("/sessions/{session_id}/results", response_model=ResultsResponse)
+@router.get(
+    "/sessions/{session_id}/results",
+    response_model=ResultsResponse,
+    summary="Get session results",
+    description="Returns aggregate accuracy and the full attempt history for a session.",
+    responses={
+        200: {"description": "Session summary."},
+        404: {"model": ErrorDetail, "description": "Session not found."},
+    },
+)
 def session_results(
     session_id: str,
     container: Container = Depends(get_container),

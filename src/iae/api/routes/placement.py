@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from iae.api.bootstrap import Container
 from iae.api.schemas import (
+    ErrorDetail,
     PlacementEvaluateRequest,
     PlacementQuizItem,
     PlacementQuizResponse,
@@ -42,7 +43,16 @@ def _quiz_item(question: Question) -> PlacementQuizItem:
     )
 
 
-@router.post("/survey", response_model=StudentProfile)
+@router.post(
+    "/survey",
+    response_model=StudentProfile,
+    summary="Submit placement survey",
+    description=(
+        "Stores the student's self-reported grade, chapters completed, and past "
+        "marks band on `question_engine.users`."
+    ),
+    responses={200: {"description": "Updated student profile."}},
+)
 def submit_survey(
     payload: PlacementSurveyRequest,
     container: Container = Depends(get_container),
@@ -55,9 +65,30 @@ def submit_survey(
     )
 
 
-@router.get("/quiz", response_model=PlacementQuizResponse)
+@router.get(
+    "/quiz",
+    response_model=PlacementQuizResponse,
+    summary="Get placement diagnostic quiz",
+    description=(
+        "Returns up to 10 approved bank questions for the grade. "
+        "Answer keys are stripped from each `prompt`."
+    ),
+    responses={
+        200: {"description": "Quiz items ready to show the student."},
+        409: {
+            "model": ErrorDetail,
+            "description": "Not enough approved bank items for this grade.",
+        },
+    },
+)
 def diagnostic_quiz(
-    grade: int = Query(default=DEFAULT_GRADE, ge=6, le=9),
+    grade: int = Query(
+        default=DEFAULT_GRADE,
+        ge=6,
+        le=9,
+        description="Grade year for the quiz.",
+        examples=[7],
+    ),
     container: Container = Depends(get_container),
 ) -> PlacementQuizResponse:
     try:
@@ -71,7 +102,18 @@ def diagnostic_quiz(
     )
 
 
-@router.post("/evaluate", response_model=PlacementEvaluation)
+@router.post(
+    "/evaluate",
+    response_model=PlacementEvaluation,
+    summary="Evaluate placement category",
+    description=(
+        "Computes a weighted score (70% quiz + 30% past marks), maps it to "
+        "WEAK / AVERAGE / ADVANCED, persists the evaluation, and updates the "
+        "student profile. Integration hook for the team recommender lives in "
+        "the service layer."
+    ),
+    responses={200: {"description": "Placement category and score breakdown."}},
+)
 def evaluate_placement(
     payload: PlacementEvaluateRequest,
     container: Container = Depends(get_container),
