@@ -149,28 +149,63 @@ class GradingService:
                 "is_correct": is_correct,
             },
         )
-        explanation = None if is_correct else self._true_false_explanation(payload)
+        if is_correct:
+            return GradeResult(
+                accuracy_score=1.0,
+                is_correct=True,
+                feedback="Correct.",
+            )
+
+        tag, label, explanation = self._true_false_diagnostics(payload, student_answer=student_answer)
         return GradeResult(
-            accuracy_score=1.0 if is_correct else 0.0,
-            is_correct=is_correct,
-            feedback="Correct." if is_correct else f"Incorrect. The statement is {correct.title()}.",
+            accuracy_score=0.0,
+            is_correct=False,
+            feedback=f"Incorrect. The statement is {correct.title()}.",
+            distractor_tag=tag.value,
+            distractor_label=label,
             detailed_explanation=explanation,
             concept_explanation=explanation,
         )
 
-    def _true_false_explanation(self, payload: TrueFalsePayload) -> str:
-        fallback = f"The statement is {payload.correct_answer}."
+    def _true_false_diagnostics(
+        self,
+        payload: TrueFalsePayload,
+        *,
+        student_answer: str,
+    ) -> tuple[DistractorTag, str, str]:
+        """Return (tag, distractor_label, concept_explanation) for a wrong True/False."""
+        chosen = student_answer.strip()
+        correct = payload.correct_answer.strip()
+        fallback_explanation = f"The statement is {correct}."
+        if not chosen or chosen.lower()[0] not in ("t", "f"):
+            return (
+                DistractorTag.COMPLETE_MISS,
+                "Gave an invalid or blank True/False response",
+                fallback_explanation,
+            )
+
+        fallback_tag = DistractorTag.MISCONCEPTION
+        fallback_label = f"Selected {chosen.title()} instead of {correct}"
         prompt = render(
             "grading/true_false_concept.jinja",
             question=payload.question,
-            correct_answer=payload.correct_answer,
+            correct_answer=correct,
+            student_answer=chosen,
         )
         try:
             result = self._llm.generate_json(prompt, temperature=0.15)
-            text = _clamp_sentences(str(result.get("concept_explanation") or ""), max_sentences=1)
-            return text or fallback
+            raw_tag = str(result.get("distractor_tag") or "").strip().upper()
+            try:
+                tag = DistractorTag(raw_tag)
+            except ValueError:
+                tag = fallback_tag
+            label = _clamp_sentences(str(result.get("distractor_label") or ""), max_sentences=1)
+            # Prefer a short phrase: strip trailing period and keep roughly one clause.
+            label = (label or fallback_label).rstrip(".")
+            explanation = _clamp_sentences(str(result.get("concept_explanation") or ""), max_sentences=1)
+            return tag, label or fallback_label, explanation or fallback_explanation
         except Exception:
-            return fallback
+            return fallback_tag, fallback_label, fallback_explanation
 
     def _grade_multi_blank(self, question: Question, student_answer: str) -> GradeResult:
         payload: MultiBlankPayload = question.payload  # type: ignore[assignment]

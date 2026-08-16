@@ -50,10 +50,21 @@ Implementation: `iae.application.analytics_payload.send_analytics_event`.
 
 ## Shared prerequisite: `topic_id`
 
-Use Excel **Topic ID** strings only (case-sensitive), from the shared skill catalog  
-(`Skill-Heirarchies-G6-G9` → `src/iae/config/topics.yaml`).
+Use Excel **Topic ID (Canonical)** strings only (case-sensitive), from:
 
-Examples: `G6_C7_MAG_POLES`, `G8_C3_PHO_PROCESS`  
+`data/skills/Skill-Heirarchies-G6-G9-Full-Chapters.xlsx`  
+→ synced to `src/iae/config/topics.yaml` via `python -m scripts.sync_skill_catalog`
+
+Verified: **128** Excel Topic IDs match `topics.yaml` 1:1.
+
+Examples from the workbook:
+
+| Grade | Topic ID | Chapter |
+|-------|----------|---------|
+| 6 | `G6_C7_MAG_POLES` | Magnets |
+| 6 | `G6_C8_ELE_CIRCUITS` | Electricity for a Comfortable Life |
+| 7 | `G7_C5_ACI_IDENTIF` | Acids and Bases |
+| 8 | `G8_C11_PHO_PROCESS` | Main Biological Processes in Plants |
 
 `topic_id` = skill / lesson key for BKT.  
 `subtopic_id` = optional finer label (`sub_concept`) — **not** a replacement for `topic_id`.
@@ -72,9 +83,9 @@ Every request body contains **all** keys. Non-applicable values are explicitly `
 | `is_correct` | boolean | **Yes** | Always | BKT update |
 | `question_type` | string | **Yes** | Always | `MCQ` \| `ShortAnswer` \| `MultiBlank` \| `TrueFalse` |
 | `question_id` | string | **Yes** | Always | Stable item id (audit / dedupe) |
-| `distractor_tag` | string \| null | **Yes if wrong MCQ** | Wrong MCQ | Misconception category |
-| `distractor_label` | string \| null | **Yes if wrong MCQ** | Wrong MCQ | Short misconception description |
-| `chosen_distractor_text` | string \| null | Optional | Wrong MCQ | Full text of chosen wrong option |
+| `distractor_tag` | string \| null | **Yes if wrong MCQ/TrueFalse** | Wrong MCQ or TrueFalse | Misconception category |
+| `distractor_label` | string \| null | **Yes if wrong MCQ/TrueFalse** | Wrong MCQ or TrueFalse | Short misconception description |
+| `chosen_distractor_text` | string \| null | Optional | Wrong MCQ or TrueFalse | Full wrong option text (`True`/`False` for TF) |
 | `similarity_score` | float \| null | Recommended | ShortAnswer / MultiBlank | Closeness to marking scheme (0–1) |
 | `error_category` | string \| null | Enrichment | ShortAnswer / MultiBlank | Diagnostic error class |
 | `detailed_explanation` | string \| null | Enrichment | ShortAnswer / TrueFalse | 1–2 sentence explanation |
@@ -86,7 +97,7 @@ Every request body contains **all** keys. Non-applicable values are explicitly `
 
 ### Enums
 
-**`distractor_tag` (wrong MCQ only):** `NEAR_MISS` | `MISCONCEPTION` | `COMPLETE_MISS`
+**`distractor_tag` (wrong MCQ or TrueFalse):** `NEAR_MISS` | `MISCONCEPTION` | `COMPLETE_MISS`
 
 **`error_category`:**  
 - ShortAnswer: `NO_ERROR` \| `SPELLING_GRAMMAR_ERROR` \| `MISSING_KEYWORDS` \| `CONCEPTUAL_MISCONCEPTION` \| `COMPLETELY_IRRELEVANT`  
@@ -99,9 +110,9 @@ Every request body contains **all** keys. Non-applicable values are explicitly `
 | Field | MCQ | ShortAnswer | MultiBlank | TrueFalse |
 |-------|-----|-------------|------------|-----------|
 | `similarity_score` | `null` | set | set | `null` |
-| `distractor_tag` / `distractor_label` / `chosen_distractor_text` | wrong only | `null` | `null` | `null` |
+| `distractor_tag` / `distractor_label` / `chosen_distractor_text` | wrong only | `null` | `null` | wrong only |
 | `error_category` | `null` | set | set | `null` |
-| `detailed_explanation` | `null` | set | `null` | set |
+| `detailed_explanation` | `null` | set | `null` | set (wrong) |
 | `missed_blanks` | `null` | `null` | set | `null` |
 
 ---
@@ -192,7 +203,7 @@ Content-Type: application/json
 ```json
 {
   "user_id": "student_001",
-  "topic_id": "G8_C3_PHO_PROCESS",
+  "topic_id": "G8_C11_PHO_PROCESS",
   "question_id": "a1b2c3d4-0003-4000-8000-000000000003",
   "question_type": "ShortAnswer",
   "is_correct": false,
@@ -215,7 +226,7 @@ Content-Type: application/json
 ```json
 {
   "user_id": "student_001",
-  "topic_id": "G8_C3_PHO_PROCESS",
+  "topic_id": "G8_C11_PHO_PROCESS",
   "question_id": "a1b2c3d4-0003-4000-8000-000000000003",
   "question_type": "ShortAnswer",
   "is_correct": true,
@@ -238,7 +249,7 @@ Content-Type: application/json
 ```json
 {
   "user_id": "student_001",
-  "topic_id": "G7_C5_ACI_BASES",
+  "topic_id": "G7_C5_ACI_IDENTIF",
   "question_id": "a1b2c3d4-0004-4000-8000-000000000004",
   "question_type": "MultiBlank",
   "is_correct": false,
@@ -253,7 +264,7 @@ Content-Type: application/json
   },
   "response_time_s": 61.0,
   "difficulty_level": 2,
-  "subtopic_id": "Acids and bases",
+  "subtopic_id": "Identification of acids and bases",
   "source": "question_engine_v1"
 }
 ```
@@ -263,7 +274,7 @@ Content-Type: application/json
 ```json
 {
   "user_id": "student_001",
-  "topic_id": "G7_C5_ACI_BASES",
+  "topic_id": "G7_C5_ACI_IDENTIF",
   "question_id": "a1b2c3d4-0004-4000-8000-000000000004",
   "question_type": "MultiBlank",
   "is_correct": true,
@@ -276,12 +287,12 @@ Content-Type: application/json
   "missed_blanks": null,
   "response_time_s": 40.0,
   "difficulty_level": 2,
-  "subtopic_id": "Acids and bases",
+  "subtopic_id": "Identification of acids and bases",
   "source": "question_engine_v1"
 }
 ```
 
-### 8) TrueFalse — incorrect
+### 8) TrueFalse — incorrect (with distractor tag/label)
 
 ```json
 {
@@ -291,11 +302,11 @@ Content-Type: application/json
   "question_type": "TrueFalse",
   "is_correct": false,
   "similarity_score": null,
-  "distractor_tag": null,
-  "distractor_label": null,
-  "chosen_distractor_text": null,
+  "distractor_tag": "MISCONCEPTION",
+  "distractor_label": "Believes like magnetic poles attract",
+  "chosen_distractor_text": "False",
   "error_category": null,
-  "detailed_explanation": "The statement is true because opposite poles attract.",
+  "detailed_explanation": "Opposite magnetic poles attract each other.",
   "missed_blanks": null,
   "response_time_s": 12.0,
   "difficulty_level": 1,
@@ -359,7 +370,7 @@ attempts — Component 2 does, after grading.
 |-------------|-------------|
 | Own `POST /assessment/sessions/{id}/answer` for the frontend | Own `POST /api/v1/assessment-submit` for ingest |
 | Score attempt; set `is_correct` | Update BKT from `is_correct` |
-| Wrong MCQ → `distractor_tag` + `distractor_label` (+ `chosen_distractor_text`) | Aggregate → Misconception Cloud |
+| Wrong MCQ / TrueFalse → `distractor_tag` + `distractor_label` (+ `chosen_distractor_text`) | Aggregate → Misconception Cloud |
 | ShortAnswer / MultiBlank → `similarity_score` (+ `error_category` / `missed_blanks`) | Store for analytics charts |
 | TrueFalse / ShortAnswer → `detailed_explanation` when wrong | Surface explanations in dashboards |
 | Always send full key set (`null` when N/A) | Ignore `null` fields |
@@ -411,6 +422,6 @@ curl -X POST http://127.0.0.1:8000/api/v1/assessment-submit ^
 > Frontend → Component 2 `…/answer` → grade → **POST same unified JSON to Component 4**  
 > `POST /api/v1/assessment-submit`.  
 > Always send all keys; use `null` when a field does not apply to that question type.  
-> Wrong MCQ must include `distractor_tag` + `distractor_label`.  
+> Wrong MCQ **or TrueFalse** must include `distractor_tag` + `distractor_label`.  
 > ShortAnswer / MultiBlank must include `similarity_score`.  
-> Use shared Excel `topic_id` values only.
+> Use shared Excel `Topic ID (Canonical)` values only (`Skill-Heirarchies-G6-G9-Full-Chapters.xlsx`).

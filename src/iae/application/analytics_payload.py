@@ -200,6 +200,21 @@ def build_analytics_payload(
         detailed_explanation = _nonempty_str(grade.detailed_explanation) or _nonempty_str(
             grade.concept_explanation
         )
+        if not grade.is_correct:
+            chosen = student_answer.strip()
+            lower = chosen.lower()
+            if lower.startswith("t"):
+                chosen_distractor_text = "True"
+            elif lower.startswith("f"):
+                chosen_distractor_text = "False"
+            else:
+                chosen_distractor_text = _nonempty_str(chosen)
+            distractor_tag = _nonempty_str(grade.distractor_tag)
+            distractor_label = _nonempty_str(grade.distractor_label)
+            if distractor_tag is None:
+                distractor_tag = DistractorTag.MISCONCEPTION.value
+            if distractor_label is None:
+                distractor_label = detailed_explanation or "Selected the incorrect True/False polarity"
 
     response_time: float | None = None
     if response_time_s is not None:
