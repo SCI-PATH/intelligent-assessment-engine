@@ -154,6 +154,7 @@ class GradingService:
             accuracy_score=1.0 if is_correct else 0.0,
             is_correct=is_correct,
             feedback="Correct." if is_correct else f"Incorrect. The statement is {correct.title()}.",
+            detailed_explanation=explanation,
             concept_explanation=explanation,
         )
 

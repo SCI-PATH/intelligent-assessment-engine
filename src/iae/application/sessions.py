@@ -316,7 +316,13 @@ class SessionService:
         )
         session.history.append(attempt)
         session.questions_asked += 1
-        payload = self._record_analytics(session, question, result, student_answer)
+        payload = self._record_analytics(
+            session,
+            question,
+            result,
+            student_answer,
+            time_taken_seconds=time_taken_seconds,
+        )
         self._sessions.record_attempt(
             attempt,
             user_id=session.user_id,
@@ -349,12 +355,15 @@ class SessionService:
         question: Question,
         result: GradeResult,
         student_answer: str,
+        *,
+        time_taken_seconds: float = 0.0,
     ) -> dict:
         payload = build_analytics_payload(
             user_id=session.user_id,
             question=question,
             grade=result,
             student_answer=student_answer,
+            response_time_s=time_taken_seconds,
             embedder=self._embedder,
             llm=self._analytics_llm,
         )

@@ -57,6 +57,11 @@ class AnalyticsEventRow(Base):
     missed_blanks: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     concept_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
     session_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    response_time_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    difficulty_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    subtopic_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    chosen_distractor_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str | None] = mapped_column(String(64), nullable=True)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

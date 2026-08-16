@@ -157,8 +157,8 @@ HTML or hard-coding internal table shapes.
 
 1. **`POST /assessment/placement/evaluate`** → `category` is exactly
    `WEAK` | `AVERAGE` | `ADVANCED`, with `weighted_score`, `quiz_score`, `past_score`.
-2. **`POST /assessment/sessions/{session_id}/answer`** → grades the attempt **and**
-   writes `question_engine.analytics_events` with `user_id`, `topic_id`, `is_correct`,
-   `question_id`, `question_type`, `similarity_score`, `distractor_tag`
-   (`NEAR_MISS` | `MISCONCEPTION` | `COMPLETE_MISS` for wrong MCQs), and
-   `distractor_label`.
+2. **Component 4 ingest** — after grading, Component 2 POSTs the unified analytics
+   JSON to Component 4’s endpoint:
+   `POST {ANALYTICS_BASE_URL}/api/v1/assessment-submit`
+   (set `ANALYTICS_BASE_URL=http://127.0.0.1:8000` in `.env`).
+   Full per-type request bodies: [`COMPONENT2_COMPONENT4_INTEGRATION.md`](./COMPONENT2_COMPONENT4_INTEGRATION.md).

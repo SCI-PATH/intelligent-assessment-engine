@@ -29,11 +29,12 @@ OPENAPI_TAGS = [
         "description": (
             "Adaptive diagnostic sessions: create → `next` → `answer` → `results`. "
             "**Component 4 / BKT Analytics:** every "
-            "`POST /assessment/sessions/{session_id}/answer` builds and persists an "
-            "analytics event with `user_id`, `topic_id`, `is_correct`, `question_id`, "
-            "`question_type`, `similarity_score`, `distractor_tag` "
-            "(`NEAR_MISS` | `MISCONCEPTION` | `COMPLETE_MISS` for wrong MCQs), and "
-            "`distractor_label`."
+            "`POST /assessment/sessions/{session_id}/answer` builds and persists a "
+            "**unified** analytics event (same keys for MCQ, ShortAnswer, MultiBlank, "
+            "and TrueFalse; non-applicable fields are explicitly `null`) with "
+            "`user_id`, `topic_id`, `question_id`, `question_type`, `is_correct`, "
+            "`similarity_score`, `distractor_tag`, `distractor_label`, "
+            "`error_category`, `detailed_explanation`, and `missed_blanks`."
         ),
     },
     {

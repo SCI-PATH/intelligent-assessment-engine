@@ -1,11 +1,19 @@
 """Build the Component 4 (BKT Analytics) event after a graded answer.
 
-Required contract fields: ``user_id``, ``topic_id``, ``is_correct``,
-``question_id``, ``question_type``, ``similarity_score``, ``distractor_tag``,
-``distractor_label``. Extra diagnostic fields may also be present.
+Unified JSON strategy — every event always contains the same keys. Fields that
+do not apply to the current ``question_type`` are explicitly ``null``.
 
-``send_analytics_event`` contains the real HTTP call, commented out until
-the analytics service is wired. Persistence writes ``question_engine.analytics_events``.
+Component 4 base contract (always present):
+  user_id, topic_id, is_correct, question_type, question_id,
+  similarity_score, distractor_tag, distractor_label,
+  response_time_s, difficulty_level, subtopic_id,
+  chosen_distractor_text, source
+
+Component 2 enrichments for all four question types (null when N/A):
+  error_category, detailed_explanation, missed_blanks
+
+Persisted to ``question_engine.analytics_events``; optional HTTP POST is
+commented out until Component 4's ingest URL is wired via ``ANALYTICS_BASE_URL``.
 """
 
 from __future__ import annotations
@@ -23,12 +31,33 @@ import httpx  # noqa: F401
 
 _NEAR_MISS_MIN = 0.72
 _MISCONCEPTION_MIN = 0.40
+_SOURCE = "question_engine_v1"
 
 _TAG_CUE = {
     DistractorTag.NEAR_MISS: "a near-miss: the chosen idea is close to the correct concept but not quite right",
     DistractorTag.MISCONCEPTION: "a common misconception about this topic",
     DistractorTag.COMPLETE_MISS: "a complete miss, unrelated to the target concept",
 }
+
+# Stable key order for Component 4 consumers.
+_CONTRACT_KEYS = (
+    "user_id",
+    "topic_id",
+    "question_id",
+    "question_type",
+    "is_correct",
+    "similarity_score",
+    "distractor_tag",
+    "distractor_label",
+    "chosen_distractor_text",
+    "error_category",
+    "detailed_explanation",
+    "missed_blanks",
+    "response_time_s",
+    "difficulty_level",
+    "subtopic_id",
+    "source",
+)
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -41,6 +70,13 @@ def _cosine(a: list[float], b: list[float]) -> float:
 def _mcq_option_text(payload: MCQPayload, letter: str) -> str:
     key = (letter or "").strip().upper()
     return str(payload.options.get(key) or "").strip()
+
+
+def _nonempty_str(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def classify_mcq_distractor(
@@ -111,54 +147,103 @@ def build_analytics_payload(
     question: Question,
     grade: GradeResult,
     student_answer: str,
+    response_time_s: float | None = None,
     embedder: IEmbedder | None = None,
     llm: ILlmJson | None = None,
 ) -> dict[str, Any]:
-    """Exact JSON Component 4 (BKT Analytics) will consume."""
-    payload: dict[str, Any] = {
-        "user_id": user_id,
-        "topic_id": question.topic_id or "",
-        "is_correct": bool(grade.is_correct),
-        "question_id": question.id,
-        "question_type": question.question_type.value,
-        "similarity_score": None,
-        "distractor_tag": grade.distractor_tag,
-        "distractor_label": grade.distractor_label,
-        "error_category": grade.error_category,
-        "missing_keywords": grade.missing_keywords,
-        "detailed_explanation": grade.detailed_explanation,
-        "missed_blanks": grade.missed_blanks,
-        "concept_explanation": grade.concept_explanation,
-    }
+    """Build the unified Component 4 payload for any of the four question types."""
+    qtype = question.question_type
 
-    if question.question_type in (QuestionType.SHORT_ANSWER, QuestionType.MULTI_BLANK):
-        payload["similarity_score"] = float(grade.accuracy_score)
+    similarity_score: float | None = None
+    distractor_tag: str | None = None
+    distractor_label: str | None = None
+    chosen_distractor_text: str | None = None
+    error_category: str | None = None
+    detailed_explanation: str | None = None
+    missed_blanks: dict[str, str] | None = None
 
-    if question.question_type == QuestionType.MCQ and not grade.is_correct:
-        if not payload["distractor_tag"]:
-            if embedder is None:
-                tag = DistractorTag.COMPLETE_MISS
-            else:
-                tag, _ = classify_mcq_distractor(
+    if qtype == QuestionType.MCQ:
+        if not grade.is_correct:
+            payload_mcq: MCQPayload = question.payload  # type: ignore[assignment]
+            chosen_distractor_text = _nonempty_str(_mcq_option_text(payload_mcq, student_answer))
+            distractor_tag = _nonempty_str(grade.distractor_tag)
+            distractor_label = _nonempty_str(grade.distractor_label)
+            if distractor_tag is None:
+                if embedder is None:
+                    tag = DistractorTag.COMPLETE_MISS
+                else:
+                    tag, _ = classify_mcq_distractor(
+                        question=question,
+                        student_answer=student_answer,
+                        embedder=embedder,
+                    )
+                distractor_tag = tag.value
+                distractor_label = explain_mcq_distractor(
                     question=question,
                     student_answer=student_answer,
-                    embedder=embedder,
+                    tag=tag,
+                    llm=llm,
                 )
-            payload["distractor_tag"] = tag.value
-            payload["distractor_label"] = explain_mcq_distractor(
-                question=question,
-                student_answer=student_answer,
-                tag=tag,
-                llm=llm,
-            )
 
+    elif qtype == QuestionType.SHORT_ANSWER:
+        similarity_score = float(grade.accuracy_score)
+        error_category = _nonempty_str(grade.error_category)
+        detailed_explanation = _nonempty_str(grade.detailed_explanation)
+
+    elif qtype == QuestionType.MULTI_BLANK:
+        similarity_score = float(grade.accuracy_score)
+        error_category = _nonempty_str(grade.error_category)
+        if grade.missed_blanks:
+            missed_blanks = {str(k): str(v) for k, v in grade.missed_blanks.items()}
+
+    elif qtype == QuestionType.TRUE_FALSE:
+        detailed_explanation = _nonempty_str(grade.detailed_explanation) or _nonempty_str(
+            grade.concept_explanation
+        )
+
+    response_time: float | None = None
+    if response_time_s is not None:
+        response_time = max(0.0, float(response_time_s))
+
+    payload: dict[str, Any] = {
+        "user_id": str(user_id),
+        "topic_id": question.topic_id or "",
+        "question_id": question.id,
+        "question_type": qtype.value,
+        "is_correct": bool(grade.is_correct),
+        "similarity_score": similarity_score,
+        "distractor_tag": distractor_tag,
+        "distractor_label": distractor_label,
+        "chosen_distractor_text": chosen_distractor_text,
+        "error_category": error_category,
+        "detailed_explanation": detailed_explanation,
+        "missed_blanks": missed_blanks,
+        "response_time_s": response_time,
+        "difficulty_level": int(question.dok_level),
+        "subtopic_id": _nonempty_str(question.sub_concept),
+        "source": _SOURCE,
+    }
+    for key in _CONTRACT_KEYS:
+        payload.setdefault(key, None)
     return payload
 
 
+def _component4_submit_url(base: str) -> str:
+    """Resolve Component 4's assessment-submit URL from ANALYTICS_BASE_URL."""
+    url = base.strip().rstrip("/")
+    if url.endswith("/assessment-submit"):
+        return url
+    return f"{url}/api/v1/assessment-submit"
+
+
 def send_analytics_event(payload: dict[str, Any]) -> None:
-    """POST the event to Component 4. Left commented until that service exists."""
-    url = get_settings().analytics_base_url
-    if not url:
+    """POST the unified payload to Component 4 ``POST /api/v1/assessment-submit``."""
+    base = get_settings().analytics_base_url
+    if not base:
         return
-    # httpx.post(url, json=payload, timeout=5.0)
-    return
+    url = _component4_submit_url(base)
+    try:
+        httpx.post(url, json=payload, timeout=5.0)
+    except Exception:
+        # Diagnostic flow must not fail if Component 4 is briefly unreachable.
+        return

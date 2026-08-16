@@ -180,32 +180,37 @@ def next_question(
     response_model=SubmitAnswerResponse,
     summary="Submit answer and emit Component 4 analytics",
     description=(
-        "**Component 4 / BKT Analytics contract.** Grades the student's answer, "
-        "persists `question_engine.attempts`, and writes `question_engine.analytics_events` "
-        "with at least:\n"
-        "- `user_id`, `topic_id`, `is_correct`, `question_id`, `question_type`\n"
-        "- `similarity_score` (set for ShortAnswer / MultiBlank; MCQ cosine used internally)\n"
-        "- `distractor_tag` — `NEAR_MISS` | `MISCONCEPTION` | `COMPLETE_MISS` for wrong MCQs\n"
-        "- `distractor_label` — short natural-language explanation of the miss\n\n"
-        "Also returns type-specific diagnostic fields on `grade` and whether the "
-        "session is complete (`is_complete`)."
-    ),
-    responses={
-        200: {
-            "description": (
-                "Graded attempt. Analytics event with distractor tags / similarity "
-                "is persisted for Component 4."
-            )
+            "**Component 4 / BKT Analytics contract.** Grades the student's answer, "
+            "persists `question_engine.attempts`, and writes `question_engine.analytics_events` "
+            "with a **unified JSON payload** (same keys for every question type; "
+            "non-applicable fields are explicitly `null`):\n"
+            "- always: `user_id`, `topic_id`, `question_id`, `question_type`, `is_correct`, "
+            "`response_time_s`, `difficulty_level`, `subtopic_id`, `source`\n"
+            "- `similarity_score` — ShortAnswer / MultiBlank only\n"
+            "- `distractor_tag` / `distractor_label` / `chosen_distractor_text` — wrong MCQ only "
+            "(`NEAR_MISS` | `MISCONCEPTION` | `COMPLETE_MISS`)\n"
+            "- `error_category` — ShortAnswer / MultiBlank\n"
+            "- `detailed_explanation` — ShortAnswer / TrueFalse\n"
+            "- `missed_blanks` — MultiBlank JSON object\n\n"
+            "Also returns type-specific diagnostic fields on `grade` and whether the "
+            "session is complete (`is_complete`). See `COMPONENT2_COMPONENT4_INTEGRATION.md`."
+        ),
+        responses={
+            200: {
+                "description": (
+                    "Graded attempt. Unified analytics event persisted for Component 4 "
+                    "for all four question types."
+                )
+            },
+            404: {"model": ErrorDetail, "description": "Session or question not found."},
         },
-        404: {"model": ErrorDetail, "description": "Session or question not found."},
-    },
-)
+    )
 def submit_answer(
     session_id: str,
     payload: SubmitAnswerRequest,
     container: Container = Depends(get_container),
 ) -> SubmitAnswerResponse:
-    """Grade one answer and persist the Component 4 analytics payload."""
+    """Grade one answer and persist the Component 4 unified analytics payload."""
     try:
         result, session = container.session_service.submit_answer(
             session_id=session_id,

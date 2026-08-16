@@ -58,6 +58,16 @@ ALTER TABLE question_engine.analytics_events
     ADD COLUMN IF NOT EXISTS missed_blanks JSONB;
 ALTER TABLE question_engine.analytics_events
     ADD COLUMN IF NOT EXISTS concept_explanation TEXT;
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS response_time_s DOUBLE PRECISION;
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS difficulty_level INTEGER;
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS subtopic_id TEXT;
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS chosen_distractor_text TEXT;
+ALTER TABLE question_engine.analytics_events
+    ADD COLUMN IF NOT EXISTS source TEXT;
 
 CREATE TABLE IF NOT EXISTS question_engine.users (
     user_id TEXT PRIMARY KEY,

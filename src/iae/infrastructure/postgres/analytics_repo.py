@@ -38,6 +38,11 @@ class PostgresAnalyticsRepository:
             missed_blanks=payload.get("missed_blanks"),
             concept_explanation=payload.get("concept_explanation"),
             session_id=session_id,
+            response_time_s=payload.get("response_time_s"),
+            difficulty_level=payload.get("difficulty_level"),
+            subtopic_id=payload.get("subtopic_id"),
+            chosen_distractor_text=payload.get("chosen_distractor_text"),
+            source=payload.get("source"),
             payload=dict(payload),
             created_at=datetime.now(timezone.utc),
         )
