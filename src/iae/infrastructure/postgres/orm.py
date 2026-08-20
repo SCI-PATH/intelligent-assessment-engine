@@ -31,6 +31,9 @@ class QuestionRow(Base):
     chunk_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     origin: Mapped[str] = mapped_column(String(16), nullable=False, default="ai")
+    rejection_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    rejection_confirmed_ai: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=False)
+    rejection_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -80,6 +83,13 @@ class UserRow(Base):
     past_grade_marks_range: Mapped[str | None] = mapped_column(String(16), nullable=True)
     placement_category: Mapped[str | None] = mapped_column(String(16), nullable=True)
     placement_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    role: Mapped[str | None] = mapped_column(String(16), nullable=True, default="student")
+    class_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    study_hours_per_week: Mapped[float | None] = mapped_column(Float, nullable=True)
+    self_confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    initial_category: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    initial_category_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -126,6 +136,14 @@ class AssessmentSessionRow(Base):
     last_action: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     questions_asked: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     max_questions: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    session_kind: Mapped[str | None] = mapped_column(String(32), nullable=True, default="diagnostic")
+    status: Mapped[str | None] = mapped_column(String(16), nullable=True, default="active")
+    terminate_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    allowed_question_types: Mapped[list | None] = mapped_column(JSONB, nullable=True, default=list)
+    scope_chapters: Mapped[list | None] = mapped_column(JSONB, nullable=True, default=list)
+    elo_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=1000.0)
+    bkt_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    ai_analysis: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -137,6 +155,41 @@ class AssessmentSessionRow(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
+
+
+class AmplitudeAttemptRow(Base):
+    __tablename__ = "amplitude_attempts"
+    __table_args__ = {"schema": "question_engine"}
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(Text, nullable=False)
+    grade: Mapped[int] = mapped_column(Integer, nullable=False)
+    completed_chapters_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    past_grade_marks_range: Mapped[str] = mapped_column(String(16), nullable=False)
+    study_hours_per_week: Mapped[float | None] = mapped_column(Float, nullable=True)
+    self_confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    question_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    answers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    quiz_correct: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    quiz_total: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    quiz_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    history_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    weighted_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    category: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class AmplitudeFixedItemRow(Base):
+    __tablename__ = "amplitude_fixed_items"
+    __table_args__ = {"schema": "question_engine"}
+
+    grade: Mapped[int] = mapped_column(Integer, primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    question_id: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class ServedQuestionRow(Base):

@@ -20,7 +20,14 @@ def get_engine() -> Engine:
             "DATABASE_URL is not set. Add it to .env "
             "(example: postgresql+psycopg://iae:iae@localhost:5432/iae)."
         )
-    return create_engine(settings.database_url, pool_pre_ping=True, future=True)
+    # All ORM tables are schema-qualified as question_engine.*; search_path is
+    # an extra guard so ad-hoc SQL stays isolated from peer schemas on Neon.
+    return create_engine(
+        settings.database_url,
+        pool_pre_ping=True,
+        future=True,
+        connect_args={"options": "-csearch_path=question_engine,public"},
+    )
 
 
 @lru_cache(maxsize=1)

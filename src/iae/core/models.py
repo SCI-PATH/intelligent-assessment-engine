@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Annotated, Literal, Union
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, AliasChoices
 
 RuleTraceCategory = Literal["dok", "type", "cold_start"]
 
@@ -135,10 +135,61 @@ QuestionPayload = Annotated[
 ]
 
 
+class PastGradeMarksRange(str, Enum):
+    BELOW_50 = "BELOW_50"
+    BAND_50_75 = "50_75"
+    ABOVE_75 = "ABOVE_75"
+
+
+class PlacementCategory(str, Enum):
+    """Legacy placement labels (still accepted on read)."""
+
+    WEAK = "WEAK"
+    AVERAGE = "AVERAGE"
+    ADVANCED = "ADVANCED"
+
+
+class AmplitudeCategory(str, Enum):
+    BASIC = "BASIC"
+    INTERMEDIATE = "INTERMEDIATE"
+    ADVANCED = "ADVANCED"
+
+
+class UserRole(str, Enum):
+    STUDENT = "student"
+    TEACHER = "teacher"
+
+
+class SessionKind(str, Enum):
+    DIAGNOSTIC = "diagnostic"
+    CUSTOMIZABLE = "customizable"
+    POST_LESSON = "post_lesson"
+
+
+class SessionStatus(str, Enum):
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    TERMINATED = "terminated"
+    FAILED = "failed"
+
+
+class RejectionReason(str, Enum):
+    FACTUAL_ERROR = "FACTUAL_ERROR"
+    OUT_OF_SCOPE = "OUT_OF_SCOPE"
+    POOR_PHRASING = "POOR_PHRASING"
+    TOO_EASY = "TOO_EASY"
+    TOO_HARD = "TOO_HARD"
+    OTHER = "OTHER"
+
+
 class Question(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    id: str = Field(default_factory=lambda: str(uuid4()), alias="_id")
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        validation_alias=AliasChoices("id", "_id"),
+        serialization_alias="id",
+    )
     chapter_name: str
     sub_concept: str
     dok_level: DokLevel
@@ -150,6 +201,9 @@ class Question(BaseModel):
     skill: str = ""
     status: QuestionStatus = QuestionStatus.PENDING
     origin: QuestionOrigin = QuestionOrigin.AI
+    rejection_reason: RejectionReason | None = None
+    rejection_confirmed_ai: bool = False
+    rejection_notes: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -221,7 +275,7 @@ class AttemptRecord(BaseModel):
 class SessionState(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    session_id: str = Field(default_factory=lambda: str(uuid4()), alias="_id")
+    session_id: str = Field(default_factory=lambda: str(uuid4()))
     user_id: str = Field(default_factory=lambda: str(uuid4()))
     scope_chapter: str
     used_question_ids: list[str] = Field(default_factory=list)
@@ -232,6 +286,14 @@ class SessionState(BaseModel):
     questions_asked: int = 0
     grade: int = 6
     max_questions: int = 5
+    session_kind: SessionKind = SessionKind.DIAGNOSTIC
+    status: SessionStatus = SessionStatus.ACTIVE
+    terminate_reason: str | None = None
+    allowed_question_types: list[QuestionType] = Field(default_factory=list)
+    scope_chapters: list[str] = Field(default_factory=list)
+    elo_rating: float = 1000.0
+    bkt_snapshot: dict | None = None
+    ai_analysis: dict | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -250,27 +312,41 @@ class GradeResult(BaseModel):
     distractor_label: str | None = None
 
 
-class PastGradeMarksRange(str, Enum):
-    BELOW_50 = "BELOW_50"
-    BAND_50_75 = "50_75"
-    ABOVE_75 = "ABOVE_75"
-
-
-class PlacementCategory(str, Enum):
-    WEAK = "WEAK"
-    AVERAGE = "AVERAGE"
-    ADVANCED = "ADVANCED"
-
-
 class StudentProfile(BaseModel):
     user_id: str
     grade: int | None = None
     completed_chapters_count: int | None = None
     past_grade_marks_range: PastGradeMarksRange | None = None
-    placement_category: PlacementCategory | None = None
+    placement_category: PlacementCategory | AmplitudeCategory | None = None
     placement_score: float | None = None
+    role: UserRole = UserRole.STUDENT
+    class_code: str | None = None
+    display_name: str | None = None
+    study_hours_per_week: float | None = None
+    self_confidence: int | None = None
+    initial_category: AmplitudeCategory | None = None
+    initial_category_score: float | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AmplitudeEvaluation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    user_id: str
+    grade: int
+    completed_chapters_count: int = 0
+    past_grade_marks_range: PastGradeMarksRange
+    study_hours_per_week: float | None = None
+    self_confidence: int | None = None
+    question_ids: list[str] = Field(default_factory=list)
+    answers: dict[str, str] = Field(default_factory=dict)
+    quiz_correct: int = 0
+    quiz_total: int = 10
+    quiz_score: float = 0.0
+    history_score: float = 0.0
+    weighted_score: float = 0.0
+    category: AmplitudeCategory
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class PlacementEvaluation(BaseModel):
@@ -284,5 +360,5 @@ class PlacementEvaluation(BaseModel):
     quiz_score: float
     past_score: float
     weighted_score: float
-    category: PlacementCategory
+    category: PlacementCategory | AmplitudeCategory
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

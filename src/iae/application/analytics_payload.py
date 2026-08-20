@@ -150,6 +150,7 @@ def build_analytics_payload(
     response_time_s: float | None = None,
     embedder: IEmbedder | None = None,
     llm: ILlmJson | None = None,
+    chapter_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build the unified Component 4 payload for any of the four question types."""
     qtype = question.question_type
@@ -240,6 +241,10 @@ def build_analytics_payload(
     }
     for key in _CONTRACT_KEYS:
         payload.setdefault(key, None)
+    # Optional multi-chapter scope (BKT snapshot contract). Omit when empty
+    # so single-topic clients stay backward compatible.
+    if chapter_ids:
+        payload["chapter_ids"] = list(chapter_ids)
     return payload
 
 
@@ -253,7 +258,8 @@ def _component4_submit_url(base: str) -> str:
 
 def send_analytics_event(payload: dict[str, Any]) -> None:
     """POST the unified payload to Component 4 ``POST /api/v1/assessment-submit``."""
-    base = get_settings().analytics_base_url
+    settings = get_settings()
+    base = settings.c4_base_url or settings.analytics_base_url
     if not base:
         return
     url = _component4_submit_url(base)

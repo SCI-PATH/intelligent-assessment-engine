@@ -20,7 +20,9 @@ from iae.core.protocols import (
     ISessionRepository,
 )
 from iae.core.settings import get_config, get_settings
+from iae.infrastructure.clients import Component1Client, Component3Client, Component4Client
 from iae.infrastructure.llm.factory import build_json_llm
+from iae.infrastructure.postgres.amplitude_repo import PostgresAmplitudeRepository
 from iae.infrastructure.postgres.analytics_repo import PostgresAnalyticsRepository
 from iae.infrastructure.postgres.engine import get_session_factory, init_schema
 from iae.infrastructure.postgres.questions_repo import PostgresQuestionRepository
@@ -28,6 +30,9 @@ from iae.infrastructure.postgres.placement_repo import PostgresPlacementReposito
 from iae.infrastructure.postgres.sessions_repo import PostgresSessionRepository
 from iae.infrastructure.rag.chroma_store import ChromaChunkStore
 from iae.infrastructure.rag.embeddings import HuggingFaceEmbedder
+from iae.services.amplitude_service import AmplitudeService
+from iae.services.history_service import HistoryService
+from iae.services.quiz_service import QuizService
 
 
 @dataclass
@@ -39,6 +44,12 @@ class Container:
     session_service: SessionService
     teacher_service: TeacherService
     placement_service: PlacementService
+    amplitude_service: AmplitudeService
+    quiz_service: QuizService
+    history_service: HistoryService
+    c1: Component1Client
+    c3: Component3Client
+    c4: Component4Client
 
 
 def build_container() -> Container:
@@ -51,6 +62,7 @@ def build_container() -> Container:
     analytics_repo = PostgresAnalyticsRepository(session_factory)
     sessions_repo = PostgresSessionRepository(session_factory)
     placement_repo = PostgresPlacementRepository(session_factory)
+    amplitude_repo = PostgresAmplitudeRepository(session_factory)
 
     llm = build_json_llm(model=config.llm_grader_model)
     generator_llm = build_json_llm(model=config.llm_model)
@@ -64,6 +76,10 @@ def build_container() -> Container:
             target_accuracy_upper=config.target_accuracy_upper,
         )
     )
+    c1 = Component1Client()
+    c3 = Component3Client()
+    c4 = Component4Client()
+
     session_service = SessionService(
         sessions=sessions_repo,
         questions=questions_repo,
@@ -85,8 +101,30 @@ def build_container() -> Container:
         embedder=embedder,
         retrieval_top_k=config.retrieval_top_k,
         generation_max_retries=config.generation_max_retries,
+        users=amplitude_repo,
     )
     placement_service = PlacementService(store=placement_repo, questions=questions_repo)
+    amplitude_service = AmplitudeService(
+        store=amplitude_repo,
+        questions=questions_repo,
+        grading=grading,
+    )
+    quiz_service = QuizService(
+        sessions=sessions_repo,
+        questions=questions_repo,
+        grading=grading,
+        analytics=analytics_repo,
+        embedder=embedder,
+        analytics_llm=llm,
+        c4=c4,
+        c1=c1,
+        c3=c3,
+    )
+    history_service = HistoryService(
+        sessions=sessions_repo,
+        questions=questions_repo,
+        llm=llm,
+    )
     return Container(
         sessions_repo=sessions_repo,
         questions_repo=questions_repo,
@@ -95,4 +133,10 @@ def build_container() -> Container:
         session_service=session_service,
         teacher_service=teacher_service,
         placement_service=placement_service,
+        amplitude_service=amplitude_service,
+        quiz_service=quiz_service,
+        history_service=history_service,
+        c1=c1,
+        c3=c3,
+        c4=c4,
     )

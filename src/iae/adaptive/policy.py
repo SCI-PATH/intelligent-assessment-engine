@@ -6,18 +6,19 @@ signals (rolling accuracy and normalized response time) to target DOK levels.
 
 from __future__ import annotations
 
-import json
 import random
-import time
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path
 
 from iae.adaptive import rule_catalog as rc
 from iae.adaptive.telemetry import question_type_counts, rolling_accuracy
 from iae.core.models import AttemptRecord, QuestionType, RlAction, RlState, RuleTrace, TraceCondition
 
-_DEBUG_LOG_PATH = Path("debug-b15ee2.log")
+# Agent NDJSON writers removed from production paths.
+def _debug_log(*, run_id: str, hypothesis_id: str, location: str, message: str, data: dict) -> None:
+    return
+
+
 _RAPID_GUESS_SECONDS = 1.5
 _GRACE_HOLD_MAX_NORMALIZED_TIME = 1.15
 # Policy thresholds shared by DOK and question-type branches
@@ -26,23 +27,6 @@ _LAST_STRONG_ACC = 0.85
 _ROLL_UP = 0.80
 _SLOW_SECONDS = 45.0
 _FAST_UP_SECONDS = 30.0
-
-
-def _debug_log(*, run_id: str, hypothesis_id: str, location: str, message: str, data: dict) -> None:
-    payload = {
-        "sessionId": "b15ee2",
-        "runId": run_id,
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data,
-        "timestamp": int(time.time() * 1000),
-    }
-    try:
-        with _DEBUG_LOG_PATH.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except Exception:
-        pass
 
 
 @dataclass(frozen=True)

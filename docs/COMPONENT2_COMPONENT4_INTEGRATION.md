@@ -7,7 +7,10 @@ After every scored diagnostic attempt, Component 2 **POSTs one JSON body** to th
 endpoint **owned by Component 4**. This README is the contract for that body,
 with a complete example for each of our **four** question types.
 
-Inbound notes from Component 4: [`QuestionEngine-Integration.md`](./QuestionEngine-Integration.md).
+Inbound notes from Component 4:
+- Attempt payload: this file (baseline)
+- Quiz BKT snapshot (updates on top): [`docs/QuestionEngine-BKT-Snapshot.md`](docs/QuestionEngine-BKT-Snapshot.md)
+- Chapter IDs: [`data/chapter_ids_g6_g9.csv`](data/chapter_ids_g6_g9.csv)
 
 ---
 
@@ -39,12 +42,17 @@ Content-Type: application/json
 Set in `.env` (base only — path is appended in code):
 
 ```env
-ANALYTICS_BASE_URL=http://127.0.0.1:8000
+COMPONENT_4_URL=http://127.0.0.1:8003
+ANALYTICS_BASE_URL=http://127.0.0.1:8003
 ```
 
-If `ANALYTICS_BASE_URL` is empty, the HTTP forward is skipped (local DB write still happens).
+If both are empty, the HTTP forward is skipped (local DB write still happens). Mock fallbacks keep the quiz loop alive.
 
-Implementation: `iae.application.analytics_payload.send_analytics_event`.
+**Also at quiz start** (see BKT snapshot doc): Component 2 calls  
+`POST {COMPONENT_4_URL}/api/v1/quiz/bkt-snapshot` with `{ "user_id", "chapter_ids": ["G6_C8"] }`.  
+On multi-chapter quizzes, `chapter_ids` is also attached to each `assessment-submit` body.
+
+Implementation: `iae.infrastructure.clients.Component4Client` + `iae.application.analytics_payload`.
 
 ---
 

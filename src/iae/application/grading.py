@@ -8,9 +8,6 @@ from __future__ import annotations
 
 import json
 import re
-import time
-from pathlib import Path
-from uuid import uuid4
 
 from iae.application.analytics_payload import classify_mcq_distractor, explain_mcq_distractor
 from iae.core.models import (
@@ -28,26 +25,11 @@ from iae.core.protocols import IEmbedder, ILlmJson
 from iae.prompts import render
 
 _PASS_THRESHOLD = 0.8
-_DEBUG_LOG_PATH = Path("debug-21ced4.log")
 _SA_CATEGORIES = {item.value for item in ShortAnswerErrorCategory}
 
 
 def _debug_log(*, hypothesis_id: str, location: str, message: str, data: dict) -> None:
-    payload = {
-        "sessionId": "21ced4",
-        "runId": "initial",
-        "hypothesisId": hypothesis_id,
-        "id": f"log_{uuid4().hex}",
-        "location": location,
-        "message": message,
-        "data": data,
-        "timestamp": int(time.time() * 1000),
-    }
-    try:
-        with _DEBUG_LOG_PATH.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except Exception:
-        pass
+    return
 
 
 def _clamp_sentences(text: str, *, max_sentences: int = 2) -> str:

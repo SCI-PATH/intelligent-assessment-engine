@@ -86,6 +86,20 @@ ALTER TABLE question_engine.users
     ADD COLUMN IF NOT EXISTS placement_score DOUBLE PRECISION;
 ALTER TABLE question_engine.users
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'student';
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS class_code TEXT;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS display_name TEXT;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS study_hours_per_week DOUBLE PRECISION;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS self_confidence INTEGER;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS initial_category TEXT;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS initial_category_score DOUBLE PRECISION;
 
 CREATE TABLE IF NOT EXISTS question_engine.placement_evaluations (
     id UUID PRIMARY KEY,
@@ -102,13 +116,18 @@ CREATE TABLE IF NOT EXISTS question_engine.placement_evaluations (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT placement_eval_marks_chk
         CHECK (past_grade_marks_range IN ('BELOW_50', '50_75', 'ABOVE_75')),
-    CONSTRAINT placement_eval_category_chk
-        CHECK (category IN ('WEAK', 'AVERAGE', 'ADVANCED')),
     CONSTRAINT placement_eval_grade_chk CHECK (grade BETWEEN 6 AND 9)
 );
 
 CREATE INDEX IF NOT EXISTS placement_evaluations_user
     ON question_engine.placement_evaluations (user_id, created_at DESC);
+
+-- Soften legacy placement category check to also allow Amplitude categories.
+ALTER TABLE question_engine.placement_evaluations
+    DROP CONSTRAINT IF EXISTS placement_eval_category_chk;
+ALTER TABLE question_engine.placement_evaluations
+    ADD CONSTRAINT placement_eval_category_chk
+    CHECK (category IN ('WEAK', 'AVERAGE', 'ADVANCED', 'BASIC', 'INTERMEDIATE'));
 
 CREATE TABLE IF NOT EXISTS question_engine.assessment_sessions (
     session_id UUID PRIMARY KEY,
@@ -130,6 +149,23 @@ CREATE TABLE IF NOT EXISTS question_engine.assessment_sessions (
 
 CREATE INDEX IF NOT EXISTS assessment_sessions_user
     ON question_engine.assessment_sessions (user_id, started_at DESC);
+
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS session_kind TEXT DEFAULT 'diagnostic';
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS terminate_reason TEXT;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS allowed_question_types JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS scope_chapters JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS elo_rating DOUBLE PRECISION DEFAULT 1000.0;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS bkt_snapshot JSONB;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS ai_analysis JSONB;
 
 CREATE TABLE IF NOT EXISTS question_engine.served_questions (
     user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
@@ -178,6 +214,47 @@ ALTER TABLE question_engine.attempts
     ADD COLUMN IF NOT EXISTS concept_explanation TEXT;
 ALTER TABLE question_engine.attempts
     ADD COLUMN IF NOT EXISTS distractor_label TEXT;
+
+ALTER TABLE question_engine.questions
+    ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+ALTER TABLE question_engine.questions
+    ADD COLUMN IF NOT EXISTS rejection_confirmed_ai BOOLEAN DEFAULT FALSE;
+ALTER TABLE question_engine.questions
+    ADD COLUMN IF NOT EXISTS rejection_notes TEXT;
+
+CREATE TABLE IF NOT EXISTS question_engine.amplitude_attempts (
+    id UUID PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
+    grade INTEGER NOT NULL,
+    completed_chapters_count INTEGER NOT NULL DEFAULT 0,
+    past_grade_marks_range TEXT NOT NULL,
+    study_hours_per_week DOUBLE PRECISION,
+    self_confidence INTEGER,
+    question_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    answers JSONB NOT NULL DEFAULT '{}'::jsonb,
+    quiz_correct INTEGER NOT NULL DEFAULT 0,
+    quiz_total INTEGER NOT NULL DEFAULT 10,
+    quiz_score DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    history_score DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    weighted_score DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    category TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT amplitude_category_chk
+        CHECK (category IN ('BASIC', 'INTERMEDIATE', 'ADVANCED')),
+    CONSTRAINT amplitude_marks_chk
+        CHECK (past_grade_marks_range IN ('BELOW_50', '50_75', 'ABOVE_75'))
+);
+
+CREATE INDEX IF NOT EXISTS amplitude_attempts_user
+    ON question_engine.amplitude_attempts (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS question_engine.amplitude_fixed_items (
+    grade INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    question_id TEXT NOT NULL,
+    PRIMARY KEY (grade, position),
+    CONSTRAINT amplitude_fixed_pos_chk CHECK (position BETWEEN 1 AND 10)
+);
 
 -- Placeholder: no writers yet. Future frustration / affective signals.
 CREATE TABLE IF NOT EXISTS question_engine.frustration_cues (

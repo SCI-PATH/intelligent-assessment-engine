@@ -16,6 +16,7 @@ from iae.core.models import (
     QuestionPayload,
     QuestionStatus,
     QuestionType,
+    RejectionReason,
     RlState,
     RuleTrace,
 )
@@ -220,3 +221,103 @@ class PlacementEvaluateRequest(BaseModel):
     past_grade_marks_range: PastGradeMarksRange
     quiz_correct: int = Field(ge=0, description="Number of placement-quiz items answered correctly.")
     quiz_total: int = Field(default=10, ge=1, le=50, description="Usually 10.")
+
+
+# ---------------------------------------------------------------------------
+# /api/v1 schemas
+# ---------------------------------------------------------------------------
+
+
+class AmplitudeSurveyRequest(BaseModel):
+    """Five historical inputs for the Amplitude Test."""
+
+    user_id: str = Field(examples=["mock-student-class-a"])
+    grade: int = Field(ge=6, le=9)
+    completed_chapters_count: int = Field(ge=0)
+    past_grade_marks_range: PastGradeMarksRange
+    study_hours_per_week: float | None = Field(default=None, ge=0, le=40)
+    self_confidence: int | None = Field(default=None, ge=1, le=5)
+
+
+class AmplitudeEvaluateRequest(BaseModel):
+    """Grade the fixed 10-item Amplitude quiz and persist BASIC|INTERMEDIATE|ADVANCED."""
+
+    user_id: str
+    grade: int = Field(ge=6, le=9)
+    completed_chapters_count: int = Field(ge=0)
+    past_grade_marks_range: PastGradeMarksRange
+    study_hours_per_week: float | None = Field(default=None, ge=0, le=40)
+    self_confidence: int | None = Field(default=None, ge=1, le=5)
+    answers: dict[str, str] = Field(
+        description="Map of question_id → student answer for the fixed 10 items."
+    )
+
+
+class AmplitudeCategoryResponse(BaseModel):
+    student_id: str
+    initial_category: str | None = None
+    initial_category_score: float | None = None
+    placement_category: str | None = None
+
+
+class CreateCustomizableQuizRequest(BaseModel):
+    student_id: str
+    grade: int = Field(ge=6, le=9)
+    chapters: list[str] = Field(
+        min_length=1,
+        description=(
+            "Canonical chapter_ids from data/chapter_ids_g6_g9.csv "
+            "(e.g. `G6_C8`). Chapter titles are also accepted and normalized."
+        ),
+        examples=[["G6_C8", "G6_C7"]],
+    )
+    num_questions: int = Field(default=5, ge=1, le=30)
+    question_types: list[QuestionType] | None = None
+
+
+class TriggerPostLessonRequest(BaseModel):
+    student_id: str
+    chapter_id: str = Field(
+        description="Canonical chapter_id e.g. `G6_C8` (not a bare number).",
+        examples=["G6_C8"],
+    )
+    grade: int = Field(default=6, ge=6, le=9)
+
+
+class TerminateSessionRequest(BaseModel):
+    reason: str | None = "component_3_kill_switch"
+    source: str = Field(default="component_3", description="Caller identity, e.g. component_3.")
+
+
+class QuizSessionResponse(BaseModel):
+    session_id: str
+    user_id: str
+    scope_chapter: str
+    scope_chapters: list[str] = Field(default_factory=list)
+    session_kind: str
+    status: str
+    questions_asked: int
+    max_questions: int
+    elo_rating: float = 1000.0
+
+
+class QuizNextResponse(BaseModel):
+    question: Question
+    elo_rating: float
+    questions_asked: int
+    max_questions: int
+    target_dok: int | None = None
+
+
+class QuizAnswerResponse(BaseModel):
+    grade: GradeResult
+    questions_asked: int
+    is_complete: bool
+    elo_rating: float
+    next_dok: int | None = None
+    status: str
+
+
+class RejectQuestionRequest(BaseModel):
+    reason: RejectionReason
+    notes: str | None = None

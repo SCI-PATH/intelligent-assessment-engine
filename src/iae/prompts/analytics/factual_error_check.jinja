@@ -1,0 +1,15 @@
+You are checking whether a science bank question contains a FACTUAL ERROR
+(wrong science, incorrect answer key, or contradictory options).
+
+Return STRICT JSON:
+{
+  "is_factual_error": true|false,
+  "confidence": 0.0-1.0,
+  "explanation": "one short paragraph"
+}
+
+Question type: {{ question_type }}
+Chapter: {{ chapter_name }}
+Topic: {{ topic_id }}
+Payload JSON:
+{{ payload_json }}

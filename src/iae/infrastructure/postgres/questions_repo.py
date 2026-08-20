@@ -8,8 +8,17 @@ from uuid import UUID
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from iae.core.models import Question, QuestionOrigin, QuestionStatus, QuestionType
+from iae.core.models import Question, QuestionOrigin, QuestionStatus, QuestionType, RejectionReason
 from iae.infrastructure.postgres.orm import QuestionRow
+
+
+def _parse_rejection(raw: str | None) -> RejectionReason | None:
+    if not raw:
+        return None
+    try:
+        return RejectionReason(raw)
+    except ValueError:
+        return None
 
 
 def _to_domain(row: QuestionRow) -> Question:
@@ -26,6 +35,9 @@ def _to_domain(row: QuestionRow) -> Question:
         skill=row.skill or "",
         status=QuestionStatus(row.status),
         origin=QuestionOrigin(row.origin),
+        rejection_reason=_parse_rejection(row.rejection_reason),
+        rejection_confirmed_ai=bool(row.rejection_confirmed_ai),
+        rejection_notes=row.rejection_notes,
         created_at=row.created_at,
     )
 
@@ -44,6 +56,9 @@ def _to_row(question: Question) -> QuestionRow:
         chunk_ids=list(question.chunk_ids or []),
         status=question.status.value,
         origin=question.origin.value,
+        rejection_reason=question.rejection_reason.value if question.rejection_reason else None,
+        rejection_confirmed_ai=question.rejection_confirmed_ai,
+        rejection_notes=question.rejection_notes,
         created_at=question.created_at,
     )
 
@@ -70,24 +85,37 @@ class PostgresQuestionRepository:
         question_type: QuestionType,
         excluded_ids: list[str],
     ) -> Question | None:
-        relaxations: list[dict] = [
-            {
-                "chapter_name": chapter_name,
-                "sub_concept": sub_concept,
-                "dok_level": dok_level,
-                "question_type": question_type.value,
-            },
-            {
-                "chapter_name": chapter_name,
-                "sub_concept": sub_concept,
-                "dok_level": dok_level,
-            },
-            {
-                "chapter_name": chapter_name,
-                "dok_level": dok_level,
-            },
-            {"chapter_name": chapter_name},
-        ]
+        relaxations: list[dict] = []
+        if sub_concept:
+            relaxations.extend(
+                [
+                    {
+                        "chapter_name": chapter_name,
+                        "sub_concept": sub_concept,
+                        "dok_level": dok_level,
+                        "question_type": question_type.value,
+                    },
+                    {
+                        "chapter_name": chapter_name,
+                        "sub_concept": sub_concept,
+                        "dok_level": dok_level,
+                    },
+                ]
+            )
+        relaxations.extend(
+            [
+                {
+                    "chapter_name": chapter_name,
+                    "dok_level": dok_level,
+                    "question_type": question_type.value,
+                },
+                {
+                    "chapter_name": chapter_name,
+                    "dok_level": dok_level,
+                },
+                {"chapter_name": chapter_name},
+            ]
+        )
         with self._session_factory() as session:
             for filters in relaxations:
                 stmt = self._approved_query(filters, excluded_ids).order_by(func.random()).limit(1)
@@ -132,6 +160,9 @@ class PostgresQuestionRepository:
         status: QuestionStatus | None = None,
         topic_id: str | None = None,
         grade: int | None = None,
+        grades: list[int] | None = None,
+        dok_level: int | None = None,
+        question_type: QuestionType | None = None,
         limit: int = 100,
     ) -> list[Question]:
         stmt = select(QuestionRow).order_by(QuestionRow.created_at.desc()).limit(max(1, limit))
@@ -141,6 +172,12 @@ class PostgresQuestionRepository:
             stmt = stmt.where(QuestionRow.topic_id == topic_id)
         if grade is not None:
             stmt = stmt.where(QuestionRow.grade == grade)
+        if grades:
+            stmt = stmt.where(QuestionRow.grade.in_(grades))
+        if dok_level is not None:
+            stmt = stmt.where(QuestionRow.dok_level == dok_level)
+        if question_type is not None:
+            stmt = stmt.where(QuestionRow.question_type == question_type.value)
         with self._session_factory() as session:
             rows = session.execute(stmt).scalars().all()
             return [_to_domain(row) for row in rows]
@@ -155,6 +192,34 @@ class PostgresQuestionRepository:
             if row is None:
                 return None
             row.status = status.value
+            if status != QuestionStatus.REJECTED:
+                row.rejection_reason = None
+                row.rejection_confirmed_ai = False
+                row.rejection_notes = None
+            session.commit()
+            session.refresh(row)
+            return _to_domain(row)
+
+    def reject(
+        self,
+        question_id: str,
+        *,
+        reason: RejectionReason,
+        notes: str | None = None,
+        confirmed_ai: bool = False,
+    ) -> Question | None:
+        try:
+            pk = UUID(question_id)
+        except ValueError:
+            return None
+        with self._session_factory() as session:
+            row = session.get(QuestionRow, pk)
+            if row is None:
+                return None
+            row.status = QuestionStatus.REJECTED.value
+            row.rejection_reason = reason.value
+            row.rejection_notes = notes
+            row.rejection_confirmed_ai = confirmed_ai
             session.commit()
             session.refresh(row)
             return _to_domain(row)

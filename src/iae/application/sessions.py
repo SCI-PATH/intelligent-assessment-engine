@@ -6,10 +6,7 @@ repository; it knows nothing about HTTP, Streamlit, or storage specifics.
 
 from __future__ import annotations
 
-import json
-import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import NamedTuple
 from uuid import uuid4
 
@@ -44,25 +41,9 @@ class NextQuestion(NamedTuple):
     rolling_accuracy: float
 
 
-_DEBUG_LOG_PATH = Path("debug-21ced4.log")
-
-
+# Agent NDJSON writers removed — enable only via future DEBUG_AGENT_LOG hooks if needed.
 def _debug_log(*, hypothesis_id: str, location: str, message: str, data: dict) -> None:
-    payload = {
-        "sessionId": "21ced4",
-        "runId": "initial",
-        "hypothesisId": hypothesis_id,
-        "id": f"log_{uuid4().hex}",
-        "location": location,
-        "message": message,
-        "data": data,
-        "timestamp": int(time.time() * 1000),
-    }
-    try:
-        with _DEBUG_LOG_PATH.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except Exception:
-        pass
+    return
 
 
 @dataclass
