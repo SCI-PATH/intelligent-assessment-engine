@@ -21,5 +21,10 @@ frontend/
 .vscode/
 *.log
 
+# Microsoft Office lock / temp files (created while a workbook is open)
+**/~$*.xlsx
+**/~$*.xls
+**/~$*.docx
+
 # Cursor IDE local plans (not part of the product)
 .cursor/plans/

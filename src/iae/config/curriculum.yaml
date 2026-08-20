@@ -1,36 +1,286 @@
-# Page ranges follow the textbook Table of Contents using PDF page numbers
-# (1-based). Validated against data/grade_6_science.pdf during ingest.
-chapters:
-  - name: Wonders of the Living World
-    page_start: 15
-    page_end: 34
-  - name: Things Around Us
-    page_start: 35
-    page_end: 48
-  - name: Water as a Natural Resource
-    page_start: 49
-    page_end: 62
-  - name: Energy in Day-to-Day Life
-    page_start: 63
-    page_end: 80
-  - name: Light and Vision
-    page_start: 81
-    page_end: 100
-  - name: Sound and Hearing
-    page_start: 101
-    page_end: 112
-  - name: Magnets
-    page_start: 113
-    page_end: 123
-  - name: Electricity for a Comfortable Life
-    page_start: 124
-    page_end: 146
-  - name: Heat and Its Effects
-    page_start: 147
-    page_end: 161
-  - name: Food-related Interactions
-    page_start: 162
-    page_end: 172
-  - name: Weather and Climate
-    page_start: 173
-    page_end: 190
+# Page ranges use 1-based PDF viewer pages (not printed textbook folios),
+# scoped to one file. Grades 7-9 ship as Part 1 + Part 2; each part has its
+# own cover/ToC, so page 15 in part2 is not page 15 in part1.
+#
+# Single-file grades may use `pdf:`. Multi-file grades use `pdfs:` with
+# stable ids. Every chapter in a multi-file grade must set `pdf_id`.
+#
+# To add / finish a grade:
+#   1. Drop the PDF(s) at the paths below.
+#   2. Fill `chapters` from each file's Table of Contents (1-based PDF pages).
+#   3. Run: python -m scripts.extract_subconcepts --grade N
+#   4. Hand-review src/iae/config/subconcepts.yaml
+#   5. Run: python -m scripts.ingest_and_tag_chunks --grade N
+grades:
+  6:
+    pdf: data/grade_6_science.pdf
+    subject: Science
+    chapters:
+      - name: Wonders of the Living World
+        page_start: 15
+        page_end: 34
+      - name: Things Around Us
+        page_start: 35
+        page_end: 48
+      - name: Water as a Natural Resource
+        page_start: 49
+        page_end: 62
+      - name: Energy in Day-to-Day Life
+        page_start: 63
+        page_end: 80
+      - name: Light and Vision
+        page_start: 81
+        page_end: 100
+      - name: Sound and Hearing
+        page_start: 101
+        page_end: 112
+      - name: Magnets
+        page_start: 113
+        page_end: 123
+      - name: Electricity for a Comfortable Life
+        page_start: 124
+        page_end: 146
+      - name: Heat and Its Effects
+        page_start: 147
+        page_end: 161
+      - name: Food-related Interactions
+        page_start: 162
+        page_end: 172
+      - name: Weather and Climate
+        page_start: 173
+        page_end: 190
+
+  7:
+    subject: Science
+    pdfs:
+      - id: part1
+        path: data/grade_7_science_part1.pdf
+      - id: part2
+        path: data/grade_7_science_part2.pdf
+    chapters:
+      - name: Plant Diversity
+        pdf_id: part1
+        page_start: 13
+        page_end: 33
+      - name: Static Electricity
+        pdf_id: part1
+        page_start: 34
+        page_end: 45
+      - name: Generation of Electricity
+        pdf_id: part1
+        page_start: 46
+        page_end: 65
+      - name: Functions of Water
+        pdf_id: part1
+        page_start: 66
+        page_end: 74
+      - name: Acids and Bases
+        pdf_id: part1
+        page_start: 75
+        page_end: 83
+      - name: Animal Diversity
+        pdf_id: part1
+        page_start: 84
+        page_end: 98
+      - name: Forms of Energy and Uses
+        pdf_id: part1
+        page_start: 99
+        page_end: 116
+      - name: The Nature of the Earth
+        pdf_id: part1
+        page_start: 117
+        page_end: 126
+      - name: Light
+        pdf_id: part1
+        page_start: 127
+        page_end: 149
+      - name: The Correct Use of the Microscope
+        pdf_id: part1
+        page_start: 150
+        page_end: 160
+      - name: Sound
+        pdf_id: part2
+        page_start: 13
+        page_end: 22
+      - name: Biological Processes
+        pdf_id: part2
+        page_start: 23
+        page_end: 39
+      - name: Atmosphere
+        pdf_id: part2
+        page_start: 40
+        page_end: 51
+      - name: Heat and Temperature
+        pdf_id: part2
+        page_start: 52
+        page_end: 70
+      - name: Soil
+        pdf_id: part2
+        page_start: 71
+        page_end: 84
+      - name: Force and Motion
+        pdf_id: part2
+        page_start: 85
+        page_end: 97
+      - name: Nutrients in Food
+        pdf_id: part2
+        page_start: 98
+        page_end: 111
+      - name: Minerals and Rocks
+        pdf_id: part2
+        page_start: 112
+        page_end: 124
+      - name: Sources of Energy
+        pdf_id: part2
+        page_start: 125
+        page_end: 140
+
+  8:
+    subject: Science
+    pdfs:
+      - id: part1
+        path: data/grade_8_science_part1.pdf
+      - id: part2
+        path: data/grade_8_science_part2.pdf
+    chapters:
+      - name: Importance of Microorganisms
+        pdf_id: part1
+        page_start: 11
+        page_end: 21
+      - name: Animal Classification
+        pdf_id: part1
+        page_start: 22
+        page_end: 33
+      - name: Diversity and Functions of Plant Parts
+        pdf_id: part1
+        page_start: 34
+        page_end: 48
+      - name: Properties of Matter
+        pdf_id: part1
+        page_start: 49
+        page_end: 71
+      - name: Sound
+        pdf_id: part1
+        page_start: 72
+        page_end: 87
+      - name: Magnets
+        pdf_id: part1
+        page_start: 88
+        page_end: 104
+      - name: Measurements Associated with Electricity
+        pdf_id: part1
+        page_start: 105
+        page_end: 116
+      - name: Changes in Matter
+        pdf_id: part1
+        page_start: 117
+        page_end: 137
+      - name: Human Organ Systems
+        pdf_id: part2
+        page_start: 11
+        page_end: 27
+      - name: Electricity
+        pdf_id: part2
+        page_start: 28
+        page_end: 55
+      - name: Main Biological Processes in Plants
+        pdf_id: part2
+        page_start: 66
+        page_end: 71
+      - name: Life Cycles of Living Organisms
+        pdf_id: part2
+        page_start: 72
+        page_end: 89
+      - name: Food Preservation
+        pdf_id: part2
+        page_start: 90
+        page_end: 106
+      - name: Solar System Phenomena
+        pdf_id: part2
+        page_start: 107
+        page_end: 137
+      - name: Natural Disasters
+        pdf_id: part2
+        page_start: 138
+        page_end: 152
+
+  9:
+    subject: Science
+    pdfs:
+      - id: part1
+        path: data/grade_9_science_part1.pdf
+      - id: part2
+        path: data/grade_9_science_part2.pdf
+    chapters:
+      - name: Applications of Micro-organisms
+        pdf_id: part1
+        page_start: 13
+        page_end: 27
+      - name: Eye and Ear
+        pdf_id: part1
+        page_start: 28
+        page_end: 49
+      - name: Nature and Properties of Matter
+        pdf_id: part1
+        page_start: 50
+        page_end: 63
+      - name: Basic Concepts Associated with Force
+        pdf_id: part1
+        page_start: 64
+        page_end: 83
+      - name: The Human Circulatory System
+        pdf_id: part1
+        page_start: 84
+        page_end: 94
+      - name: Plant Growth Substances
+        pdf_id: part1
+        page_start: 95
+        page_end: 100
+      - name: Support and Movements of Organisms
+        pdf_id: part1
+        page_start: 101
+        page_end: 109
+      - name: The Evolutionary Process
+        pdf_id: part1
+        page_start: 110
+        page_end: 222
+      - name: Electrolysis
+        pdf_id: part2
+        page_start: 13
+        page_end: 21
+      - name: Density
+        pdf_id: part2
+        page_start: 22
+        page_end: 30
+      - name: Bio-diversity
+        pdf_id: part2
+        page_start: 31
+        page_end: 53
+      - name: Artificial Environment and Green Concept
+        pdf_id: part2
+        page_start: 54
+        page_end: 69
+      - name: Reflection and Refraction of Waves
+        pdf_id: part2
+        page_start: 70
+        page_end: 95
+      - name: Simple Machines
+        pdf_id: part2
+        page_start: 96
+        page_end: 114
+      - name: Nanotechnology and its Applications
+        pdf_id: part2
+        page_start: 115
+        page_end: 130
+      - name: Lightning Accidents
+        pdf_id: part2
+        page_start: 131
+        page_end: 140
+      - name: Natural Disasters
+        pdf_id: part2
+        page_start: 141
+        page_end: 163
+      - name: Sustainable Use of Natural Resources
+        pdf_id: part2
+        page_start: 164
+        page_end: 180

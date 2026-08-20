@@ -1,194 +1,1320 @@
 subconcepts:
-- id: wonders-of-the-living-world::components-of-the-environment
+- id: g6::wonders-of-the-living-world::components-of-the-environment
+  grade: 6
   chapter_name: Wonders of the Living World
   name: Components of the Environment
-  description: The different parts that make up the environment, including living
-    and non-living things.
-- id: wonders-of-the-living-world::characteristics-of-organisms
+  description: The different parts that make up the environment.
+- id: g6::wonders-of-the-living-world::characteristics-of-organisms
+  grade: 6
   chapter_name: Wonders of the Living World
   name: Characteristics of Organisms
-  description: The features that distinguish living things from non-living things,
-    including growth, movement, and reproduction.
-- id: wonders-of-the-living-world::nutrition-and-photosynthesis
+  description: The features that distinguish living things from non-living things.
+- id: g6::wonders-of-the-living-world::nutrition-and-photosynthesis
+  grade: 6
   chapter_name: Wonders of the Living World
   name: Nutrition and Photosynthesis
-  description: How living things obtain and produce food, including autotrophy and
-    heterotrophy, and the process of photosynthesis.
-- id: wonders-of-the-living-world::movement-and-locomotion
+  description: How living things obtain and produce food.
+- id: g6::wonders-of-the-living-world::movement-and-locomotion
+  grade: 6
   chapter_name: Wonders of the Living World
   name: Movement and Locomotion
-  description: The different types of movement and locomotion exhibited by living
-    things, including plants and animals.
-- id: things-around-us::matter-and-energy
+  description: The ways in which living things move and change position.
+- id: g6::wonders-of-the-living-world::reproduction-and-diversity
+  grade: 6
+  chapter_name: Wonders of the Living World
+  name: Reproduction and Diversity
+  description: The ways in which living things produce new individuals and the variety
+    of life on Earth.
+- id: g6::things-around-us::matter-and-energy
+  grade: 6
   chapter_name: Things Around Us
   name: Matter and Energy
   description: The two main categories of things around us.
-- id: things-around-us::states-of-matter
+- id: g6::things-around-us::states-of-matter
+  grade: 6
   chapter_name: Things Around Us
   name: States of Matter
   description: 'The three main forms of matter: solid, liquid, and gas.'
-- id: things-around-us::properties-of-solids
+- id: g6::things-around-us::properties-of-solids
+  grade: 6
   chapter_name: Things Around Us
   name: Properties of Solids
   description: The characteristics of solids, such as hardness, malleability, and
-    elasticity.
-- id: things-around-us::characteristics-of-solids,-liquids,-and-gases
+    ductility.
+- id: g6::things-around-us::characteristics-of-solids,-liquids,-and-gases
+  grade: 6
   chapter_name: Things Around Us
   name: Characteristics of Solids, Liquids, and Gases
   description: The unique properties of each state of matter.
-- id: water-as-a-natural-resource::states-of-water
+- id: g6::water-as-a-natural-resource::states-of-water
+  grade: 6
   chapter_name: Water as a Natural Resource
   name: States of Water
-  description: 'The three physical states of water: solid, liquid, and gas.'
-- id: water-as-a-natural-resource::types-of-water
+  description: Water exists in solid, liquid and gas states.
+- id: g6::water-as-a-natural-resource::types-of-water
+  grade: 6
   chapter_name: Water as a Natural Resource
   name: Types of Water
-  description: 'The ways in which water exists: precipitation, surface water, and
-    ground water.'
-- id: water-as-a-natural-resource::salinity-of-water
+  description: Water exists in precipitation, surface water and ground water forms.
+- id: g6::water-as-a-natural-resource::water-salinity
+  grade: 6
   chapter_name: Water as a Natural Resource
-  name: Salinity of Water
-  description: 'The classification of water based on salinity: fresh water, marine
-    water, and brackish water.'
-- id: water-as-a-natural-resource::importance-of-water
+  name: Water Salinity
+  description: Water classified as fresh, marine and brackish based on salinity levels.
+- id: g6::water-as-a-natural-resource::importance-of-water
+  grade: 6
   chapter_name: Water as a Natural Resource
   name: Importance of Water
-  description: The role of water in human activities and the existence of life.
-- id: water-as-a-natural-resource::water-pollution
+  description: Water essential for human activities and existence of life.
+- id: g6::water-as-a-natural-resource::water-conservation
+  grade: 6
   chapter_name: Water as a Natural Resource
-  name: Water Pollution
-  description: The causes and effects of water pollution and the need for conservation.
-- id: energy-in-day-to-day-life::energy-sources
+  name: Water Conservation
+  description: Importance of conserving water and minimizing pollution.
+- id: g6::energy-in-day-to-day-life::energy-sources
+  grade: 6
   chapter_name: Energy in Day-to-Day Life
   name: Energy Sources
   description: Different types of energy used in day-to-day life.
-- id: energy-in-day-to-day-life::energy-conversion
+- id: g6::energy-in-day-to-day-life::energy-conversion
+  grade: 6
   chapter_name: Energy in Day-to-Day Life
   name: Energy Conversion
   description: How energy is converted from one form to another.
-- id: energy-in-day-to-day-life::energy-storage
+- id: g6::energy-in-day-to-day-life::energy-storage
+  grade: 6
   chapter_name: Energy in Day-to-Day Life
   name: Energy Storage
-  description: Ways in which energy is stored in different forms.
-- id: energy-in-day-to-day-life::energy-utilization
+  description: Ways in which energy is stored in various forms.
+- id: g6::energy-in-day-to-day-life::energy-utilization
+  grade: 6
   chapter_name: Energy in Day-to-Day Life
   name: Energy Utilization
-  description: How energy is used to do work in various activities.
-- id: light-and-vision::sources-of-light
+  description: How energy is used to do work in different activities.
+- id: g6::light-and-vision::sources-of-light
+  grade: 6
   chapter_name: Light and Vision
   name: Sources of Light
   description: Objects that emit light.
-- id: light-and-vision::transmission-of-light
+- id: g6::light-and-vision::transmission-of-light
+  grade: 6
   chapter_name: Light and Vision
   name: Transmission of Light
   description: How light passes through different materials.
-- id: light-and-vision::light-rays-and-beams
+- id: g6::light-and-vision::light-rays-and-beams
+  grade: 6
   chapter_name: Light and Vision
   name: Light Rays and Beams
-  description: The path of light as it travels from a source to an observer.
-- id: light-and-vision::requirements-for-vision
+  description: The path of light as it travels.
+- id: g6::light-and-vision::requirements-for-vision
+  grade: 6
   chapter_name: Light and Vision
   name: Requirements for Vision
-  description: The factors necessary for us to see an object, including light and
-    the eye.
-- id: sound-and-hearing::sound-production
+  description: The factors needed to see an object clearly.
+- id: g6::sound-and-hearing::sound-production
+  grade: 6
   chapter_name: Sound and Hearing
   name: Sound Production
   description: How sound is produced by vibrating objects.
-- id: sound-and-hearing::hearing-and-ear
+- id: g6::sound-and-hearing::hearing-and-ear
+  grade: 6
   chapter_name: Sound and Hearing
   name: Hearing and Ear
-  description: The process of hearing and the role of the ear in sensing sound.
-- id: sound-and-hearing::types-of-sounds
+  description: How we hear sounds and the role of the ear in hearing.
+- id: g6::sound-and-hearing::types-of-sounds
+  grade: 6
   chapter_name: Sound and Hearing
   name: Types of Sounds
   description: The classification of sounds into music and noise, and the characteristics
     of each.
-- id: sound-and-hearing::sound-equipment-and-instruments
+- id: g6::sound-and-hearing::sound-equipment-and-instruments
+  grade: 6
   chapter_name: Sound and Hearing
   name: Sound Equipment and Instruments
   description: The creation and use of various equipment and instruments to produce
-    and manipulate sound.
-- id: magnets::magnetic-properties
+    and play sounds.
+- id: g6::magnets::magnetic-properties
+  grade: 6
   chapter_name: Magnets
   name: Magnetic Properties
-  description: The characteristics and behaviors of magnets.
-- id: magnets::magnetic-poles
+  description: The characteristics of magnets and their interactions with other materials.
+- id: g6::magnets::types-of-magnets
+  grade: 6
+  chapter_name: Magnets
+  name: Types of Magnets
+  description: The different shapes and forms of magnets and their uses.
+- id: g6::magnets::magnetic-poles
+  grade: 6
   chapter_name: Magnets
   name: Magnetic Poles
-  description: The points on a magnet where the magnetic force is strongest.
-- id: magnets::magnetic-interactions
+  description: The two ends of a magnet with opposite magnetic properties.
+- id: g6::magnets::magnetic-forces
+  grade: 6
   chapter_name: Magnets
-  name: Magnetic Interactions
-  description: The way magnets interact with each other and other objects.
-- id: magnets::magnetic-fields
-  chapter_name: Magnets
-  name: Magnetic Fields
-  description: The area around a magnet where the magnetic force can be detected.
-- id: electricity-for-a-comfortable-life::electricity-generation
+  name: Magnetic Forces
+  description: The attractive and repulsive forces between magnets and other materials.
+- id: g6::electricity-for-a-comfortable-life::electricity-generation
+  grade: 6
   chapter_name: Electricity for a Comfortable Life
   name: Electricity Generation
-  description: Methods of producing electricity.
-- id: electricity-for-a-comfortable-life::electric-circuits
+  description: Methods of generating electricity.
+- id: g6::electricity-for-a-comfortable-life::electric-circuits
+  grade: 6
   chapter_name: Electricity for a Comfortable Life
   name: Electric Circuits
   description: Systems that allow electric current to flow.
-- id: electricity-for-a-comfortable-life::electric-appliances
+- id: g6::electricity-for-a-comfortable-life::electric-cells
+  grade: 6
+  chapter_name: Electricity for a Comfortable Life
+  name: Electric Cells
+  description: Devices that convert chemical energy into electricity.
+- id: g6::electricity-for-a-comfortable-life::electric-appliances
+  grade: 6
   chapter_name: Electricity for a Comfortable Life
   name: Electric Appliances
-  description: Devices that use electricity to perform tasks.
-- id: electricity-for-a-comfortable-life::electricity-measurement
-  chapter_name: Electricity for a Comfortable Life
-  name: Electricity Measurement
-  description: Units and tools used to measure electricity.
-- id: heat-and-its-effects::heat-generation
+  description: Devices that use electricity to perform a function.
+- id: g6::heat-and-its-effects::heat-generation
+  grade: 6
   chapter_name: Heat and Its Effects
   name: Heat Generation
   description: Sources and methods of heat production.
-- id: heat-and-its-effects::effects-of-heat
+- id: g6::heat-and-its-effects::effects-of-heat
+  grade: 6
   chapter_name: Heat and Its Effects
   name: Effects of Heat
-  description: Changes in temperature, expansion, and changes of state.
-- id: heat-and-its-effects::temperature-measurement
-  chapter_name: Heat and Its Effects
-  name: Temperature Measurement
-  description: Methods and tools for measuring temperature.
-- id: heat-and-its-effects::heat-transfer
+  description: Changes in temperature, expansion, and state of matter.
+- id: g6::heat-and-its-effects::heat-transfer
+  grade: 6
   chapter_name: Heat and Its Effects
   name: Heat Transfer
-  description: Conduction, convection, and radiation heat transfer.
-- id: food-related-interactions::food-webs
+  description: Methods of heat transfer, including conduction, convection, and radiation.
+- id: g6::heat-and-its-effects::heat-measurement
+  grade: 6
+  chapter_name: Heat and Its Effects
+  name: Heat Measurement
+  description: Methods of measuring temperature and heat.
+- id: g6::food-related-interactions::food-webs
+  grade: 6
   chapter_name: Food-related Interactions
   name: Food Webs
   description: Interconnected relationships between plants and animals for food.
-- id: food-related-interactions::food-chains
+- id: g6::food-related-interactions::food-chains
+  grade: 6
   chapter_name: Food-related Interactions
   name: Food Chains
-  description: Linear sequences showing the flow of energy from one living organism
-    to another.
-- id: food-related-interactions::photosynthesis
+  description: Linear sequences of energy transfer from one living organism to another.
+- id: g6::food-related-interactions::photosynthesis
+  grade: 6
   chapter_name: Food-related Interactions
   name: Photosynthesis
-  description: The process by which green plants produce food using sunlight, water,
-    and carbon dioxide.
-- id: food-related-interactions::animal-nutrition
+  description: How green plants produce food using sunlight, water, and carbon dioxide.
+- id: g6::food-related-interactions::animal-nutrition
+  grade: 6
   chapter_name: Food-related Interactions
   name: Animal Nutrition
-  description: The different modes of nutrition in animals, including herbivory, carnivory,
-    and omnivory.
-- id: weather-and-climate::weather-factors
+  description: How animals obtain and categorize their food sources as herbivores,
+    carnivores, or omnivores.
+- id: g6::weather-and-climate::weather-factors
+  grade: 6
   chapter_name: Weather and Climate
   name: Weather Factors
-  description: The factors that determine the weather.
-- id: weather-and-climate::climate-formation
+  description: Factors that determine the weather conditions.
+- id: g6::weather-and-climate::climate-formation
+  grade: 6
   chapter_name: Weather and Climate
   name: Climate Formation
-  description: The process of forming climate through long-term weather patterns.
-- id: weather-and-climate::weather-measurement
+  description: The process of forming the climate of an area.
+- id: g6::weather-and-climate::weather-measurement
+  grade: 6
   chapter_name: Weather and Climate
   name: Weather Measurement
-  description: The methods used to measure and record weather conditions.
-- id: weather-and-climate::climatic-disasters
+  description: Methods used to measure weather conditions.
+- id: g6::weather-and-climate::climatic-disasters
+  grade: 6
   chapter_name: Weather and Climate
   name: Climatic Disasters
-  description: The natural disasters that occur due to climatic changes.
+  description: Disasters caused by climatic changes.
+- id: g7::plant-diversity::plant-structure
+  grade: 7
+  chapter_name: Plant Diversity
+  name: Plant Structure
+  description: The study of the different parts of a plant.
+- id: g7::plant-diversity::plant-diversity
+  grade: 7
+  chapter_name: Plant Diversity
+  name: Plant Diversity
+  description: The variety of plants in terms of their morphological features and
+    functions.
+- id: g7::plant-diversity::photosynthesis
+  grade: 7
+  chapter_name: Plant Diversity
+  name: Photosynthesis
+  description: The process by which plants convert sunlight, water and carbon dioxide
+    into food.
+- id: g7::plant-diversity::plant-adaptations
+  grade: 7
+  chapter_name: Plant Diversity
+  name: Plant Adaptations
+  description: The unique features of plants that enable them to survive and thrive
+    in different environments.
+- id: g7::static-electricity::static-electric-charges
+  grade: 7
+  chapter_name: Static Electricity
+  name: Static Electric Charges
+  description: Generated on objects when rubbed.
+- id: g7::static-electricity::types-of-static-electric-charges
+  grade: 7
+  chapter_name: Static Electricity
+  name: Types of Static Electric Charges
+  description: Positive and negative charges.
+- id: g7::static-electricity::generation-of-static-electric-charges
+  grade: 7
+  chapter_name: Static Electricity
+  name: Generation of Static Electric Charges
+  description: Transfer of electrons from one object to another.
+- id: g7::static-electricity::phenomena-associated-with-static-electricity
+  grade: 7
+  chapter_name: Static Electricity
+  name: Phenomena Associated with Static Electricity
+  description: Occurrences in daily life, such as lightning and attraction of hair
+    to TV screens.
+- id: g7::generation-of-electricity::sources-of-electricity
+  grade: 7
+  chapter_name: Generation of Electricity
+  name: Sources of Electricity
+  description: Equipment or appliances that generate electricity.
+- id: g7::generation-of-electricity::electricity-generation-methods
+  grade: 7
+  chapter_name: Generation of Electricity
+  name: Electricity Generation Methods
+  description: Chemical, mechanical, and solar methods of generating electricity.
+- id: g7::generation-of-electricity::cells-and-batteries
+  grade: 7
+  chapter_name: Generation of Electricity
+  name: Cells and Batteries
+  description: Chemical cells and batteries that store and generate electricity.
+- id: g7::generation-of-electricity::electric-circuits
+  grade: 7
+  chapter_name: Generation of Electricity
+  name: Electric Circuits
+  description: Pathways for electric current to flow from a source to a device.
+- id: g7::functions-of-water::water-as-a-solvent
+  grade: 7
+  chapter_name: Functions of Water
+  name: Water as a Solvent
+  description: Water's ability to dissolve and separate substances.
+- id: g7::functions-of-water::water-as-a-coolant
+  grade: 7
+  chapter_name: Functions of Water
+  name: Water as a Coolant
+  description: Water's ability to absorb and reduce heat.
+- id: g7::functions-of-water::water-as-a-medium-of-life
+  grade: 7
+  chapter_name: Functions of Water
+  name: Water as a Medium of Life
+  description: Water's role in supporting biological processes and life forms.
+- id: g7::acids-and-bases::acid-properties
+  grade: 7
+  chapter_name: Acids and Bases
+  name: Acid Properties
+  description: Characteristics and effects of acids.
+- id: g7::acids-and-bases::base-properties
+  grade: 7
+  chapter_name: Acids and Bases
+  name: Base Properties
+  description: Characteristics and effects of bases.
+- id: g7::acids-and-bases::indicators-and-ph
+  grade: 7
+  chapter_name: Acids and Bases
+  name: Indicators and pH
+  description: Use of indicators and pH papers to identify acids, bases, and neutral
+    substances.
+- id: g7::acids-and-bases::classification-and-identification
+  grade: 7
+  chapter_name: Acids and Bases
+  name: Classification and Identification
+  description: Classification and identification of acids, bases, and neutral substances
+    in everyday life and laboratory settings.
+- id: g7::animal-diversity::vertebrate-classification
+  grade: 7
+  chapter_name: Animal Diversity
+  name: Vertebrate Classification
+  description: Grouping animals with a backbone into categories.
+- id: g7::animal-diversity::invertebrate-classification
+  grade: 7
+  chapter_name: Animal Diversity
+  name: Invertebrate Classification
+  description: Grouping animals without a backbone into categories.
+- id: g7::animal-diversity::adaptations-for-survival
+  grade: 7
+  chapter_name: Animal Diversity
+  name: Adaptations for Survival
+  description: How animals adapt to their environment for protection and finding food.
+- id: g7::animal-diversity::classification-methods
+  grade: 7
+  chapter_name: Animal Diversity
+  name: Classification Methods
+  description: Using dichotomous keys to classify living organisms.
+- id: g7::forms-of-energy-and-uses::forms-of-energy
+  grade: 7
+  chapter_name: Forms of Energy and Uses
+  name: Forms of Energy
+  description: Different types of energy that exist and are used to do work.
+- id: g7::forms-of-energy-and-uses::energy-transformation
+  grade: 7
+  chapter_name: Forms of Energy and Uses
+  name: Energy Transformation
+  description: The process of converting one form of energy to another form of energy.
+- id: g7::forms-of-energy-and-uses::kinetic-energy
+  grade: 7
+  chapter_name: Forms of Energy and Uses
+  name: Kinetic Energy
+  description: The energy of motion, possessed by an object in motion.
+- id: g7::forms-of-energy-and-uses::potential-energy
+  grade: 7
+  chapter_name: Forms of Energy and Uses
+  name: Potential Energy
+  description: The stored energy of an object due to its position or shape.
+- id: g7::forms-of-energy-and-uses::mechanical-energy
+  grade: 7
+  chapter_name: Forms of Energy and Uses
+  name: Mechanical Energy
+  description: The total energy of an object, consisting of kinetic and potential
+    energy.
+- id: g7::the-nature-of-the-earth::earth's-layers
+  grade: 7
+  chapter_name: The Nature of the Earth
+  name: Earth's Layers
+  description: The composition and structure of the earth's core, mantle, and crust.
+- id: g7::the-nature-of-the-earth::plate-tectonics
+  grade: 7
+  chapter_name: The Nature of the Earth
+  name: Plate Tectonics
+  description: The movement and interaction of tectonic plates on the earth's surface.
+- id: g7::the-nature-of-the-earth::earth's-surface-features
+  grade: 7
+  chapter_name: The Nature of the Earth
+  name: Earth's Surface Features
+  description: The formation and characteristics of mountains, rivers, oceans, and
+    other geological features on the earth's surface.
+- id: g7::the-nature-of-the-earth::geological-processes
+  grade: 7
+  chapter_name: The Nature of the Earth
+  name: Geological Processes
+  description: The methods and techniques used by geologists to study the earth's
+    internal structure and composition, including seismic waves and volcanic eruptions.
+- id: g7::light::umbrae-and-shadows
+  grade: 7
+  chapter_name: Light
+  name: Umbrae and Shadows
+  description: Formation and characteristics of umbrae and shadows.
+- id: g7::light::reflection-of-light
+  grade: 7
+  chapter_name: Light
+  name: Reflection of Light
+  description: The phenomenon of returning light rays in the same medium after falling
+    on a surface.
+- id: g7::light::images-formed-by-mirrors
+  grade: 7
+  chapter_name: Light
+  name: Images Formed by Mirrors
+  description: Formation of images by plane mirrors, including virtual, erect, and
+    laterally inverted images.
+- id: g7::light::multiple-images
+  grade: 7
+  chapter_name: Light
+  name: Multiple Images
+  description: Formation of multiple images by two or more plane mirrors at an angle
+    or parallel to each other.
+- id: g7::the-correct-use-of-the-microscope::magnification
+  grade: 7
+  chapter_name: The Correct Use of the Microscope
+  name: Magnification
+  description: The process of making an object appear larger.
+- id: g7::the-correct-use-of-the-microscope::resolution
+  grade: 7
+  chapter_name: The Correct Use of the Microscope
+  name: Resolution
+  description: The ability to distinguish between two closely spaced points.
+- id: g7::the-correct-use-of-the-microscope::microscope-parts
+  grade: 7
+  chapter_name: The Correct Use of the Microscope
+  name: Microscope Parts
+  description: The components of a microscope and their functions.
+- id: g7::the-correct-use-of-the-microscope::microscope-use
+  grade: 7
+  chapter_name: The Correct Use of the Microscope
+  name: Microscope Use
+  description: The proper techniques and precautions for using a microscope.
+- id: g7::sound::sound-production
+  grade: 7
+  chapter_name: Sound
+  name: Sound Production
+  description: How sound is generated due to vibrations.
+- id: g7::sound::sound-propagation
+  grade: 7
+  chapter_name: Sound
+  name: Sound Propagation
+  description: How sound travels through different media.
+- id: g7::sound::sound-speed
+  grade: 7
+  chapter_name: Sound
+  name: Sound Speed
+  description: The speed of sound in different media and its comparison.
+- id: g7::sound::sound-medium
+  grade: 7
+  chapter_name: Sound
+  name: Sound Medium
+  description: The necessity of a medium for sound propagation.
+- id: g7::biological-processes::cells
+  grade: 7
+  chapter_name: Biological Processes
+  name: Cells
+  description: The basic structural units of all living organisms.
+- id: g7::biological-processes::tissues
+  grade: 7
+  chapter_name: Biological Processes
+  name: Tissues
+  description: A group of cells, organised for a specific functions.
+- id: g7::biological-processes::organ-systems
+  grade: 7
+  chapter_name: Biological Processes
+  name: Organ Systems
+  description: A group of organs that perform a special function or functions.
+- id: g7::biological-processes::biological-processes
+  grade: 7
+  chapter_name: Biological Processes
+  name: Biological Processes
+  description: The processes that occur within living organisms, such as respiration,
+    digestion, and energy production.
+- id: g7::atmosphere::atmospheric-layers
+  grade: 7
+  chapter_name: Atmosphere
+  name: Atmospheric Layers
+  description: The different layers of the atmosphere and their characteristics.
+- id: g7::atmosphere::atmospheric-composition
+  grade: 7
+  chapter_name: Atmosphere
+  name: Atmospheric Composition
+  description: The different gases present in the atmosphere and their functions.
+- id: g7::atmosphere::atmospheric-functions
+  grade: 7
+  chapter_name: Atmosphere
+  name: Atmospheric Functions
+  description: The roles of the atmosphere in supporting life on Earth, including
+    temperature regulation, oxygen supply, and protection from harmful radiation.
+- id: g7::atmosphere::air-pollution
+  grade: 7
+  chapter_name: Atmosphere
+  name: Air Pollution
+  description: The causes, effects, and prevention of air pollution, including the
+    impact of human activities on the atmosphere.
+- id: g7::heat-and-temperature::temperature-measurement
+  grade: 7
+  chapter_name: Heat and Temperature
+  name: Temperature Measurement
+  description: Methods and tools used to measure temperature.
+- id: g7::heat-and-temperature::heat-transfer
+  grade: 7
+  chapter_name: Heat and Temperature
+  name: Heat Transfer
+  description: The process by which heat energy is transferred from one object to
+    another.
+- id: g7::heat-and-temperature::thermometers-and-scales
+  grade: 7
+  chapter_name: Heat and Temperature
+  name: Thermometers and Scales
+  description: The different types of thermometers and temperature scales used to
+    measure temperature.
+- id: g7::heat-and-temperature::melting-and-boiling-points
+  grade: 7
+  chapter_name: Heat and Temperature
+  name: Melting and Boiling Points
+  description: The temperatures at which substances change from solid to liquid and
+    liquid to gas.
+- id: g7::soil::soil-composition
+  grade: 7
+  chapter_name: Soil
+  name: Soil Composition
+  description: The mixture of different components that make up soil.
+- id: g7::soil::soil-structure
+  grade: 7
+  chapter_name: Soil
+  name: Soil Structure
+  description: The arrangement of soil particles and their relationships.
+- id: g7::soil::soil-functions
+  grade: 7
+  chapter_name: Soil
+  name: Soil Functions
+  description: The roles that soil plays in supporting life and ecosystems.
+- id: g7::soil::soil-microorganisms
+  grade: 7
+  chapter_name: Soil
+  name: Soil Microorganisms
+  description: The tiny living organisms that inhabit soil and contribute to its processes.
+- id: g7::force-and-motion::motion
+  grade: 7
+  chapter_name: Force and Motion
+  name: Motion
+  description: Change of position, with time, of living or non living objects.
+- id: g7::force-and-motion::distance
+  grade: 7
+  chapter_name: Force and Motion
+  name: Distance
+  description: Total length of the path of a motion.
+- id: g7::force-and-motion::displacement
+  grade: 7
+  chapter_name: Force and Motion
+  name: Displacement
+  description: Linear length between the starting and ending positions of a motion.
+- id: g7::force-and-motion::force
+  grade: 7
+  chapter_name: Force and Motion
+  name: Force
+  description: A push or a pull applied to an object.
+- id: g7::nutrients-in-food::nutrient-sources
+  grade: 7
+  chapter_name: Nutrients in Food
+  name: Nutrient Sources
+  description: Where nutrients are found in food.
+- id: g7::nutrients-in-food::nutrient-functions
+  grade: 7
+  chapter_name: Nutrients in Food
+  name: Nutrient Functions
+  description: What nutrients do in the body.
+- id: g7::nutrients-in-food::balanced-diet
+  grade: 7
+  chapter_name: Nutrients in Food
+  name: Balanced Diet
+  description: A diet with the right amounts of nutrients and fibre.
+- id: g7::nutrients-in-food::identifying-nutrients
+  grade: 7
+  chapter_name: Nutrients in Food
+  name: Identifying Nutrients
+  description: Methods to test for different nutrients in food.
+- id: g7::minerals-and-rocks::rock-formation
+  grade: 7
+  chapter_name: Minerals and Rocks
+  name: Rock Formation
+  description: How rocks are formed through geological processes.
+- id: g7::minerals-and-rocks::mineral-properties
+  grade: 7
+  chapter_name: Minerals and Rocks
+  name: Mineral Properties
+  description: Characteristics of minerals, such as crystalline form and composition.
+- id: g7::minerals-and-rocks::weathering-and-erosion
+  grade: 7
+  chapter_name: Minerals and Rocks
+  name: Weathering and Erosion
+  description: Processes that break down rocks into smaller particles and soil.
+- id: g7::minerals-and-rocks::rock-cycle
+  grade: 7
+  chapter_name: Minerals and Rocks
+  name: Rock Cycle
+  description: Continuous process of rock formation, transformation, and destruction.
+- id: g7::sources-of-energy::renewable-energy
+  grade: 7
+  chapter_name: Sources of Energy
+  name: Renewable Energy
+  description: Energy sources that can be replenished naturally.
+- id: g7::sources-of-energy::non-renewable-energy
+  grade: 7
+  chapter_name: Sources of Energy
+  name: Non-Renewable Energy
+  description: Energy sources that cannot be replenished naturally.
+- id: g7::sources-of-energy::solar-energy
+  grade: 7
+  chapter_name: Sources of Energy
+  name: Solar Energy
+  description: Energy generated from the sun's rays.
+- id: g7::sources-of-energy::wind-energy
+  grade: 7
+  chapter_name: Sources of Energy
+  name: Wind Energy
+  description: Energy generated from wind movement.
+- id: g7::sources-of-energy::geothermal-energy
+  grade: 7
+  chapter_name: Sources of Energy
+  name: Geothermal Energy
+  description: Energy generated from heat within the Earth's core.
+- id: g8::importance-of-microorganisms::microbial-diversity
+  grade: 8
+  chapter_name: Importance of Microorganisms
+  name: Microbial Diversity
+  description: The variety of microorganisms found in different environments.
+- id: g8::importance-of-microorganisms::microbial-activity
+  grade: 8
+  chapter_name: Importance of Microorganisms
+  name: Microbial Activity
+  description: The processes by which microorganisms affect their environment.
+- id: g8::importance-of-microorganisms::microorganisms-and-food
+  grade: 8
+  chapter_name: Importance of Microorganisms
+  name: Microorganisms and Food
+  description: The effects of microorganisms on food spoilage and quality.
+- id: g8::importance-of-microorganisms::microorganisms-and-human-health
+  grade: 8
+  chapter_name: Importance of Microorganisms
+  name: Microorganisms and Human Health
+  description: The impact of microorganisms on human health and disease.
+- id: g8::animal-classification::animal-classification
+  grade: 8
+  chapter_name: Animal Classification
+  name: Animal Classification
+  description: The process of grouping animals based on their characteristics.
+- id: g8::animal-classification::vertebrate-classification
+  grade: 8
+  chapter_name: Animal Classification
+  name: Vertebrate Classification
+  description: The classification of animals with a backbone into different groups.
+- id: g8::animal-classification::invertebrate-classification
+  grade: 8
+  chapter_name: Animal Classification
+  name: Invertebrate Classification
+  description: The classification of animals without a backbone into different groups.
+- id: g8::animal-classification::characteristics-of-animals
+  grade: 8
+  chapter_name: Animal Classification
+  name: Characteristics of Animals
+  description: The study of the physical and biological characteristics of animals.
+- id: g8::diversity-and-functions-of-plant-parts::photosynthesis
+  grade: 8
+  chapter_name: Diversity and Functions of Plant Parts
+  name: Photosynthesis
+  description: How plants convert sunlight, water and carbon dioxide into food.
+- id: g8::diversity-and-functions-of-plant-parts::plant-adaptations
+  grade: 8
+  chapter_name: Diversity and Functions of Plant Parts
+  name: Plant Adaptations
+  description: How plants adapt to different environments and conditions.
+- id: g8::diversity-and-functions-of-plant-parts::plant-structure
+  grade: 8
+  chapter_name: Diversity and Functions of Plant Parts
+  name: Plant Structure
+  description: The basic components and organization of plant parts.
+- id: g8::diversity-and-functions-of-plant-parts::plant-functions
+  grade: 8
+  chapter_name: Diversity and Functions of Plant Parts
+  name: Plant Functions
+  description: The roles and responsibilities of different plant parts.
+- id: g8::properties-of-matter::discontinuous-nature-of-matter
+  grade: 8
+  chapter_name: Properties of Matter
+  name: Discontinuous Nature of Matter
+  description: Matter is composed of particles with spaces among them.
+- id: g8::properties-of-matter::physical-properties-of-matter
+  grade: 8
+  chapter_name: Properties of Matter
+  name: Physical Properties of Matter
+  description: Variation of properties due to organisation of particles in solids,
+    liquids and gases.
+- id: g8::properties-of-matter::states-of-matter
+  grade: 8
+  chapter_name: Properties of Matter
+  name: States of Matter
+  description: Solid, liquid and gaseous states of matter and their characteristics.
+- id: g8::sound::sources-of-sound
+  grade: 8
+  chapter_name: Sound
+  name: Sources of Sound
+  description: Objects that produce sound by vibrating air, membranes, or strings.
+- id: g8::sound::frequency-of-vibrations
+  grade: 8
+  chapter_name: Sound
+  name: Frequency of Vibrations
+  description: The number of vibrations of an object per unit time, measured in Hertz
+    (Hz).
+- id: g8::sound::vibration-methods
+  grade: 8
+  chapter_name: Sound
+  name: Vibration Methods
+  description: Ways in which sound is produced, including vibrating air columns, membranes,
+    and strings.
+- id: g8::magnets::magnetic-properties
+  grade: 8
+  chapter_name: Magnets
+  name: Magnetic Properties
+  description: Characteristics of materials that interact with magnets
+- id: g8::magnets::magnetic-poles
+  grade: 8
+  chapter_name: Magnets
+  name: Magnetic Poles
+  description: Regions of a magnet where magnetic power is concentrated
+- id: g8::magnets::magnetic-field
+  grade: 8
+  chapter_name: Magnets
+  name: Magnetic Field
+  description: Area around a magnet where magnetic power is distributed
+- id: g8::magnets::compass
+  grade: 8
+  chapter_name: Magnets
+  name: Compass
+  description: Instrument used to find direction and identify magnetic fields
+- id: g8::measurements-associated-with-electricity::electric-current
+  grade: 8
+  chapter_name: Measurements Associated with Electricity
+  name: Electric Current
+  description: The flow of electrical charges through a closed circuit.
+- id: g8::measurements-associated-with-electricity::potential-difference
+  grade: 8
+  chapter_name: Measurements Associated with Electricity
+  name: Potential Difference
+  description: The difference of electric potential energy between two points in a
+    circuit.
+- id: g8::measurements-associated-with-electricity::resistance-of-a-conductor
+  grade: 8
+  chapter_name: Measurements Associated with Electricity
+  name: Resistance of a Conductor
+  description: The opposition to the flow of electric current through a conductor.
+- id: g8::changes-in-matter::physical-changes
+  grade: 8
+  chapter_name: Changes in Matter
+  name: Physical Changes
+  description: Changes in which the composition of matter does not change.
+- id: g8::changes-in-matter::chemical-changes
+  grade: 8
+  chapter_name: Changes in Matter
+  name: Chemical Changes
+  description: Changes in which the composition of matter forming new substances.
+- id: g8::changes-in-matter::changes-of-state
+  grade: 8
+  chapter_name: Changes in Matter
+  name: Changes of State
+  description: Physical changes that involve a change in state of matter.
+- id: g8::changes-in-matter::chemical-reactions
+  grade: 8
+  chapter_name: Changes in Matter
+  name: Chemical Reactions
+  description: Formation of new substances by one or more substances undergoing change.
+- id: g8::human-organ-systems::human-excretory-system
+  grade: 8
+  chapter_name: Human Organ Systems
+  name: Human Excretory System
+  description: The system that removes waste products from the body.
+- id: g8::human-organ-systems::kidney-function
+  grade: 8
+  chapter_name: Human Organ Systems
+  name: Kidney Function
+  description: The role of kidneys in filtering waste and excess fluids from the blood.
+- id: g8::human-organ-systems::nervous-coordination
+  grade: 8
+  chapter_name: Human Organ Systems
+  name: Nervous Coordination
+  description: The process of coordinating and controlling the various functions of
+    the body by the nervous system.
+- id: g8::human-organ-systems::human-organ-structure
+  grade: 8
+  chapter_name: Human Organ Systems
+  name: Human Organ Structure
+  description: The internal and external structure of human organs such as kidneys
+    and brain.
+- id: g8::electricity::electric-circuits
+  grade: 8
+  chapter_name: Electricity
+  name: Electric Circuits
+  description: Path of electric current through conductors.
+- id: g8::electricity::electric-current
+  grade: 8
+  chapter_name: Electricity
+  name: Electric Current
+  description: Flow of electric charges through a conductor.
+- id: g8::electricity::voltage-and-resistance
+  grade: 8
+  chapter_name: Electricity
+  name: Voltage and Resistance
+  description: Factors affecting electric current flow.
+- id: g8::electricity::current-controlling-components
+  grade: 8
+  chapter_name: Electricity
+  name: Current Controlling Components
+  description: Devices used to control electric current flow.
+- id: g8::main-biological-processes-in-plants::photosynthesis
+  grade: 8
+  chapter_name: Main Biological Processes in Plants
+  name: Photosynthesis
+  description: How plants convert sunlight, water and carbon dioxide into food.
+- id: g8::main-biological-processes-in-plants::transportation
+  grade: 8
+  chapter_name: Main Biological Processes in Plants
+  name: Transportation
+  description: Movement of water, nutrients and sugars within the plant.
+- id: g8::main-biological-processes-in-plants::transpiration
+  grade: 8
+  chapter_name: Main Biological Processes in Plants
+  name: Transpiration
+  description: Loss of water as vapour to the atmosphere through stomata.
+- id: g8::main-biological-processes-in-plants::adaptations
+  grade: 8
+  chapter_name: Main Biological Processes in Plants
+  name: Adaptations
+  description: Specialized features of plants to conserve water and survive in different
+    environments.
+- id: g8::life-cycles-of-living-organisms::life-cycles
+  grade: 8
+  chapter_name: Life Cycles of Living Organisms
+  name: Life Cycles
+  description: The sequence of events in stages of development as a cyclic process.
+- id: g8::life-cycles-of-living-organisms::metamorphosis
+  grade: 8
+  chapter_name: Life Cycles of Living Organisms
+  name: Metamorphosis
+  description: The process with different morphological changes in different stages
+    of life cycle that some living organisms go through to become adults.
+- id: g8::life-cycles-of-living-organisms::stages-of-life
+  grade: 8
+  chapter_name: Life Cycles of Living Organisms
+  name: Stages of Life
+  description: The different stages in the life cycle of an organism, such as birth,
+    growth, reproduction, and death.
+- id: g8::life-cycles-of-living-organisms::reproduction
+  grade: 8
+  chapter_name: Life Cycles of Living Organisms
+  name: Reproduction
+  description: The process by which living organisms produce offspring, ensuring the
+    continuation of their species.
+- id: g8::food-preservation::food-spoilage
+  grade: 8
+  chapter_name: Food Preservation
+  name: Food Spoilage
+  description: Factors causing food to become unsuitable for consumption.
+- id: g8::food-preservation::food-preservation-methods
+  grade: 8
+  chapter_name: Food Preservation
+  name: Food Preservation Methods
+  description: Techniques used to extend the shelf life of food.
+- id: g8::food-preservation::food-preservation-techniques
+  grade: 8
+  chapter_name: Food Preservation
+  name: Food Preservation Techniques
+  description: Methods used to control factors causing food spoilage.
+- id: g8::food-preservation::food-additives
+  grade: 8
+  chapter_name: Food Preservation
+  name: Food Additives
+  description: Chemical substances added to food to prevent spoilage and extend shelf
+    life.
+- id: g8::solar-system-phenomena::planetary-motion
+  grade: 8
+  chapter_name: Solar System Phenomena
+  name: Planetary Motion
+  description: The movement of planets around the sun and their rotation on their
+    axes.
+- id: g8::solar-system-phenomena::gravitational-forces
+  grade: 8
+  chapter_name: Solar System Phenomena
+  name: Gravitational Forces
+  description: The forces that cause objects to attract each other and hold planets
+    in orbit around the sun.
+- id: g8::solar-system-phenomena::seasonal-changes
+  grade: 8
+  chapter_name: Solar System Phenomena
+  name: Seasonal Changes
+  description: The variations in weather and temperature that occur due to the tilt
+    of the earth's axis and its orbit around the sun.
+- id: g8::solar-system-phenomena::phases-of-the-moon
+  grade: 8
+  chapter_name: Solar System Phenomena
+  name: Phases of the Moon
+  description: The different appearances of the moon as it orbits the earth and reflects
+    the sun's light.
+- id: g8::natural-disasters::causes-of-natural-disasters
+  grade: 8
+  chapter_name: Natural Disasters
+  name: Causes of Natural Disasters
+  description: Factors that contribute to the occurrence of natural disasters.
+- id: g8::natural-disasters::effects-of-natural-disasters
+  grade: 8
+  chapter_name: Natural Disasters
+  name: Effects of Natural Disasters
+  description: Impact of natural disasters on human lives, property, environment,
+    and economy.
+- id: g8::natural-disasters::disaster-management
+  grade: 8
+  chapter_name: Natural Disasters
+  name: Disaster Management
+  description: Strategies and measures to mitigate and adapt to natural disasters.
+- id: g8::natural-disasters::types-of-natural-disasters
+  grade: 8
+  chapter_name: Natural Disasters
+  name: Types of Natural Disasters
+  description: Classification and characteristics of different types of natural disasters,
+    such as droughts, floods, landslides, and more.
+- id: g9::applications-of-micro-organisms::microbial-ecology
+  grade: 9
+  chapter_name: Applications of Micro-organisms
+  name: Microbial Ecology
+  description: The study of microorganisms in their environment.
+- id: g9::applications-of-micro-organisms::microbial-applications
+  grade: 9
+  chapter_name: Applications of Micro-organisms
+  name: Microbial Applications
+  description: The use of microorganisms in various fields such as agriculture, medicine,
+    and industry.
+- id: g9::applications-of-micro-organisms::microbial-processes
+  grade: 9
+  chapter_name: Applications of Micro-organisms
+  name: Microbial Processes
+  description: The biological processes that microorganisms undergo, such as photosynthesis,
+    nitrogen fixation, and decomposition.
+- id: g9::applications-of-micro-organisms::microbial-technology
+  grade: 9
+  chapter_name: Applications of Micro-organisms
+  name: Microbial Technology
+  description: The use of microorganisms to develop new products and technologies,
+    such as biogas, biopesticides, and biofertilizers.
+- id: g9::eye-and-ear::eye-structure
+  grade: 9
+  chapter_name: Eye and Ear
+  name: Eye Structure
+  description: The main parts of the human eye and their functions.
+- id: g9::eye-and-ear::image-formation
+  grade: 9
+  chapter_name: Eye and Ear
+  name: Image Formation
+  description: How the eye perceives and forms images of objects.
+- id: g9::eye-and-ear::vision-defects
+  grade: 9
+  chapter_name: Eye and Ear
+  name: Vision Defects
+  description: Causes and corrections of long sight and short sight.
+- id: g9::eye-and-ear::binocular-vision
+  grade: 9
+  chapter_name: Eye and Ear
+  name: Binocular Vision
+  description: The ability to see the same area with both eyes and its range in humans.
+- id: g9::nature-and-properties-of-matter::properties-of-matter
+  grade: 9
+  chapter_name: Nature and Properties of Matter
+  name: Properties of Matter
+  description: Classification of matter into pure substances and mixtures.
+- id: g9::nature-and-properties-of-matter::elements
+  grade: 9
+  chapter_name: Nature and Properties of Matter
+  name: Elements
+  description: The basic building blocks of matter, consisting of atoms of the same
+    type.
+- id: g9::nature-and-properties-of-matter::compounds
+  grade: 9
+  chapter_name: Nature and Properties of Matter
+  name: Compounds
+  description: Pure substances formed by the chemical combination of two or more elements
+    in a fixed ratio.
+- id: g9::nature-and-properties-of-matter::mixtures
+  grade: 9
+  chapter_name: Nature and Properties of Matter
+  name: Mixtures
+  description: Non-pure substances formed by the physical combination of two or more
+    pure substances.
+- id: g9::basic-concepts-associated-with-force::force-basics
+  grade: 9
+  chapter_name: Basic Concepts Associated with Force
+  name: Force Basics
+  description: What is force, types of force, and its effects on objects
+- id: g9::basic-concepts-associated-with-force::force-magnitude
+  grade: 9
+  chapter_name: Basic Concepts Associated with Force
+  name: Force Magnitude
+  description: Measuring force, units of force, and spring balances
+- id: g9::basic-concepts-associated-with-force::force-direction
+  grade: 9
+  chapter_name: Basic Concepts Associated with Force
+  name: Force Direction
+  description: Direction of force, point of application, and its relation to motion
+- id: g9::basic-concepts-associated-with-force::pressure-and-force
+  grade: 9
+  chapter_name: Basic Concepts Associated with Force
+  name: Pressure and Force
+  description: Relationship between force and pressure, factors affecting pressure
+- id: g9::the-human-circulatory-system::heart-structure
+  grade: 9
+  chapter_name: The Human Circulatory System
+  name: Heart Structure
+  description: The chambers, valves, and blood vessels of the heart.
+- id: g9::the-human-circulatory-system::blood-composition
+  grade: 9
+  chapter_name: The Human Circulatory System
+  name: Blood Composition
+  description: The types and functions of blood cells and plasma.
+- id: g9::the-human-circulatory-system::blood-circulation
+  grade: 9
+  chapter_name: The Human Circulatory System
+  name: Blood Circulation
+  description: The flow of blood through arteries, veins, and capillaries.
+- id: g9::the-human-circulatory-system::blood-transfusion
+  grade: 9
+  chapter_name: The Human Circulatory System
+  name: Blood Transfusion
+  description: The process of transferring blood from one individual to another.
+- id: g9::plant-growth-substances::plant-growth-regulators
+  grade: 9
+  chapter_name: Plant Growth Substances
+  name: Plant Growth Regulators
+  description: Chemical substances that control plant growth and development.
+- id: g9::plant-growth-substances::auxins
+  grade: 9
+  chapter_name: Plant Growth Substances
+  name: Auxins
+  description: Plant growth substances that promote cell elongation and cell division.
+- id: g9::plant-growth-substances::gibberellins
+  grade: 9
+  chapter_name: Plant Growth Substances
+  name: Gibberellins
+  description: Plant growth substances that promote stem elongation and fruit growth.
+- id: g9::plant-growth-substances::cytokinins
+  grade: 9
+  chapter_name: Plant Growth Substances
+  name: Cytokinins
+  description: Plant growth substances that promote cell division and seed germination.
+- id: g9::support-and-movements-of-organisms::plant-support
+  grade: 9
+  chapter_name: Support and Movements of Organisms
+  name: Plant Support
+  description: Mechanical support in plants for growth and structure.
+- id: g9::support-and-movements-of-organisms::plant-movements
+  grade: 9
+  chapter_name: Support and Movements of Organisms
+  name: Plant Movements
+  description: Growth responses of plants to stimuli, including tropic and nastic
+    movements.
+- id: g9::support-and-movements-of-organisms::muscle-function
+  grade: 9
+  chapter_name: Support and Movements of Organisms
+  name: Muscle Function
+  description: Muscle contraction, stretching, and recoil in animals for movement
+    and support.
+- id: g9::support-and-movements-of-organisms::in-situ-conservation
+  grade: 9
+  chapter_name: Support and Movements of Organisms
+  name: In-Situ Conservation
+  description: Conservation of organisms in their natural habitats.
+- id: g9::the-evolutionary-process::origin-of-the-earth
+  grade: 9
+  chapter_name: The Evolutionary Process
+  name: Origin of the Earth
+  description: The process of the Earth's formation and its early environment.
+- id: g9::the-evolutionary-process::origin-of-life
+  grade: 9
+  chapter_name: The Evolutionary Process
+  name: Origin of Life
+  description: The theories and processes that led to the emergence of life on Earth.
+- id: g9::the-evolutionary-process::evolution-of-life
+  grade: 9
+  chapter_name: The Evolutionary Process
+  name: Evolution of Life
+  description: The gradual changes and adaptations that occurred in living organisms
+    over time.
+- id: g9::the-evolutionary-process::speciation-and-biodiversity
+  grade: 9
+  chapter_name: The Evolutionary Process
+  name: Speciation and Biodiversity
+  description: The process of new species emerging and the increase in diversity of
+    life on Earth.
+- id: g9::electrolysis::electrolytes
+  grade: 9
+  chapter_name: Electrolysis
+  name: Electrolytes
+  description: Substances that conduct electricity due to mobile ions.
+- id: g9::electrolysis::electrolysis
+  grade: 9
+  chapter_name: Electrolysis
+  name: Electrolysis
+  description: Chemical changes caused by passing an electric current through an electrolyte.
+- id: g9::electrolysis::electrodes
+  grade: 9
+  chapter_name: Electrolysis
+  name: Electrodes
+  description: Conductors through which electric current enters and exits an electrolyte.
+- id: g9::electrolysis::electroplating
+  grade: 9
+  chapter_name: Electrolysis
+  name: Electroplating
+  description: Coating one metal with another metal by passing an electric current.
+- id: g9::density::density-concept
+  grade: 9
+  chapter_name: Density
+  name: Density Concept
+  description: The mass per unit volume of a substance.
+- id: g9::density::units-of-density
+  grade: 9
+  chapter_name: Density
+  name: Units of Density
+  description: The standard unit of density and its variations.
+- id: g9::density::hydrometers
+  grade: 9
+  chapter_name: Density
+  name: Hydrometers
+  description: The use of hydrometers to measure the density of liquids.
+- id: g9::density::applications-of-density
+  grade: 9
+  chapter_name: Density
+  name: Applications of Density
+  description: The use of density in various fields and its importance.
+- id: g9::bio-diversity::ecosystems
+  grade: 9
+  chapter_name: Bio-diversity
+  name: Ecosystems
+  description: A system that includes all living organisms and their physical environment
+    interacting with one another.
+- id: g9::bio-diversity::species-diversity
+  grade: 9
+  chapter_name: Bio-diversity
+  name: Species Diversity
+  description: The variety of characteristics among different species of living organisms.
+- id: g9::bio-diversity::genetic-diversity
+  grade: 9
+  chapter_name: Bio-diversity
+  name: Genetic Diversity
+  description: The reason for differences among organisms within the same species.
+- id: g9::bio-diversity::ecosystem-interactions
+  grade: 9
+  chapter_name: Bio-diversity
+  name: Ecosystem Interactions
+  description: The interactions between living and non-living components in an ecosystem.
+- id: g9::artificial-environment-and-green-concept::artificial-environments
+  grade: 9
+  chapter_name: Artificial Environment and Green Concept
+  name: Artificial Environments
+  description: Human-made environments created to meet specific needs.
+- id: g9::artificial-environment-and-green-concept::green-concept
+  grade: 9
+  chapter_name: Artificial Environment and Green Concept
+  name: Green Concept
+  description: Guidelines and policies for maintaining goods and services without
+    harming the natural environment.
+- id: g9::artificial-environment-and-green-concept::water-management
+  grade: 9
+  chapter_name: Artificial Environment and Green Concept
+  name: Water Management
+  description: Conservation and efficient use of water resources to minimize waste
+    and environmental impact.
+- id: g9::artificial-environment-and-green-concept::land-management
+  grade: 9
+  chapter_name: Artificial Environment and Green Concept
+  name: Land Management
+  description: Use and development of land resources to minimize environmental impact
+    and promote sustainability.
+- id: g9::reflection-and-refraction-of-waves::reflection-of-light
+  grade: 9
+  chapter_name: Reflection and Refraction of Waves
+  name: Reflection of Light
+  description: The change in direction of light when it hits a surface.
+- id: g9::reflection-and-refraction-of-waves::laws-of-reflection
+  grade: 9
+  chapter_name: Reflection and Refraction of Waves
+  name: Laws of Reflection
+  description: The rules governing the reflection of light.
+- id: g9::reflection-and-refraction-of-waves::types-of-reflection
+  grade: 9
+  chapter_name: Reflection and Refraction of Waves
+  name: Types of Reflection
+  description: The different ways light can be reflected, including regular and diffuse
+    reflection.
+- id: g9::reflection-and-refraction-of-waves::images-formed-by-reflection
+  grade: 9
+  chapter_name: Reflection and Refraction of Waves
+  name: Images Formed by Reflection
+  description: The formation of images through the reflection of light.
+- id: g9::simple-machines::simple-machines
+  grade: 9
+  chapter_name: Simple Machines
+  name: Simple Machines
+  description: Devices used to make jobs easier.
+- id: g9::simple-machines::mechanical-advantage
+  grade: 9
+  chapter_name: Simple Machines
+  name: Mechanical Advantage
+  description: The ratio of load to effort in a machine.
+- id: g9::simple-machines::velocity-ratio
+  grade: 9
+  chapter_name: Simple Machines
+  name: Velocity Ratio
+  description: The ratio of displacement of effort to displacement of load in a machine.
+- id: g9::simple-machines::efficiency
+  grade: 9
+  chapter_name: Simple Machines
+  name: Efficiency
+  description: The percentage of work output to work input in a machine.
+- id: g9::nanotechnology-and-its-applications::nanotechnology-basics
+  grade: 9
+  chapter_name: Nanotechnology and its Applications
+  name: Nanotechnology Basics
+  description: Understanding the concept of nanotechnology and its applications.
+- id: g9::nanotechnology-and-its-applications::nano-scale-materials
+  grade: 9
+  chapter_name: Nanotechnology and its Applications
+  name: Nano Scale Materials
+  description: Properties and characteristics of materials at the nanoscale.
+- id: g9::nanotechnology-and-its-applications::nano-scale-tools
+  grade: 9
+  chapter_name: Nanotechnology and its Applications
+  name: Nano Scale Tools
+  description: Development and use of tools to manipulate and observe materials at
+    the nanoscale.
+- id: g9::nanotechnology-and-its-applications::nano-applications
+  grade: 9
+  chapter_name: Nanotechnology and its Applications
+  name: Nano Applications
+  description: Exploring the various applications of nanotechnology in different fields.
+- id: g9::lightning-accidents::lightning-formation
+  grade: 9
+  chapter_name: Lightning Accidents
+  name: Lightning Formation
+  description: How lightning occurs in cumulonimbus clouds.
+- id: g9::lightning-accidents::types-of-lightning
+  grade: 9
+  chapter_name: Lightning Accidents
+  name: Types of Lightning
+  description: Classification of lightning into cloud to cloud, cloud to air, and
+    cloud to ground lightning.
+- id: g9::lightning-accidents::lightning-safety
+  grade: 9
+  chapter_name: Lightning Accidents
+  name: Lightning Safety
+  description: Prevention and protection measures against lightning accidents.
+- id: g9::lightning-accidents::lightning-effects
+  grade: 9
+  chapter_name: Lightning Accidents
+  name: Lightning Effects
+  description: The impact of lightning on humans, animals, and property.
+- id: g9::natural-disasters::natural-disasters
+  grade: 9
+  chapter_name: Natural Disasters
+  name: Natural Disasters
+  description: Events that cause damage to humans, animals, and property.
+- id: g9::natural-disasters::cyclones
+  grade: 9
+  chapter_name: Natural Disasters
+  name: Cyclones
+  description: Large-scale storm systems that form over warm ocean waters.
+- id: g9::natural-disasters::earthquakes
+  grade: 9
+  chapter_name: Natural Disasters
+  name: Earthquakes
+  description: Sudden movements of the Earth's surface that release energy and cause
+    damage.
+- id: g9::natural-disasters::tectonic-plates
+  grade: 9
+  chapter_name: Natural Disasters
+  name: Tectonic Plates
+  description: Large, rigid slabs of the Earth's lithosphere that move relative to
+    each other.
+- id: g9::sustainable-use-of-natural-resources::natural-resources
+  grade: 9
+  chapter_name: Sustainable Use of Natural Resources
+  name: Natural Resources
+  description: Substances generated naturally, without human influence.
+- id: g9::sustainable-use-of-natural-resources::sustainable-utilization
+  grade: 9
+  chapter_name: Sustainable Use of Natural Resources
+  name: Sustainable Utilization
+  description: Conservation of resources for future generations.
+- id: g9::sustainable-use-of-natural-resources::mineral-resources
+  grade: 9
+  chapter_name: Sustainable Use of Natural Resources
+  name: Mineral Resources
+  description: Minerals and rocks found in the environment.
+- id: g9::sustainable-use-of-natural-resources::gemology
+  grade: 9
+  chapter_name: Sustainable Use of Natural Resources
+  name: Gemology
+  description: Study of gems, their formation, and characteristics.

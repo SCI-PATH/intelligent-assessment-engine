@@ -1,15 +1,12 @@
 """Use cases for diagnostic sessions.
 
 The service orchestrates the policy, the question repository, and the session
-repository; it knows nothing about HTTP, Streamlit, or Mongo specifics.
+repository; it knows nothing about HTTP, Streamlit, or storage specifics.
 """
 
 from __future__ import annotations
 
-import json
-import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import NamedTuple
 from uuid import uuid4
 
@@ -21,8 +18,12 @@ from iae.core.models import (
     RlState,
     SessionState,
 )
+from iae.application.analytics_payload import build_analytics_payload, send_analytics_event
 from iae.core.protocols import (
+    IAnalyticsRepository,
+    IEmbedder,
     IGradingService,
+    ILlmJson,
     IQuestionRepository,
     IRlPolicy,
     ISessionRepository,
@@ -40,25 +41,9 @@ class NextQuestion(NamedTuple):
     rolling_accuracy: float
 
 
-_DEBUG_LOG_PATH = Path("debug-21ced4.log")
-
-
+# Agent NDJSON writers removed — enable only via future DEBUG_AGENT_LOG hooks if needed.
 def _debug_log(*, hypothesis_id: str, location: str, message: str, data: dict) -> None:
-    payload = {
-        "sessionId": "21ced4",
-        "runId": "initial",
-        "hypothesisId": hypothesis_id,
-        "id": f"log_{uuid4().hex}",
-        "location": location,
-        "message": message,
-        "data": data,
-        "timestamp": int(time.time() * 1000),
-    }
-    try:
-        with _DEBUG_LOG_PATH.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except Exception:
-        pass
+    return
 
 
 @dataclass
@@ -77,17 +62,33 @@ class SessionService:
         grading: IGradingService,
         policy: IRlPolicy,
         limits: SessionLimits,
+        analytics: IAnalyticsRepository | None = None,
+        embedder: IEmbedder | None = None,
+        analytics_llm: ILlmJson | None = None,
     ) -> None:
         self._sessions = sessions
         self._questions = questions
         self._grading = grading
         self._policy = policy
         self._limits = limits
+        self._analytics = analytics
+        self._embedder = embedder
+        self._analytics_llm = analytics_llm
 
     # ---- lifecycle -------------------------------------------------------------
 
-    def create_session(self, scope_chapter: str) -> SessionState:
-        session = SessionState(scope_chapter=scope_chapter)
+    def create_session(
+        self,
+        scope_chapter: str,
+        user_id: str | None = None,
+        grade: int = 6,
+    ) -> SessionState:
+        session = SessionState(
+            scope_chapter=scope_chapter,
+            user_id=(user_id or "").strip() or str(uuid4()),
+            grade=grade,
+            max_questions=self._limits.max_questions,
+        )
         return self._sessions.create(session)
 
     def get_session(self, session_id: str) -> SessionState:
@@ -132,9 +133,11 @@ class SessionService:
         )
         # #endregion
 
-        # Avoid repeating semantically identical prompts (same stem/paragraph),
-        # not just duplicate question IDs.
-        excluded_ids = list(session.used_question_ids)
+        # Never re-serve a question this user has already seen (any session),
+        # and also skip near-duplicate stems within the current session.
+        excluded_ids = list(
+            dict.fromkeys(list(session.used_question_ids) + self._sessions.served_question_ids(session.user_id))
+        )
         seen_signatures = set(session.asked_signatures)
         question = None
         for _ in range(12):
@@ -161,6 +164,13 @@ class SessionService:
         session.last_action = action
         session.used_question_ids.append(question.id)
         session.asked_signatures.append(self._question_signature(question))
+        self._sessions.mark_served(
+            user_id=session.user_id,
+            question_id=question.id,
+            session_id=session.session_id,
+            topic_id=question.topic_id,
+            source="bank",
+        )
         self._sessions.update(session)
 
         # #region agent log
@@ -262,10 +272,17 @@ class SessionService:
             is_correct=result.is_correct,
             feedback=result.feedback,
             reasoning=result.reasoning,
+            error_category=result.error_category,
+            missing_keywords=result.missing_keywords,
+            detailed_explanation=result.detailed_explanation,
+            missed_blanks=result.missed_blanks,
+            concept_explanation=result.concept_explanation,
+            distractor_tag=result.distractor_tag,
+            distractor_label=result.distractor_label,
             adaptive_decision=(
                 f"{(action.dok_summary if action else '').strip()} | "
-                f"{(action.type_summary if action else '').strip()}".strip(" |"),
-            ).strip(),
+                f"{(action.type_summary if action else '').strip()}"
+            ).strip(" |"),
             decision_rule_triggered=(action.rule_triggered if action else ""),
             decision_dok_reason=(action.dok_reason if action else ""),
             decision_question_type_reason=(action.question_type_reason if action else ""),
@@ -280,6 +297,22 @@ class SessionService:
         )
         session.history.append(attempt)
         session.questions_asked += 1
+        payload = self._record_analytics(
+            session,
+            question,
+            result,
+            student_answer,
+            time_taken_seconds=time_taken_seconds,
+        )
+        self._sessions.record_attempt(
+            attempt,
+            user_id=session.user_id,
+            session_id=session.session_id,
+            topic_id=question.topic_id,
+            similarity_score=payload.get("similarity_score") if payload else None,
+            distractor_tag=payload.get("distractor_tag") if payload else None,
+            distractor_label=payload.get("distractor_label") if payload else None,
+        )
         # #region agent log
         _debug_log(
             hypothesis_id="H4",
@@ -296,6 +329,32 @@ class SessionService:
         # #endregion
         self._sessions.update(session)
         return result, session
+
+    def _record_analytics(
+        self,
+        session: SessionState,
+        question: Question,
+        result: GradeResult,
+        student_answer: str,
+        *,
+        time_taken_seconds: float = 0.0,
+    ) -> dict:
+        payload = build_analytics_payload(
+            user_id=session.user_id,
+            question=question,
+            grade=result,
+            student_answer=student_answer,
+            response_time_s=time_taken_seconds,
+            embedder=self._embedder,
+            llm=self._analytics_llm,
+        )
+        if self._analytics is not None:
+            try:
+                self._analytics.insert(payload, session_id=session.session_id)
+            except Exception:
+                pass
+        send_analytics_event(payload)
+        return payload
 
     # ---- internal --------------------------------------------------------------
 

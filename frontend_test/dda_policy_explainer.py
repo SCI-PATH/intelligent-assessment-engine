@@ -165,14 +165,14 @@ def main() -> None:
 
     st.caption("Use the sidebar to try values. Below the line: the full rule list.")
 
-    lc, rc = st.columns(2, gap="large")
+    lc, rc_col = st.columns(2, gap="large")
     with lc:
         with st.container(border=True):
             st.markdown(f"###### {dok_head}")
             st.metric("Depth of knowledge", f"{current_dok}  →  {next_dok}")
             st.write(dok_line)
             st.caption(f"Rule **`{dok_id}`**")
-    with rc:
+    with rc_col:
         with st.container(border=True):
             st.markdown(f"###### {type_head}")
             st.metric("Question format", next_type)

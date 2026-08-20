@@ -1,8 +1,10 @@
-"""PDF -> Mongo ``chunks`` collection.
+"""PDF -> Chroma ``curriculum_chunks`` collection.
 
-Run after ``scripts/extract_subconcepts.py`` has produced (and you have
-reviewed) ``src/iae/config/subconcepts.yaml``. Re-running wipes and rewrites
-the collection so you always get a clean snapshot of the current curriculum.
+Run after ``scripts/extract_subconcepts.py`` and ``scripts/sync_skill_catalog.py``.
+PDF path(s) and chapter page ranges come from ``curriculum.yaml`` for ``--grade``.
+A grade may have several PDFs (Part 1 / Part 2); all configured parts are
+loaded unless ``--pdf`` / ``--pdf-id`` narrows the set.
+Re-running a grade deletes only that grade's Chroma vectors.
 """
 
 from __future__ import annotations
@@ -12,24 +14,73 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from iae.core.curriculum import get_subconcepts
+_ROOT = Path(__file__).resolve().parents[1]
+for _p in (str(_ROOT), str(_ROOT / "src")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+from iae.core.curriculum import (
+    DEFAULT_GRADE,
+    CurriculumConfigError,
+    UnknownGradeError,
+    get_chapters,
+    get_subconcepts,
+    select_pdf_parts,
+)
 from iae.core.settings import get_config
-from iae.infrastructure.mongo.chunks_repo import MongoChunkRepository
-from iae.infrastructure.mongo.client import ensure_indexes, get_database
+from iae.core.skills import get_topics, match_curriculum_chapters
+from iae.infrastructure.rag.chroma_store import ChromaChunkStore
 from iae.infrastructure.rag.chunk_tagger import assign_subconcepts
 from iae.infrastructure.rag.embeddings import HuggingFaceEmbedder
-from iae.infrastructure.rag.pdf_loader import load_and_chunk_pdf
-
-DEFAULT_PDF = Path("data/grade_6_science.pdf")
+from iae.infrastructure.rag.pdf_loader import load_and_chunk_grade
+from iae.infrastructure.rag.topic_tagger import assign_topic_ids
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pdf", type=Path, default=DEFAULT_PDF)
+    parser.add_argument(
+        "--grade",
+        type=int,
+        default=DEFAULT_GRADE,
+        help="Curriculum grade to ingest (default: 6).",
+    )
+    parser.add_argument(
+        "--pdf",
+        type=Path,
+        default=None,
+        help="Ingest only this configured PDF path (Part 1 or Part 2).",
+    )
+    parser.add_argument(
+        "--pdf-id",
+        dest="pdf_id",
+        default=None,
+        help="Ingest only this part id from curriculum.yaml (e.g. part1).",
+    )
     args = parser.parse_args()
 
-    if not args.pdf.exists():
-        print(f"PDF not found: {args.pdf}", file=sys.stderr)
+    try:
+        chapters = get_chapters(args.grade)
+        parts = select_pdf_parts(args.grade, pdf_id=args.pdf_id, pdf_path=args.pdf)
+    except (UnknownGradeError, CurriculumConfigError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    allowed_ids = {part.id for part in parts}
+    chapters = [chapter for chapter in chapters if chapter.pdf_id in allowed_ids]
+    parts = tuple(part for part in parts if any(chapter.pdf_id == part.id for chapter in chapters))
+
+    if not chapters:
+        print(
+            f"Grade {args.grade} has no chapter page ranges in curriculum.yaml yet. "
+            "Fill page_start/page_end (and pdf_id for multi-part grades) from each PDF ToC first.",
+            file=sys.stderr,
+        )
+        return 3
+
+    missing = [part.path for part in parts if not part.path.exists()]
+    if missing:
+        for path in missing:
+            print(f"PDF not found: {path}", file=sys.stderr)
         return 1
     if not get_subconcepts():
         print(
@@ -37,24 +88,45 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
+    if not get_topics():
+        print(
+            "Topic catalog is empty. Run scripts/sync_skill_catalog.py first.",
+            file=sys.stderr,
+        )
+        return 2
 
-    print(f"Loading and splitting {args.pdf}...")
-    chunks = load_and_chunk_pdf(args.pdf)
-    print(f"Produced {len(chunks)} chapter-tagged chunks.")
+    matched, unmatched = match_curriculum_chapters(args.grade)
+    print(f"Excel Topic IDs matched {len(matched)} curriculum chapters.")
+    for title in unmatched:
+        print(f"  unmatched Excel chapter (no PDF map yet): {title}")
 
-    print("Embedding chunks and assigning sub-concepts...")
+    for part in parts:
+        print(f"Loading {part.path} (grade {args.grade}, {part.id})...")
+    chunks = load_and_chunk_grade(args.grade, parts=list(parts))
+    print(f"Produced {len(chunks)} chapter-tagged chunks from {len(parts)} PDF(s).")
+
+    print("Embedding chunks and assigning sub-concepts + Topic IDs...")
     embedder = HuggingFaceEmbedder(get_config().embedding_model)
     chunks = assign_subconcepts(chunks, embedder)
+    chunks = assign_topic_ids(chunks, embedder)
 
-    db = get_database()
-    ensure_indexes(db)
-    repo = MongoChunkRepository(db)
-    written = repo.replace_all(chunks)
+    print("Writing embeddings to Chroma...")
+    embeddings = embedder.embed([chunk.text for chunk in chunks]) if chunks else []
+    store = ChromaChunkStore()
+    partial = bool(args.pdf or args.pdf_id)
+    if partial:
+        removed = store.delete_by_sources(args.grade, [part.path.name for part in parts])
+        written = store.add_chunks(chunks, embeddings)
+        print(f"Partial ingest ({', '.join(part.id for part in parts)}): removed {removed} old vectors.")
+    else:
+        written = store.replace_grade(args.grade, chunks, embeddings)
 
-    summary: Counter[tuple[str, str]] = Counter((c.chapter_name, c.sub_concept) for c in chunks)
-    print(f"\nWrote {written} chunks to Mongo. Coverage:")
-    for (chapter, sub), count in sorted(summary.items()):
-        print(f"  {chapter:40s}  {sub:30s}  {count}")
+    summary: Counter[tuple[int, str, str]] = Counter(
+        (c.grade, c.chapter_name, c.topic_id or "(none)") for c in chunks
+    )
+    print(f"\nWrote {written} chunks to Chroma (grade {args.grade} replaced). Coverage:")
+    for (grade, chapter, topic_id), count in sorted(summary.items()):
+        print(f"  G{grade}  {chapter:40s}  {topic_id:22s}  {count}")
     return 0
 
 

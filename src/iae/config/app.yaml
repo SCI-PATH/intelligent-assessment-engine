@@ -3,10 +3,16 @@ assessment:
   cold_start_dok: 2
   rolling_window: 5
   response_time_target_seconds: 45
-  # Target band tracked by the RL policy. Below the lower bound we ease off,
+  post_lesson_max_questions: 15
+  # Target band tracked by the DDA policy. Below the lower bound we ease off,
   # above the upper bound we push DOK higher.
   target_accuracy_lower: 0.80
   target_accuracy_upper: 0.85
+
+amplitude:
+  quiz_size: 10
+  quiz_weight: 0.60
+  history_weight: 0.40
 
 models:
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
