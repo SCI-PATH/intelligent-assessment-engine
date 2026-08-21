@@ -41,7 +41,12 @@ def main() -> int:
     parser.add_argument("--chapter", action="append", help="Limit generation to a chapter (repeatable).")
     parser.add_argument("--grade", type=int, default=DEFAULT_GRADE, help="Curriculum grade to generate for (default: 6).")
     parser.add_argument("--topic-id", dest="topic_id", default=None, help="Retrieve RAG context for one canonical Topic ID.")
-    parser.add_argument("--per-combo", type=int, default=None, help="Override questions_per_combo from app.yaml.")
+    parser.add_argument(
+        "--per-combo",
+        type=int,
+        default=None,
+        help="Override questions_per_combo from app.yaml (Rule of 3 default = 3).",
+    )
     parser.add_argument("--stop-on-rate-limit", action="store_true", default=True, help="Stop immediately on provider 429/TPD limit.")
     args = parser.parse_args()
 

@@ -82,6 +82,8 @@ class IQuestionRepository(Protocol):
         dok_level: int,
         question_type: QuestionType,
         excluded_ids: list[str],
+        topic_id: str = "",
+        exclude_sub_concepts: list[str] | None = None,
     ) -> Question | None: ...
 
     def count_matching(

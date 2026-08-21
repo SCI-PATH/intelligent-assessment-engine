@@ -165,10 +165,12 @@ class QuizService:
         excluded_ids: list[str],
         topic_id: str = "",
         preferred_type: QuestionType | None = None,
+        exclude_sub_concepts: list[str] | None = None,
     ) -> Question | None:
         ordered_types = list(types)
         if preferred_type and preferred_type in ordered_types:
             ordered_types = [preferred_type] + [t for t in ordered_types if t != preferred_type]
+        blocked_subs = exclude_sub_concepts
 
         # Prefer exact topic + preferred type + target DOK.
         for chapter in bank_chapters:
@@ -180,6 +182,7 @@ class QuizService:
                     question_type=qtype,
                     excluded_ids=excluded_ids,
                     topic_id=topic_id,
+                    exclude_sub_concepts=blocked_subs,
                 )
                 if question:
                     return question
@@ -195,6 +198,7 @@ class QuizService:
                         question_type=qtype,
                         excluded_ids=excluded_ids,
                         topic_id=topic_id,
+                        exclude_sub_concepts=blocked_subs,
                     )
                     if question:
                         return question
@@ -211,6 +215,7 @@ class QuizService:
                             question_type=qtype,
                             excluded_ids=excluded_ids,
                             topic_id="",
+                            exclude_sub_concepts=blocked_subs,
                         )
                         if question:
                             return question
@@ -259,15 +264,38 @@ class QuizService:
             history_types=hist_types,
         )
 
+        # Never repeat question_id in this session (hard). Soft prefer different
+        # sub_concept than the last 1–2 attempts; if that fails, fall back immediately.
+        recent_subs = [
+            a.sub_concept
+            for a in session.history[-2:]
+            if a.sub_concept and str(a.sub_concept).strip()
+        ]
         excluded = list(dict.fromkeys(session_used + permanently_blocked))
-        question = self._find_question(
-            bank_chapters=bank_chapters,
-            types=types,
-            target_dok=decision.dok_level,
-            excluded_ids=excluded,
-            topic_id=decision.topic_id,
-            preferred_type=decision.question_type,
-        )
+
+        question = None
+        if recent_subs:
+            question = self._find_question(
+                bank_chapters=bank_chapters,
+                types=types,
+                target_dok=decision.dok_level,
+                excluded_ids=excluded,
+                topic_id=decision.topic_id,
+                preferred_type=decision.question_type,
+                exclude_sub_concepts=list(dict.fromkeys(recent_subs)),
+            )
+
+        # Graceful fallback: ignore sub_concept variety; still honor used_question_ids.
+        if question is None:
+            question = self._find_question(
+                bank_chapters=bank_chapters,
+                types=types,
+                target_dok=decision.dok_level,
+                excluded_ids=excluded,
+                topic_id=decision.topic_id,
+                preferred_type=decision.question_type,
+                exclude_sub_concepts=None,
+            )
 
         if question is None:
             question = self._find_question(
