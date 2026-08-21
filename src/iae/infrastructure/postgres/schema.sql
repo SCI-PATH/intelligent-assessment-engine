@@ -1,4 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS question_engine;
+-- Schema `question_engine` must already exist (Neon / shared DB: app role
+-- usually cannot CREATE SCHEMA). Tables/indexes below are schema-qualified.
 
 CREATE TABLE IF NOT EXISTS question_engine.questions (
     id UUID PRIMARY KEY,

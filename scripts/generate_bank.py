@@ -82,6 +82,10 @@ def main() -> int:
     succeeded = 0
     failed = 0
     pending: list[Question] = []
+    print(
+        f"Generating grade {args.grade}: {len(chapters)} chapters, "
+        f"{per_combo} per (dok × type) combo. OpenAI calls can take ~10–60s each."
+    )
 
     try:
         for chapter in chapters:
@@ -106,10 +110,12 @@ def main() -> int:
                 topic_id = args.topic_id
                 skill = topic.skill if topic else skill
             chapter_scope = skill or "ChapterWide"
+            print(f"\n[{chapter}] topic={topic_id or '-'} chunks={len(chunks)}")
 
             for dok in (1, 2, 3, 4):
                 for qtype in QuestionType:
                     for _ in range(per_combo):
+                        print(f"  generating dok={dok} type={qtype.value} ...", flush=True)
                         question = generate_one(
                             llm=llm,
                             chapter=chapter,
@@ -128,14 +134,19 @@ def main() -> int:
                         )
                         if question is None:
                             failed += 1
+                            print("    failed")
                             continue
                         pending.append(question)
                         succeeded += 1
+                        print(f"    ok (total {succeeded})")
                         if len(pending) >= 25:
                             questions_repo.insert_many(pending)
                             pending.clear()
+                            print(f"  flushed batch to DB")
     except RateLimitExceeded as exc:
         print(f"\nStopped early due to provider limit: {exc}")
+    except KeyboardInterrupt:
+        print(f"\nInterrupted. Flushing {len(pending)} buffered questions...")
 
     if pending:
         questions_repo.insert_many(pending)

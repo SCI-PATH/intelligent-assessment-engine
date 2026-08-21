@@ -20,7 +20,7 @@ openpyxl==3.1.5
 chromadb==0.5.23
 
 jinja2==3.1.4
-PyYAML==6.0.2
+PyYAML>=6.0.2,<7
 # LangChain 0.3.x requires numpy<2.0; also wheels may be unavailable on very new Python.
 numpy<2.0
 

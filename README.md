@@ -98,13 +98,13 @@ Shared IDs: `user_id`, Excel `topic_id`, `chapter_id` (`G6_C8` from `data/chapte
 
 ## Running the app
 
+Use **Python 3.12** (not 3.14). On Windows, put the venv on a short path so PyTorch does not hit path-length errors.
+
 ```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-copy .env.example .env
-# Edit .env: GROQ_API_KEY, DATABASE_URL
-# Peer URLs: edit src/iae/config/peers.py (not .env)
+C:\Python312\python.exe -m venv C:\iae-venv
+C:\iae-venv\Scripts\Activate.ps1
+python -m pip install --no-cache-dir -r requirements.txt
+# .env: DATABASE_URL + LLM keys; peer URLs in src/iae/config/peers.py
 
 $env:PYTHONPATH = "src"
 python -m scripts.db.test_connection

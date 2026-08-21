@@ -1,3 +1,6 @@
+-- Admin / owner only: create schema once, then grant the app role usage+create
+-- on question_engine. App init (python -m scripts.init_postgres) does NOT run
+-- CREATE SCHEMA — it only creates tables inside the existing schema.
 CREATE SCHEMA IF NOT EXISTS question_engine;
 
 -- Unused leftovers from earlier drafts (BKT lives in Component 4).

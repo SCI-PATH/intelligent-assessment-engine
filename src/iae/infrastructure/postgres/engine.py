@@ -36,10 +36,18 @@ def get_session_factory() -> sessionmaker[Session]:
 
 
 def init_schema(engine: Engine | None = None) -> None:
-    """Apply ``schema.sql`` (idempotent CREATE IF NOT EXISTS)."""
+    """Apply ``schema.sql`` (idempotent CREATE IF NOT EXISTS).
+
+    Does not create the ``question_engine`` schema itself — that must already
+    exist (typical Neon shared-DB setup where the app role only has rights
+    inside that schema).
+    """
     sql = files("iae.infrastructure.postgres").joinpath("schema.sql").read_text(encoding="utf-8")
     target = engine or get_engine()
     statements = [part.strip() for part in sql.split(";") if part.strip()]
     with target.begin() as conn:
         for statement in statements:
+            # Defensive: never attempt CREATE SCHEMA (permission denied on Neon).
+            if statement.upper().startswith("CREATE SCHEMA"):
+                continue
             conn.execute(text(statement))
