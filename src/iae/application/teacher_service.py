@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 
 from iae.application.question_generation import generate_for_topic
-from iae.core.models import (
+from iae.domain.models import (
     Question,
     QuestionOrigin,
     QuestionPayload,
@@ -14,8 +14,8 @@ from iae.core.models import (
     QuestionType,
     RejectionReason,
 )
-from iae.core.protocols import IEmbedder, ILlmJson, IQuestionRepository, IVectorStore
-from iae.core.skills import TopicRecord, get_topic, topics_for_grade
+from iae.domain.protocols import IEmbedder, ILlmJson, IQuestionRepository, IVectorStore
+from iae.domain.skills import TopicRecord, get_topic, topics_for_grade
 from iae.infrastructure.postgres.amplitude_repo import PostgresAmplitudeRepository
 from iae.infrastructure.postgres.questions_repo import PostgresQuestionRepository
 from iae.prompts import render

@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from iae.core.models import (
+from iae.domain.models import (
     AmplitudeCategory,
     AmplitudeEvaluation,
     PastGradeMarksRange,

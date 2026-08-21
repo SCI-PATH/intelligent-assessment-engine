@@ -9,8 +9,11 @@ from __future__ import annotations
 import json
 import re
 
-from iae.application.analytics_payload import classify_mcq_distractor, explain_mcq_distractor
-from iae.core.models import (
+from iae.application.analytics_payload import (
+    classify_mcq_distractor,
+    explain_mcq_distractor,
+)
+from iae.domain.models import (
     DistractorTag,
     GradeResult,
     MultiBlankErrorCategory,
@@ -21,7 +24,7 @@ from iae.core.models import (
     ShortAnswerPayload,
     TrueFalsePayload,
 )
-from iae.core.protocols import IEmbedder, ILlmJson
+from iae.domain.protocols import IEmbedder, ILlmJson
 from iae.prompts import render
 
 _PASS_THRESHOLD = 0.8
@@ -90,6 +93,21 @@ class GradingService:
         )
         if is_correct:
             return result
+
+        # Prefer generation-time diagnostics stored on the bank payload.
+        payload = question.payload  # type: ignore[assignment]
+        stored = getattr(payload, "option_diagnostics", None) or {}
+        entry = stored.get(chosen) if isinstance(stored, dict) else None
+        if entry is not None:
+            tag_val = entry.distractor_tag if hasattr(entry, "distractor_tag") else entry.get("distractor_tag")
+            label_val = entry.distractor_label if hasattr(entry, "distractor_label") else entry.get("distractor_label")
+            if tag_val is not None and label_val:
+                tag = tag_val if isinstance(tag_val, DistractorTag) else DistractorTag(str(tag_val))
+                result.distractor_tag = tag.value
+                result.distractor_label = str(label_val).strip()
+                return result
+
+        # Fallback for older bank rows without option_diagnostics.
         tag = DistractorTag.COMPLETE_MISS
         if self._embedder is not None:
             try:
@@ -119,23 +137,29 @@ class GradingService:
         correct = payload.correct_answer.strip().lower()
         chosen = student_answer.strip().lower()
         is_correct = bool(chosen) and chosen.startswith(correct[0])
-        _debug_log(
-            hypothesis_id="H1",
-            location="src/iae/application/grading.py:_grade_true_false",
-            message="True/False grading computed outcome",
-            data={
-                "question_id": question.id,
-                "correct_answer": correct,
-                "student_answer_raw": student_answer,
-                "student_answer_normalized": chosen,
-                "is_correct": is_correct,
-            },
-        )
         if is_correct:
             return GradeResult(
                 accuracy_score=1.0,
                 is_correct=True,
                 feedback="Correct.",
+            )
+
+        # Prefer generation-time distractor_tag / distractor_label on the payload.
+        if payload.distractor_tag and payload.distractor_label:
+            tag = (
+                payload.distractor_tag
+                if isinstance(payload.distractor_tag, DistractorTag)
+                else DistractorTag(str(payload.distractor_tag))
+            )
+            explanation = f"The statement is {payload.correct_answer}."
+            return GradeResult(
+                accuracy_score=0.0,
+                is_correct=False,
+                feedback=f"Incorrect. The statement is {payload.correct_answer}.",
+                distractor_tag=tag.value,
+                distractor_label=str(payload.distractor_label).strip(),
+                detailed_explanation=explanation,
+                concept_explanation=explanation,
             )
 
         tag, label, explanation = self._true_false_diagnostics(payload, student_answer=student_answer)

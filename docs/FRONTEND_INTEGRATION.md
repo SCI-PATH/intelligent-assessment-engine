@@ -5,8 +5,8 @@
 
 **Base URL (local):** `http://localhost:8001`  
 **Auth:** none (research phase)  
-**Preferred API prefix:** `/api/v1`  
-**OpenAPI / Swagger (authoritative schemas):** `http://localhost:8001/docs`
+**API prefix:** `/api/v1/assessment-engine`  
+**OpenAPI / Swagger:** `http://localhost:8001/docs`
 
 ```http
 Content-Type: application/json
@@ -18,37 +18,35 @@ Pass mark on graded items: `is_correct` when `accuracy_score >= 0.8`
 
 ---
 
-## 0) Frontend architecture note (mandatory)
+## 0) Frontend architecture note
 
-Adhere to the Next.js repo’s `developer_readme.md` folder structure.
-
-Suggested feature modules (names only — follow your repo’s conventions):
+Suggested feature modules:
 
 - `features/amplitude/`
 - `features/quiz/` (customizable + post-lesson)
 - `features/history/`
 - `features/teacher/`
-- `features/dev-hub/` ← temporary developer dashboard (see §7)
+- `features/dev-hub/` ← temporary developer dashboard
 
 Do **not** call Component 4 (`assessment-submit` / `bkt-snapshot`) from the browser.  
 Component 2 owns those outbound calls after grading.
 
-Shared chapter IDs: use `G{grade}_C{chapter}` from Component 2’s catalog  
-(`data/chapter_ids_g6_g9.csv`), e.g. `G6_C8`. **Never** send `"8"` or `"Chapter 8"`.
+Shared chapter IDs: use `G{grade}_C{chapter}` from `data/chapter_ids_g6_g9.csv`, e.g. `G6_C8`.  
+**Never** send `"8"` or `"Chapter 8"`.
 
 ---
 
-## 1) Amplitude Test (initial category)
+## 1) Amplitude Diagnostic Test
 
 Categories: **`BASIC` | `INTERMEDIATE` | `ADVANCED`** (no BKT).  
 Scoring: 60% quiz + 40% historical composite.
 
 | Step | Method | Path |
 |------|--------|------|
-| Survey | `POST` | `/api/v1/amplitude/survey` |
-| Fixed 10-item quiz | `GET` | `/api/v1/amplitude/quiz?grade=7` |
-| Evaluate | `POST` | `/api/v1/amplitude/evaluate` |
-| Read category | `GET` | `/api/v1/student/{student_id}/initial-category` |
+| Survey | `POST` | `/api/v1/assessment-engine/amplitude/survey` |
+| Fixed 10-item quiz | `GET` | `/api/v1/assessment-engine/amplitude/quiz?grade=7` |
+| Evaluate | `POST` | `/api/v1/assessment-engine/amplitude/evaluate` |
+| Read category (also for Component 1) | `GET` | `/api/v1/assessment-engine/students/{student_id}/initial-category` |
 
 ### Survey
 
@@ -64,7 +62,8 @@ Scoring: 60% quiz + 40% historical composite.
 ```
 
 `past_grade_marks_range`: `BELOW_50` | `50_75` | `ABOVE_75`  
-`self_confidence`: 1–5
+`self_confidence`: 1–5  
+`grade` may be injected for local testing before live profile integration.
 
 ### Evaluate
 
@@ -80,7 +79,7 @@ Scoring: 60% quiz + 40% historical composite.
 }
 ```
 
-Quiz prompts strip answer keys. Response includes `category`, `weighted_score`, `quiz_score`, `history_score`.
+Quiz prompts strip answer keys and distractor diagnostics.
 
 ---
 
@@ -88,10 +87,10 @@ Quiz prompts strip answer keys. Response includes `category`, `weighted_score`, 
 
 | Step | Method | Path |
 |------|--------|------|
-| Create | `POST` | `/api/v1/quizzes/customizable` |
-| Next | `GET` | `/api/v1/quizzes/{session_id}/next` |
-| Answer | `POST` | `/api/v1/quizzes/{session_id}/answer` |
-| Results | `GET` | `/api/v1/quizzes/{session_id}/results` |
+| Create | `POST` | `/api/v1/assessment-engine/quizzes/customizable` |
+| Next | `GET` | `/api/v1/assessment-engine/quizzes/{session_id}/next` |
+| Answer | `POST` | `/api/v1/assessment-engine/quizzes/{session_id}/answer` |
+| Results | `GET` | `/api/v1/assessment-engine/quizzes/{session_id}/results` |
 
 ### Create
 
@@ -119,11 +118,11 @@ Backend fetches C4 BKT snapshot at start and forwards each graded attempt to C4.
 
 ---
 
-## 3) Post-lesson quiz (Component 1 → Component 2)
+## 3) Post-lesson quiz (Component 1 / Component 3 → Component 2)
 
 | Method | Path |
 |--------|------|
-| `POST` | `/api/v1/quiz/trigger-post-lesson` |
+| `POST` | `/api/v1/assessment-engine/quizzes/post-lesson` |
 
 ```json
 {
@@ -133,7 +132,7 @@ Backend fetches C4 BKT snapshot at start and forwards each graded attempt to C4.
 }
 ```
 
-Returns a session with `max_questions = 15`. Then use the same `/next` + `/answer` loop as customizable quizzes.
+Returns a session with `max_questions = 15`. Then use the same `/next` + `/answer` loop.
 
 ---
 
@@ -141,7 +140,7 @@ Returns a session with `max_questions = 15`. Then use the same `/next` + `/answe
 
 | Method | Path |
 |--------|------|
-| `POST` | `/api/v1/quiz/{session_id}/terminate` |
+| `POST` | `/api/v1/assessment-engine/quizzes/{session_id}/terminate` |
 
 ```json
 {
@@ -158,26 +157,22 @@ Idempotent if the session already ended.
 
 | Method | Path |
 |--------|------|
-| `GET` | `/api/v1/student/{id}/sessions` |
-| `GET` | `/api/v1/student/{id}/sessions/{session_id}` |
-| `POST` | `/api/v1/student/{id}/sessions/{session_id}/analyze` |
-
-Detail includes student answers + expected answers. Analyze returns constructive LLM feedback for wrong items.
+| `GET` | `/api/v1/assessment-engine/students/{id}/sessions` |
+| `GET` | `/api/v1/assessment-engine/students/{id}/sessions/{session_id}` |
+| `POST` | `/api/v1/assessment-engine/students/{id}/sessions/{session_id}/analyze` |
 
 ---
 
 ## 6) Teacher dashboard
 
-Prefer `/api/v1/teacher/*`.
-
 | Method | Path | Notes |
 |--------|------|-------|
-| `GET` | `/api/v1/teacher/topics?grade=7` | Excel Topic IDs |
-| `POST` | `/api/v1/teacher/generate` | RAG → pending |
-| `GET` | `/api/v1/teacher/questions` | Filters: `status`, `grade`, `class_code`, `dok_level`, `question_type` |
-| `POST` | `/api/v1/teacher/questions/{id}/approve` | |
-| `POST` | `/api/v1/teacher/questions/{id}/reject` | reason enum |
-| `POST` | `/api/v1/teacher/questions` | custom add |
+| `GET` | `/api/v1/assessment-engine/teacher/topics?grade=7` | Excel Topic IDs |
+| `POST` | `/api/v1/assessment-engine/teacher/generate` | RAG → pending |
+| `GET` | `/api/v1/assessment-engine/teacher/questions` | Filters: `status`, `grade`, `class_code`, … |
+| `POST` | `/api/v1/assessment-engine/teacher/questions/{id}/approve` | |
+| `POST` | `/api/v1/assessment-engine/teacher/questions/{id}/reject` | reason enum |
+| `POST` | `/api/v1/assessment-engine/teacher/questions` | custom add |
 
 ### Reject
 
@@ -188,23 +183,15 @@ Prefer `/api/v1/teacher/*`.
 }
 ```
 
-Reasons: `FACTUAL_ERROR` | `OUT_OF_SCOPE` | `POOR_PHRASING` | `TOO_EASY` | `TOO_HARD` | `OTHER`  
-On `FACTUAL_ERROR`, backend may set `rejection_confirmed_ai=true`.
+Reasons: `FACTUAL_ERROR` | `OUT_OF_SCOPE` | `POOR_PHRASING` | `TOO_EASY` | `TOO_HARD` | `OTHER`
 
 ---
 
-## 7) Temporary Dev Hub (required for sprint testing)
+## 7) Temporary Dev Hub
 
-Build a temporary **Dev Hub** route (e.g. `/dev-hub`) with buttons that open each flow independently before final UI polish:
+Build a temporary **Dev Hub** with buttons for Amplitude, Customizable, Post-lesson, Kill switch, History, Teacher.
 
-1. **Amplitude** → survey form → load quiz → evaluate → show category  
-2. **Customizable Quiz** → pick chapter_ids → start → next/answer loop → results  
-3. **Post-lesson** → trigger with `chapter_id` → continue quiz loop  
-4. **Kill switch** → terminate active `session_id`  
-5. **Student History** → list sessions → detail → analyze  
-6. **Teacher** → list questions → approve / reject with reason  
-
-Mock users for local testing (seeded by Component 2):
+Mock users:
 
 | user_id | role | class_code |
 |---------|------|------------|
@@ -212,22 +199,19 @@ Mock users for local testing (seeded by Component 2):
 | `mock-student-class-a` | student | `CLASS-A` |
 | `mock-teacher-1` | teacher | `CLASS-A` |
 
-Optional: add a user picker at the top of Dev Hub that sets `student_id` / teacher context.
-
 ---
 
-## 8) Deprecated legacy paths (do not use for new UI)
+## 8) Component 4 (outbound, owned by Component 2)
 
-- `/assessment/placement/*` (old WEAK/AVERAGE/ADVANCED)
-- `/assessment/sessions/*` (old diagnostic-only loop)
-- `/teacher/*` (prefer `/api/v1/teacher`)
+Documented in Swagger description and `docs/COMPONENT2_COMPONENT4_INTEGRATION.md`:
+
+1. `POST {COMPONENT_4_URL}/api/v1/quiz/bkt-snapshot` at quiz start  
+2. `POST {COMPONENT_4_URL}/api/v1/assessment-submit` after each graded `/answer`
 
 ---
 
 ## 9) How to explore contracts in Swagger
 
-1. Start Component 2: `uvicorn iae.api.main:app --reload --port 8001`  
+1. `uvicorn iae.api.main:app --reload --port 8001`  
 2. Open `http://localhost:8001/docs`  
-3. Expand tags: **Amplitude**, **Quizzes**, **Student History**, **Teacher Hub**  
-4. Click **Try it out** → fill JSON → **Execute**  
-5. Sync TypeScript types from `http://localhost:8001/openapi.json` if desired
+3. Tags: **Amplitude Diagnostic Test**, **Quizzes and Testing Loops**, **Student History**, **Teacher Hub**

@@ -18,7 +18,7 @@ so cohorts remain comparable for research.
 
 from __future__ import annotations
 
-from iae.core.models import AmplitudeCategory, PastGradeMarksRange
+from iae.domain.models import AmplitudeCategory, PastGradeMarksRange
 
 _PAST_SCORE = {
     PastGradeMarksRange.BELOW_50: 0.25,

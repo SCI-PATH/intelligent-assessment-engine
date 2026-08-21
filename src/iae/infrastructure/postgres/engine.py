@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from iae.core.settings import get_settings
+from iae.config.settings import get_settings
 
 
 @lru_cache(maxsize=1)

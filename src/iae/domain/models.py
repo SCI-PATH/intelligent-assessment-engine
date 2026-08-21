@@ -2,7 +2,7 @@
 
 These types are intentionally framework-agnostic. They are the contract spoken
 by the application layer (`iae.application`) and the protocols in
-`iae.core.protocols`. Infrastructure adapters convert to and from them.
+`iae.domain.protocols`. Infrastructure adapters convert to and from them.
 """
 
 from __future__ import annotations
@@ -101,11 +101,20 @@ class Chunk(BaseModel):
     skill: str = ""
 
 
+class OptionDiagnostic(BaseModel):
+    """Misconception metadata for one wrong MCQ option (stored in bank payload)."""
+
+    distractor_tag: DistractorTag
+    distractor_label: str
+
+
 class MCQPayload(BaseModel):
     type: Literal[QuestionType.MCQ] = QuestionType.MCQ
     question: str
     options: dict[str, str]
     correct_answer: str
+    # Wrong options only — keyed by letter after shuffle.
+    option_diagnostics: dict[str, OptionDiagnostic] = Field(default_factory=dict)
 
 
 class ShortAnswerPayload(BaseModel):
@@ -127,6 +136,9 @@ class TrueFalsePayload(BaseModel):
     type: Literal[QuestionType.TRUE_FALSE] = QuestionType.TRUE_FALSE
     question: str
     correct_answer: Literal["True", "False"]
+    # Diagnostics for the incorrect polarity (Component 4 contract field names).
+    distractor_tag: DistractorTag | None = None
+    distractor_label: str | None = None
 
 
 QuestionPayload = Annotated[

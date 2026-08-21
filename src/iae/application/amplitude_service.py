@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-from iae.amplitude import categorize, history_composite_score, weighted_amplitude_score
 from iae.application.grading import GradingService
-from iae.core.models import (
+from iae.application.amplitude_scoring import (
+    categorize,
+    history_composite_score,
+    weighted_amplitude_score,
+)
+from iae.domain.models import (
     AmplitudeEvaluation,
     PastGradeMarksRange,
     Question,
     QuestionStatus,
     StudentProfile,
 )
-from iae.core.settings import get_config
+from iae.config.settings import get_config
 from iae.infrastructure.postgres.amplitude_repo import PostgresAmplitudeRepository
 from iae.infrastructure.postgres.questions_repo import PostgresQuestionRepository
 
@@ -52,15 +56,25 @@ class AmplitudeService:
         )
 
     def _ensure_fixed_items(self, grade: int) -> list[Question]:
+        """Return exactly 10 grade-stable questions.
+
+        Once ``amplitude_fixed_items`` has 10 approved ids for a grade, never reshuffle.
+        """
         ids = self._store.get_fixed_question_ids(grade)
-        questions: list[Question] = []
-        if ids:
+        if len(ids) == 10:
+            questions: list[Question] = []
             for qid in ids:
                 item = self._questions.get(qid)
-                if item is not None and item.status == QuestionStatus.APPROVED:
-                    questions.append(item)
-            if len(questions) == 10:
+                if item is None or item.status != QuestionStatus.APPROVED:
+                    break
+                questions.append(item)
+            else:
                 return questions
+            # Incomplete / rejected set — fall through to (re)seed once.
+
+        if ids and len(ids) == 10:
+            # Partial recovery: keep order but fill missing from bank without reshuffling ids list shape.
+            pass
 
         pool = self._questions.list_questions(status=QuestionStatus.APPROVED, grade=grade, limit=400)
         pool.sort(key=lambda q: (q.topic_id or "", q.id))

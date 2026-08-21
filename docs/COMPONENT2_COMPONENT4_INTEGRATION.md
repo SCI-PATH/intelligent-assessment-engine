@@ -29,7 +29,7 @@ Inbound notes from Component 4:
 ### Component 2 wiring
 
 1. Student / frontend calls **our** API:  
-   `POST http://localhost:8001/assessment/sessions/{session_id}/answer`
+   `POST http://localhost:8001/api/v1/assessment-engine/quizzes/{session_id}/answer`
 2. We grade → build the unified payload → save a local copy in  
    `question_engine.analytics_events`
 3. We forward the **same JSON** to Component 4:
@@ -42,7 +42,12 @@ Content-Type: application/json
 Set in `.env` (base only — path is appended in code):
 
 ```env
-COMPONENT_4_URL=http://127.0.0.1:8003
+Peer hosts: edit `src/iae/config/peers.py` (`COMPONENT_4_URL`, `PEER_HTTP_LIVE`). Do not put peer URLs in `.env`.
+
+```python
+COMPONENT_4_URL = "http://localhost:8004"
+PEER_HTTP_LIVE = False
+```
 ANALYTICS_BASE_URL=http://127.0.0.1:8003
 ```
 
@@ -353,7 +358,7 @@ Content-Type: application/json
 ```text
 Frontend                         Component 2 (port 8001)              Component 4 (port 8000)
    |                                      |                                      |
-   |  POST /assessment/sessions/{id}/answer                                     |
+   |  POST /api/v1/assessment-engine/quizzes/{id}/answer                                     |
    |  { question_id, student_answer, time_taken_seconds }                       |
    |------------------------------------->|                                      |
    |                                      | grade + build unified payload        |
@@ -376,7 +381,7 @@ attempts — Component 2 does, after grading.
 
 | Component 2 | Component 4 |
 |-------------|-------------|
-| Own `POST /assessment/sessions/{id}/answer` for the frontend | Own `POST /api/v1/assessment-submit` for ingest |
+| Own `POST /api/v1/assessment-engine/quizzes/{id}/answer` for the frontend | Own `POST /api/v1/assessment-submit` for ingest |
 | Score attempt; set `is_correct` | Update BKT from `is_correct` |
 | Wrong MCQ / TrueFalse → `distractor_tag` + `distractor_label` (+ `chosen_distractor_text`) | Aggregate → Misconception Cloud |
 | ShortAnswer / MultiBlank → `similarity_score` (+ `error_category` / `missed_blanks`) | Store for analytics charts |
@@ -427,7 +432,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/assessment-submit ^
 
 ## Quick summary
 
-> Frontend → Component 2 `…/answer` → grade → **POST same unified JSON to Component 4**  
+> Frontend → Component 2 `…/quizzes/{id}/answer` → grade → **POST same unified JSON to Component 4**  
 > `POST /api/v1/assessment-submit`.  
 > Always send all keys; use `null` when a field does not apply to that question type.  
 > Wrong MCQ **or TrueFalse** must include `distractor_tag` + `distractor_label`.  

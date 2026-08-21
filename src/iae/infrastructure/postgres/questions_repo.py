@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from iae.core.models import Question, QuestionOrigin, QuestionStatus, QuestionType, RejectionReason
+from iae.domain.models import Question, QuestionOrigin, QuestionStatus, QuestionType, RejectionReason
 from iae.infrastructure.postgres.orm import QuestionRow
 
 
@@ -84,8 +84,29 @@ class PostgresQuestionRepository:
         dok_level: int,
         question_type: QuestionType,
         excluded_ids: list[str],
+        topic_id: str = "",
     ) -> Question | None:
         relaxations: list[dict] = []
+        if topic_id:
+            relaxations.extend(
+                [
+                    {
+                        "chapter_name": chapter_name,
+                        "topic_id": topic_id,
+                        "dok_level": dok_level,
+                        "question_type": question_type.value,
+                    },
+                    {
+                        "chapter_name": chapter_name,
+                        "topic_id": topic_id,
+                        "dok_level": dok_level,
+                    },
+                    {
+                        "chapter_name": chapter_name,
+                        "topic_id": topic_id,
+                    },
+                ]
+            )
         if sub_concept:
             relaxations.extend(
                 [

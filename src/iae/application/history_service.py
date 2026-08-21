@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from iae.core.models import (
+from iae.domain.models import (
     AttemptRecord,
     MCQPayload,
     MultiBlankPayload,
@@ -13,7 +13,7 @@ from iae.core.models import (
     ShortAnswerPayload,
     TrueFalsePayload,
 )
-from iae.core.protocols import ILlmJson
+from iae.domain.protocols import ILlmJson
 from iae.infrastructure.postgres.questions_repo import PostgresQuestionRepository
 from iae.infrastructure.postgres.sessions_repo import PostgresSessionRepository
 from iae.prompts import render

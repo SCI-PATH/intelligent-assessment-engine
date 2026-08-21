@@ -25,10 +25,10 @@ from iae.application.question_generation import (
     retrieve_chunks,
     topics_for_bank_chapter,
 )
-from iae.core.curriculum import DEFAULT_GRADE, get_chapter_names
-from iae.core.models import Question, QuestionOrigin, QuestionStatus, QuestionType
-from iae.core.settings import get_config, get_settings
-from iae.core.skills import get_topic
+from iae.domain.curriculum import DEFAULT_GRADE, get_chapter_names
+from iae.domain.models import Question, QuestionOrigin, QuestionStatus, QuestionType
+from iae.config.settings import get_config, get_settings
+from iae.domain.skills import get_topic
 from iae.infrastructure.llm.factory import build_json_llm
 from iae.infrastructure.postgres.engine import get_session_factory, init_schema
 from iae.infrastructure.postgres.questions_repo import PostgresQuestionRepository

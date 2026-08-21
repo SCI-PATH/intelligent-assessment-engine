@@ -1,10 +1,8 @@
 """Application configuration loaded from environment + YAML.
 
-Secrets (LLM keys) come from environment variables / .env.
-Tunable knobs (max questions, accuracy band, model names) come from
-`iae/config/app.yaml` so they can be edited without touching code.
-
-Swap local Postgres for Neon by changing only ``DATABASE_URL`` in ``.env``.
+Secrets (LLM keys) and DATABASE_URL come from ``.env``.
+Peer microservice base URLs are hardcoded in ``iae.config.peers`` — not .env.
+Tunable knobs come from ``iae/config/app.yaml``.
 """
 
 from __future__ import annotations
@@ -37,19 +35,8 @@ class AppSettings(BaseSettings):
         alias="SKILLS_XLSX_PATH",
     )
 
-    # Peer microservices (empty = always use mock fallbacks)
-    component_1_url: str = Field(default="", alias="COMPONENT_1_URL")
-    component_3_url: str = Field(default="", alias="COMPONENT_3_URL")
-    component_4_url: str = Field(default="", alias="COMPONENT_4_URL")
-    # Back-compat alias for Component 4 base URL
-    analytics_base_url: str = Field(default="", alias="ANALYTICS_BASE_URL")
-
     http_client_timeout_s: float = Field(default=3.0, alias="HTTP_CLIENT_TIMEOUT_S")
     debug_agent_log: bool = Field(default=False, alias="DEBUG_AGENT_LOG")
-
-    @property
-    def c4_base_url(self) -> str:
-        return (self.component_4_url or self.analytics_base_url or "").rstrip("/")
 
 
 class AppConfig:

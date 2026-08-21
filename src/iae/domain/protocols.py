@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Protocol, runtime_checkable
 
-from iae.core.models import (
+from iae.domain.models import (
     AttemptRecord,
     Chunk,
     GradeResult,

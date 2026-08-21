@@ -18,7 +18,7 @@ from typing import Iterable
 
 import yaml
 
-from iae.core.models import SubConcept
+from iae.domain.models import SubConcept
 
 DEFAULT_GRADE = 6
 

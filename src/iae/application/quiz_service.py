@@ -9,15 +9,13 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from iae.application.analytics_payload import build_analytics_payload, send_analytics_event
-from iae.application.grading import GradingService
-from iae.application.sessions import NoQuestionAvailable
-from iae.core.chapter_catalog import (
+from iae.domain.chapter_catalog import (
     bank_chapter_names,
     normalize_chapter_id,
     resolve_chapter_ids,
 )
-from iae.core.models import (
+from iae.domain.exceptions import NoQuestionAvailable
+from iae.domain.models import (
     AttemptRecord,
     Question,
     QuestionType,
@@ -25,14 +23,22 @@ from iae.core.models import (
     SessionState,
     SessionStatus,
 )
-from iae.core.protocols import ILlmJson
-from iae.core.settings import get_config
-from iae.dda_algorithms import elo_to_target_dok, update_elo
-from iae.infrastructure.clients import Component1Client, Component3Client, Component4Client
+from iae.domain.protocols import ILlmJson
+from iae.config.settings import get_config
+from iae.application.analytics_payload import build_analytics_payload
+from iae.application.grading import GradingService
+from iae.infrastructure.clients import (
+    Component1Client,
+    Component3Client,
+    Component4Client,
+)
+from iae.adaptive import select_next_item, update_elo
 from iae.infrastructure.postgres.analytics_repo import PostgresAnalyticsRepository
 from iae.infrastructure.postgres.questions_repo import PostgresQuestionRepository
 from iae.infrastructure.postgres.sessions_repo import PostgresSessionRepository
 from iae.infrastructure.rag.embeddings import HuggingFaceEmbedder
+
+_PASS_THRESHOLD = 0.8
 
 
 def _elo_from_bkt_snapshot(bkt: dict[str, Any]) -> float:
@@ -49,7 +55,6 @@ def _elo_from_bkt_snapshot(bkt: dict[str, Any]) -> float:
         if probs:
             avg = sum(probs) / len(probs)
             return 800.0 + avg * 600.0
-    # Legacy mock shape
     try:
         return 800.0 + float(bkt.get("p_l", 0.35)) * 600.0
     except (TypeError, ValueError, AttributeError):
@@ -151,7 +156,69 @@ class QuizService:
         self._c3.notify_session_terminated(session_id=session_id, reason=reason)
         return session
 
-    def next_question(self, session_id: str) -> Question:
+    def _find_question(
+        self,
+        *,
+        bank_chapters: list[str],
+        types: list[QuestionType],
+        target_dok: int,
+        excluded_ids: list[str],
+        topic_id: str = "",
+        preferred_type: QuestionType | None = None,
+    ) -> Question | None:
+        ordered_types = list(types)
+        if preferred_type and preferred_type in ordered_types:
+            ordered_types = [preferred_type] + [t for t in ordered_types if t != preferred_type]
+
+        # Prefer exact topic + preferred type + target DOK.
+        for chapter in bank_chapters:
+            for qtype in ordered_types:
+                question = self._questions.find_one_unused(
+                    chapter_name=chapter,
+                    sub_concept="",
+                    dok_level=target_dok,
+                    question_type=qtype,
+                    excluded_ids=excluded_ids,
+                    topic_id=topic_id,
+                )
+                if question:
+                    return question
+
+        # DOK fallbacks, still preferring topic_id when set.
+        for chapter in bank_chapters:
+            for dok in (target_dok, 2, 1, 3, 4):
+                for qtype in ordered_types:
+                    question = self._questions.find_one_unused(
+                        chapter_name=chapter,
+                        sub_concept="",
+                        dok_level=dok,
+                        question_type=qtype,
+                        excluded_ids=excluded_ids,
+                        topic_id=topic_id,
+                    )
+                    if question:
+                        return question
+
+        # Chapter-wide fallback (drop topic filter).
+        if topic_id:
+            for chapter in bank_chapters:
+                for dok in (target_dok, 2, 1, 3, 4):
+                    for qtype in ordered_types:
+                        question = self._questions.find_one_unused(
+                            chapter_name=chapter,
+                            sub_concept="",
+                            dok_level=dok,
+                            question_type=qtype,
+                            excluded_ids=excluded_ids,
+                            topic_id="",
+                        )
+                        if question:
+                            return question
+        return None
+
+    def next_question(self, session_id: str) -> tuple[Question, Any]:
+        from iae.adaptive.multivariate_policy import MultivariateDecision
+
         session = self._sessions.get(session_id)
         if session is None:
             raise KeyError(session_id)
@@ -162,58 +229,83 @@ class QuizService:
             self._sessions.update(session)
             raise NoQuestionAvailable("Session already complete.")
 
-        excluded = list(
-            dict.fromkeys(list(session.used_question_ids) + self._sessions.served_question_ids(session.user_id))
-        )
-        target_dok = elo_to_target_dok(session.elo_rating)
         chapter_ids = session.scope_chapters or [session.scope_chapter]
         bank_chapters = bank_chapter_names(chapter_ids, grade=session.grade)
         types = session.allowed_question_types or list(QuestionType)
+        session_used = list(session.used_question_ids)
+        permanently_blocked = self._sessions.served_question_ids(session.user_id)
 
-        question: Question | None = None
-        for chapter in bank_chapters:
-            for qtype in types:
-                question = self._questions.find_one_unused(
-                    chapter_name=chapter,
-                    sub_concept="",
-                    dok_level=target_dok,
-                    question_type=qtype,
-                    excluded_ids=excluded,
-                )
-                if question:
-                    break
-            if question:
-                break
+        recent_topics: list[str] = []
+        for attempt in session.history[-5:]:
+            crumb = (attempt.adaptive_decision or "").strip()
+            if "topic=" in crumb:
+                recent_topics.append(crumb.split("topic=", 1)[1].split()[0])
+
+        hist_ok = [a.is_correct for a in session.history]
+        hist_types = [a.question_type for a in session.history]
+        last = session.history[-1] if session.history else None
+
+        decision: MultivariateDecision = select_next_item(
+            elo_rating=session.elo_rating,
+            chapter_ids=chapter_ids,
+            bkt_snapshot=session.bkt_snapshot if isinstance(session.bkt_snapshot, dict) else None,
+            allowed_question_types=types,
+            previous_type=last.question_type if last else None,
+            last_item_dok=last.dok_level if last else None,
+            previous_correct=last.is_correct if last else None,
+            previous_response_time_s=last.time_taken_seconds if last else None,
+            recently_used_topics=recent_topics,
+            history_correct=hist_ok,
+            history_types=hist_types,
+        )
+
+        excluded = list(dict.fromkeys(session_used + permanently_blocked))
+        question = self._find_question(
+            bank_chapters=bank_chapters,
+            types=types,
+            target_dok=decision.dok_level,
+            excluded_ids=excluded,
+            topic_id=decision.topic_id,
+            preferred_type=decision.question_type,
+        )
+
         if question is None:
-            for chapter in bank_chapters:
-                for dok in (target_dok, 2, 1, 3, 4):
-                    for qtype in types:
-                        question = self._questions.find_one_unused(
-                            chapter_name=chapter,
-                            sub_concept="",
-                            dok_level=dok,
-                            question_type=qtype,
-                            excluded_ids=excluded,
-                        )
-                        if question:
-                            break
-                    if question:
-                        break
-                if question:
-                    break
+            question = self._find_question(
+                bank_chapters=bank_chapters,
+                types=types,
+                target_dok=decision.dok_level,
+                excluded_ids=session_used,
+                topic_id=decision.topic_id,
+                preferred_type=decision.question_type,
+            )
+
+        if question is None:
+            question = self._find_question(
+                bank_chapters=bank_chapters,
+                types=types,
+                target_dok=decision.dok_level,
+                excluded_ids=[],
+                topic_id="",
+                preferred_type=decision.question_type,
+            )
+
         if question is None:
             raise NoQuestionAvailable("No eligible approved questions left.")
 
         session.used_question_ids.append(question.id)
         session.questions_asked += 1
-        self._sessions.mark_served(
-            user_id=session.user_id,
-            question_id=question.id,
-            session_id=session.session_id,
-            topic_id=question.topic_id,
-        )
+        # Stash last routing decision beside BKT session memory (not sent to C4).
+        snapshot = dict(session.bkt_snapshot or {})
+        snapshot["_last_routing"] = {
+            "topic_id": decision.topic_id,
+            "dok_level": decision.dok_level,
+            "question_type": decision.question_type.value,
+            "reason": decision.reason,
+            "served_topic_id": question.topic_id,
+        }
+        session.bkt_snapshot = snapshot
         self._sessions.update(session)
-        return question
+        return question, decision
 
     def submit_answer(
         self,
@@ -261,7 +353,9 @@ class QuizService:
             concept_explanation=result.concept_explanation,
             distractor_tag=result.distractor_tag,
             distractor_label=result.distractor_label,
-            adaptive_decision=f"elo={elo.new_rating:.1f} next_dok={elo.next_dok}",
+            adaptive_decision=(
+                f"topic={question.topic_id} elo={elo.new_rating:.1f} next_dok={elo.next_dok}"
+            ),
             time_taken_seconds=time_taken_seconds,
         )
         session.history.append(attempt)
@@ -283,9 +377,7 @@ class QuizService:
             except Exception:
                 pass
         c4_response = self._c4.submit_assessment(payload)
-        send_analytics_event(payload)
 
-        # Refresh session-memory BKT from C4 response (do not write a parallel mastery table).
         if isinstance(c4_response, dict) and c4_response.get("topic_bkt"):
             snapshot = dict(session.bkt_snapshot or {})
             snapshot["topic_bkt"] = c4_response["topic_bkt"]
@@ -294,12 +386,23 @@ class QuizService:
                     snapshot[key] = c4_response[key]
             session.bkt_snapshot = snapshot
 
+        similarity = payload.get("similarity_score")
+        similarity_f = float(similarity) if similarity is not None else None
+        # Permanently block only on correct or high-similarity pass.
+        if result.is_correct or (similarity_f is not None and similarity_f >= _PASS_THRESHOLD):
+            self._sessions.mark_served(
+                user_id=session.user_id,
+                question_id=question.id,
+                session_id=session.session_id,
+                topic_id=question.topic_id,
+            )
+
         self._sessions.record_attempt(
             attempt,
             user_id=session.user_id,
             session_id=session.session_id,
             topic_id=question.topic_id,
-            similarity_score=payload.get("similarity_score"),
+            similarity_score=similarity_f,
             distractor_tag=payload.get("distractor_tag"),
             distractor_label=payload.get("distractor_label"),
         )

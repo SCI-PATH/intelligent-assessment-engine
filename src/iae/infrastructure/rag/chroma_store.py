@@ -8,8 +8,8 @@ from typing import Iterable
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 
-from iae.core.models import Chunk
-from iae.core.settings import get_settings
+from iae.domain.models import Chunk
+from iae.config.settings import get_settings
 
 COLLECTION_NAME = "curriculum_chunks"
 

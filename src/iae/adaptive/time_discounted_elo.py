@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from iae.core.models import QuestionType
+from iae.domain.models import QuestionType
 
 
 def dok_to_elo(dok: int) -> float:

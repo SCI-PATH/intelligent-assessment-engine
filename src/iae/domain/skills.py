@@ -15,8 +15,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
 
-from iae.core.curriculum import DEFAULT_GRADE, get_chapter_names
-from iae.core.settings import get_settings
+from iae.domain.curriculum import DEFAULT_GRADE, get_chapter_names
+from iae.config.settings import get_settings
 
 SKILL_HIERARCHY_SHEET = "Skill Hierarchy"
 
