@@ -57,6 +57,17 @@ def get_chapter(chapter_id: str) -> ChapterRecord | None:
     return load_chapters().get(chapter_id.strip())
 
 
+def chapters_for_grade(grade: int) -> list[ChapterRecord]:
+    """All catalog chapters for a grade, ordered by chapter number."""
+    rows = [r for r in load_chapters().values() if r.grade == grade]
+    rows.sort(key=lambda r: r.chapter)
+    return rows
+
+
+def chapter_count_for_grade(grade: int) -> int:
+    return len(chapters_for_grade(grade))
+
+
 def normalize_chapter_id(raw: str, *, grade: int | None = None) -> str | None:
     """Accept ``G6_C8``, title ``Magnets``, or topic id ``G6_C8_ELE_CIRCUITS``."""
     text = (raw or "").strip()

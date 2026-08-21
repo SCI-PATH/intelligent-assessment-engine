@@ -4,7 +4,8 @@ Research algorithm
 ------------------
 Inputs
   - Historical block (40% of weighted score by default):
-      past marks band, chapters completed (normalized), study hours, self-confidence
+      past marks band (mandatory), chapter exposure (0 if none selected),
+      study hours, self-confidence, science self-efficacy, prerequisite checklist
   - Fixed 10-item quiz (60%): quiz_correct / quiz_total
 
 Categories
@@ -33,19 +34,40 @@ def history_composite_score(
     completed_chapters_count: int,
     study_hours_per_week: float | None = None,
     self_confidence: int | None = None,
+    science_self_efficacy: int | None = None,
+    prerequisite_ready_count: int | None = None,
     expected_chapters: int = 12,
 ) -> float:
-    """Blend four historical signals into [0, 1]."""
+    """Blend historical signals into [0, 1].
+
+    Weight mix (sums to 1.0):
+      marks 0.30 | chapters 0.25 | hours 0.10 | confidence 0.10 |
+      self-efficacy 0.15 | prerequisites 0.10
+    """
     marks = _PAST_SCORE[past_grade_marks_range]
-    chapter_ratio = min(max(completed_chapters_count / max(1, expected_chapters), 0.0), 1.0)
+    denom = max(1, expected_chapters)
+    chapter_ratio = min(max(float(completed_chapters_count) / denom, 0.0), 1.0)
     hours = 0.5
     if study_hours_per_week is not None:
-        # 0–14h/week mapped into [0, 1]
         hours = min(max(float(study_hours_per_week) / 14.0, 0.0), 1.0)
     confidence = 0.5
     if self_confidence is not None:
         confidence = min(max(int(self_confidence), 1), 5) / 5.0
-    return round(0.40 * marks + 0.30 * chapter_ratio + 0.15 * hours + 0.15 * confidence, 4)
+    efficacy = 0.6  # default mid-high when omitted (optional field)
+    if science_self_efficacy is not None:
+        efficacy = min(max(int(science_self_efficacy), 1), 5) / 5.0
+    prereq = 0.4  # default 2/5 when omitted
+    if prerequisite_ready_count is not None:
+        prereq = min(max(int(prerequisite_ready_count), 0), 5) / 5.0
+    return round(
+        0.30 * marks
+        + 0.25 * chapter_ratio
+        + 0.10 * hours
+        + 0.10 * confidence
+        + 0.15 * efficacy
+        + 0.10 * prereq,
+        4,
+    )
 
 
 def categorize(weighted_score: float) -> AmplitudeCategory:

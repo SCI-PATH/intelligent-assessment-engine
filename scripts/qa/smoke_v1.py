@@ -37,10 +37,12 @@ def _run(client: TestClient) -> int:
         json={
             "user_id": user,
             "grade": grade,
-            "completed_chapters_count": 3,
+            "completed_chapter_ids": [],
             "past_grade_marks_range": "50_75",
             "study_hours_per_week": 4,
             "self_confidence": 3,
+            "science_self_efficacy": 3,
+            "prerequisite_ready_count": 2,
         },
     )
     print("survey", r.status_code)
@@ -48,26 +50,35 @@ def _run(client: TestClient) -> int:
 
     quiz = client.get(f"{PREFIX}/amplitude/quiz", params={"grade": grade})
     print("quiz", quiz.status_code, "count", quiz.json().get("count"))
-    quiz.raise_for_status()
-    answers = {item["id"]: "A" for item in quiz.json().get("questions", [])}
-    ev = client.post(
-        f"{PREFIX}/amplitude/evaluate",
-        json={
-            "user_id": user,
-            "grade": grade,
-            "completed_chapters_count": 3,
-            "past_grade_marks_range": "50_75",
-            "study_hours_per_week": 4,
-            "self_confidence": 3,
-            "answers": answers,
-        },
-    )
-    print("evaluate", ev.status_code, ev.json().get("category"))
-    ev.raise_for_status()
+    if quiz.status_code == 409:
+        print(
+            "quiz 409 — run: python -m scripts.generate_amplitude_bank --grade",
+            grade,
+            "(skipping amplitude evaluate)",
+        )
+    else:
+        quiz.raise_for_status()
+        answers = {item["id"]: "A" for item in quiz.json().get("questions", [])}
+        ev = client.post(
+            f"{PREFIX}/amplitude/evaluate",
+            json={
+                "user_id": user,
+                "grade": grade,
+                "completed_chapter_ids": [],
+                "past_grade_marks_range": "50_75",
+                "study_hours_per_week": 4,
+                "self_confidence": 3,
+                "science_self_efficacy": 3,
+                "prerequisite_ready_count": 2,
+                "answers": answers,
+            },
+        )
+        print("evaluate", ev.status_code, ev.json().get("category"))
+        ev.raise_for_status()
 
-    cat = client.get(f"{PREFIX}/students/{user}/initial-category")
-    print("initial-category", cat.status_code, cat.json())
-    cat.raise_for_status()
+        cat = client.get(f"{PREFIX}/students/{user}/initial-category")
+        print("initial-category", cat.status_code, cat.json())
+        cat.raise_for_status()
 
     created = client.post(
         f"{PREFIX}/quizzes/customizable",

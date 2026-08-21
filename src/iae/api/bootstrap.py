@@ -66,7 +66,6 @@ def build_container() -> Container:
     )
     amplitude_service = AmplitudeService(
         store=amplitude_repo,
-        questions=questions_repo,
         grading=grading,
     )
     quiz_service = QuizService(

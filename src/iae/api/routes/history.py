@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from iae.api.bootstrap import Container
 from iae.api.deps import get_container
@@ -48,7 +48,7 @@ def _session_summary(session: SessionState) -> QuizSessionResponse:
     tags=["Amplitude Diagnostic Test"],
 )
 def initial_category(
-    student_id: str,
+    student_id: str = Path(..., examples=["mock-student-class-a"]),
     container: Container = Depends(get_container),
 ) -> AmplitudeCategoryResponse:
     sid = resolve_student_id(student_id)
@@ -76,7 +76,7 @@ def initial_category(
     ),
 )
 def list_sessions(
-    student_id: str,
+    student_id: str = Path(..., examples=["mock-student-class-a"]),
     limit: int = Query(default=50, ge=1, le=200),
     container: Container = Depends(get_container),
 ) -> list[QuizSessionResponse]:
@@ -94,8 +94,12 @@ def list_sessions(
     responses={404: {"model": ErrorDetail}},
 )
 def session_detail(
-    student_id: str,
-    session_id: str,
+    student_id: str = Path(..., examples=["mock-student-class-a"]),
+    session_id: str = Path(
+        ...,
+        description="Paste session_id from create quiz or list sessions.",
+        examples=["REPLACE_WITH_SESSION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> dict:
     sid = resolve_student_id(student_id)
@@ -115,8 +119,12 @@ def session_detail(
     responses={404: {"model": ErrorDetail}},
 )
 def analyze_session(
-    student_id: str,
-    session_id: str,
+    student_id: str = Path(..., examples=["mock-student-class-a"]),
+    session_id: str = Path(
+        ...,
+        description="Paste session_id that has at least one wrong answer.",
+        examples=["REPLACE_WITH_SESSION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> dict:
     sid = resolve_student_id(student_id)

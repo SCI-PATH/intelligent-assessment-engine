@@ -81,31 +81,37 @@ def page_amplitude(user_id: str, grade: int) -> None:
     st.header("Amplitude Diagnostic Test")
     with st.form("amplitude_survey"):
         g = st.selectbox("Grade (local override)", [6, 7, 8, 9], index=[6, 7, 8, 9].index(grade))
-        chapters = st.number_input("Chapters completed", min_value=0, max_value=20, value=4)
-        marks = st.selectbox("Past marks", ["BELOW_50", "50_75", "ABOVE_75"], index=1)
+        marks = st.selectbox("Past marks (required)", ["BELOW_50", "50_75", "ABOVE_75"], index=1)
         hours = st.number_input("Study hours / week", min_value=0.0, max_value=40.0, value=5.0)
         confidence = st.slider("Self-confidence", 1, 5, 3)
+        efficacy = st.slider("Science self-efficacy", 1, 5, 3)
+        prereq = st.slider("Prerequisite ready count", 0, 5, 2)
+        zero_chapters = st.checkbox("No chapters completed yet", value=True)
         submitted = st.form_submit_button("Save survey")
     if submitted:
         try:
-            profile = _post(
-                "/amplitude/survey",
-                {
-                    "user_id": user_id,
-                    "grade": g,
-                    "completed_chapters_count": int(chapters),
-                    "past_grade_marks_range": marks,
-                    "study_hours_per_week": float(hours),
-                    "self_confidence": int(confidence),
-                },
-            )
+            body = {
+                "user_id": user_id,
+                "grade": g,
+                "completed_chapter_ids": [],
+                "past_grade_marks_range": marks,
+                "study_hours_per_week": float(hours),
+                "self_confidence": int(confidence),
+                "science_self_efficacy": int(efficacy),
+                "prerequisite_ready_count": int(prereq),
+            }
+            if not zero_chapters:
+                body["completed_chapter_ids"] = [f"G{g}_C1"]
+            profile = _post("/amplitude/survey", body)
             st.success("Survey saved")
             st.json(profile)
             st.session_state.amp_grade = g
-            st.session_state.amp_chapters = int(chapters)
             st.session_state.amp_marks = marks
             st.session_state.amp_hours = float(hours)
             st.session_state.amp_conf = int(confidence)
+            st.session_state.amp_efficacy = int(efficacy)
+            st.session_state.amp_prereq = int(prereq)
+            st.session_state.amp_chapter_ids = body["completed_chapter_ids"]
         except Exception as exc:
             _api_error(exc)
 
@@ -147,10 +153,12 @@ def page_amplitude(user_id: str, grade: int) -> None:
                     {
                         "user_id": user_id,
                         "grade": st.session_state.get("amp_grade", grade),
-                        "completed_chapters_count": st.session_state.get("amp_chapters", 4),
+                        "completed_chapter_ids": st.session_state.get("amp_chapter_ids", []),
                         "past_grade_marks_range": st.session_state.get("amp_marks", "50_75"),
                         "study_hours_per_week": st.session_state.get("amp_hours"),
                         "self_confidence": st.session_state.get("amp_conf"),
+                        "science_self_efficacy": st.session_state.get("amp_efficacy", 3),
+                        "prerequisite_ready_count": st.session_state.get("amp_prereq", 2),
                         "answers": answers,
                     },
                 )

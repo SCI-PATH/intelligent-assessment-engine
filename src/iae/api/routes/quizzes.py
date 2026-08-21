@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path
 
 from iae.api.bootstrap import Container
 from iae.api.deps import get_container
@@ -134,7 +134,11 @@ def trigger_post_lesson(
     },
 )
 def next_question(
-    session_id: str,
+    session_id: str = Path(
+        ...,
+        description="Paste session_id from customizable or post-lesson create.",
+        examples=["REPLACE_WITH_SESSION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> QuizNextResponse:
     try:
@@ -177,8 +181,12 @@ def next_question(
     ),
 )
 def submit_answer(
-    session_id: str,
     payload: SubmitAnswerRequest,
+    session_id: str = Path(
+        ...,
+        description="Same session_id used for /next.",
+        examples=["REPLACE_WITH_SESSION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> QuizAnswerResponse:
     try:
@@ -213,7 +221,10 @@ def submit_answer(
     responses={404: {"model": ErrorDetail}},
 )
 def quiz_results(
-    session_id: str,
+    session_id: str = Path(
+        ...,
+        examples=["REPLACE_WITH_SESSION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> dict:
     session = container.quiz_service.get(session_id)
@@ -254,8 +265,11 @@ def quiz_results(
     responses={404: {"model": ErrorDetail}},
 )
 def terminate_session(
-    session_id: str,
     payload: TerminateSessionRequest,
+    session_id: str = Path(
+        ...,
+        examples=["REPLACE_WITH_SESSION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> QuizSessionResponse:
     actor = resolve_terminate_actor(payload.source)

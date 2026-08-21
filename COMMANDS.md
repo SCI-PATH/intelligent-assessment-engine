@@ -56,6 +56,26 @@ foreach ($g in 7,8,9) {
 ```
 
 You should see lines like `generating dok=1 type=mcq ...` then `ok`. If it hangs with no progress for >90s, the OpenAI call times out and retries.
+
+## 4b. Generate Amplitude placement bank (exactly 10 MCQ/TF per grade)
+
+Separate from the adaptive bank. Writes to `question_engine.amplitude_questions` with `status=approved`.
+
+```powershell
+python -m scripts.generate_amplitude_bank
+# or one grade:
+python -m scripts.generate_amplitude_bank --grade 7
+# regenerate:
+python -m scripts.generate_amplitude_bank --grade 6 --force
+```
+
+Verify scoring / evaluate:
+
+```powershell
+python -m scripts.qa.test_amplitude_scoring
+python -m scripts.qa.test_amplitude_evaluate
+```
+
 ## 5. Start API
 
 ```powershell
@@ -71,11 +91,12 @@ cd "c:\Users\yenul\Documents\Research Project\intelligent-assessment-engine"
 C:\iae-venv\Scripts\Activate.ps1
 $env:PYTHONPATH = "src"
 
+python -m scripts.qa.smoke_all_endpoints
 python -m scripts.qa.smoke_v1
 python -m iae.evaluation.run_validation
 ```
 
-Or exercise endpoints manually in Swagger under `/api/v1/assessment-engine`.
+`smoke_all_endpoints` hits every Swagger inbound route (Amplitude, quizzes, history, teacher). Or exercise endpoints manually in Swagger under `/api/v1/assessment-engine` — request bodies are pre-filled with editable examples.
 
 ## Streamlit (optional)
 

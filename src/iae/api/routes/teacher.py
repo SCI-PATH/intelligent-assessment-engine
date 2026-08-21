@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from iae.api.bootstrap import Container
 from iae.api.deps import get_container
@@ -39,7 +39,7 @@ router = APIRouter(
     ),
 )
 def list_topics(
-    grade: int = Query(default=DEFAULT_GRADE, ge=6, le=9),
+    grade: int = Query(default=6, ge=6, le=9, examples=[6]),
     container: Container = Depends(get_container),
 ) -> TeacherTopicsResponse:
     _ = resolve_teacher_id(MOCK_TEACHER_1)
@@ -103,16 +103,16 @@ def generate_questions(
     ),
 )
 def list_questions(
-    status: QuestionStatus | None = Query(default=None),
+    status: QuestionStatus | None = Query(default=QuestionStatus.APPROVED),
     topic_id: str | None = Query(default=None),
-    grade: int | None = Query(default=None, ge=6, le=9),
+    grade: int | None = Query(default=6, ge=6, le=9),
     class_code: str | None = Query(
         default=None,
         description="Filter to grades of students in this class (standalone: CLASS-A).",
     ),
     dok_level: int | None = Query(default=None, ge=1, le=4),
     question_type: QuestionType | None = Query(default=None),
-    limit: int = Query(default=100, ge=1, le=500),
+    limit: int = Query(default=20, ge=1, le=500),
     container: Container = Depends(get_container),
 ) -> TeacherQuestionListResponse:
     _ = resolve_teacher_id(MOCK_TEACHER_1)
@@ -143,7 +143,11 @@ def list_questions(
     ),
 )
 def approve_question(
-    question_id: str,
+    question_id: str = Path(
+        ...,
+        description="Paste id from GET /teacher/questions.",
+        examples=["REPLACE_WITH_QUESTION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> Question:
     _ = resolve_teacher_id(MOCK_TEACHER_1)
@@ -167,8 +171,12 @@ def approve_question(
     responses={404: {"model": ErrorDetail}},
 )
 def reject_question(
-    question_id: str,
     payload: RejectQuestionRequest,
+    question_id: str = Path(
+        ...,
+        description="Paste id from GET /teacher/questions.",
+        examples=["REPLACE_WITH_QUESTION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> Question:
     _ = resolve_teacher_id(MOCK_TEACHER_1)

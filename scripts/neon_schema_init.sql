@@ -236,3 +236,44 @@ CREATE TABLE IF NOT EXISTS question_engine.amplitude_fixed_items (
     PRIMARY KEY (grade, position),
     CONSTRAINT amplitude_fixed_pos_chk CHECK (position BETWEEN 1 AND 10)
 );
+
+CREATE TABLE IF NOT EXISTS question_engine.amplitude_questions (
+    id UUID PRIMARY KEY,
+    grade INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    topic_id TEXT NOT NULL DEFAULT '',
+    chapter_name TEXT NOT NULL,
+    sub_concept TEXT NOT NULL DEFAULT '',
+    skill TEXT NOT NULL DEFAULT '',
+    baseline_level INTEGER NOT NULL,
+    question_type TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    chunk_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    status TEXT NOT NULL DEFAULT 'approved',
+    origin TEXT NOT NULL DEFAULT 'amplitude',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT amplitude_questions_grade_pos UNIQUE (grade, position),
+    CONSTRAINT amplitude_questions_pos_chk CHECK (position BETWEEN 1 AND 10),
+    CONSTRAINT amplitude_questions_abl_chk CHECK (baseline_level BETWEEN 1 AND 3),
+    CONSTRAINT amplitude_questions_type_chk CHECK (question_type IN ('MCQ', 'TrueFalse')),
+    CONSTRAINT amplitude_questions_status_chk CHECK (status = 'approved'),
+    CONSTRAINT amplitude_questions_origin_chk CHECK (origin = 'amplitude'),
+    CONSTRAINT amplitude_questions_grade_chk CHECK (grade BETWEEN 6 AND 9)
+);
+
+CREATE INDEX IF NOT EXISTS amplitude_questions_grade_pos
+    ON question_engine.amplitude_questions (grade, position);
+
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS completed_chapter_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS science_self_efficacy INTEGER;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS prerequisite_ready_count INTEGER;
+
+ALTER TABLE question_engine.amplitude_attempts
+    ADD COLUMN IF NOT EXISTS completed_chapter_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE question_engine.amplitude_attempts
+    ADD COLUMN IF NOT EXISTS science_self_efficacy INTEGER;
+ALTER TABLE question_engine.amplitude_attempts
+    ADD COLUMN IF NOT EXISTS prerequisite_ready_count INTEGER;

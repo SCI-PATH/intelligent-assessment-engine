@@ -53,6 +53,7 @@ class QuestionStatus(str, Enum):
 class QuestionOrigin(str, Enum):
     AI = "ai"
     TEACHER = "teacher"
+    AMPLITUDE = "amplitude"
 
 
 class ShortAnswerErrorCategory(str, Enum):
@@ -328,6 +329,7 @@ class StudentProfile(BaseModel):
     user_id: str
     grade: int | None = None
     completed_chapters_count: int | None = None
+    completed_chapter_ids: list[str] = Field(default_factory=list)
     past_grade_marks_range: PastGradeMarksRange | None = None
     placement_category: PlacementCategory | AmplitudeCategory | None = None
     placement_score: float | None = None
@@ -336,6 +338,8 @@ class StudentProfile(BaseModel):
     display_name: str | None = None
     study_hours_per_week: float | None = None
     self_confidence: int | None = None
+    science_self_efficacy: int | None = None
+    prerequisite_ready_count: int | None = None
     initial_category: AmplitudeCategory | None = None
     initial_category_score: float | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -347,9 +351,12 @@ class AmplitudeEvaluation(BaseModel):
     user_id: str
     grade: int
     completed_chapters_count: int = 0
+    completed_chapter_ids: list[str] = Field(default_factory=list)
     past_grade_marks_range: PastGradeMarksRange
     study_hours_per_week: float | None = None
     self_confidence: int | None = None
+    science_self_efficacy: int | None = None
+    prerequisite_ready_count: int | None = None
     question_ids: list[str] = Field(default_factory=list)
     answers: dict[str, str] = Field(default_factory=dict)
     quiz_correct: int = 0

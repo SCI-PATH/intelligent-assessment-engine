@@ -88,6 +88,9 @@ class UserRow(Base):
     display_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     study_hours_per_week: Mapped[float | None] = mapped_column(Float, nullable=True)
     self_confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    science_self_efficacy: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    prerequisite_ready_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completed_chapter_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True, default=list)
     initial_category: Mapped[str | None] = mapped_column(String(16), nullable=True)
     initial_category_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -168,6 +171,9 @@ class AmplitudeAttemptRow(Base):
     past_grade_marks_range: Mapped[str] = mapped_column(String(16), nullable=False)
     study_hours_per_week: Mapped[float | None] = mapped_column(Float, nullable=True)
     self_confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    science_self_efficacy: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    prerequisite_ready_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completed_chapter_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True, default=list)
     question_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     answers: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     quiz_correct: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -190,6 +196,32 @@ class AmplitudeFixedItemRow(Base):
     grade: Mapped[int] = mapped_column(Integer, primary_key=True)
     position: Mapped[int] = mapped_column(Integer, primary_key=True)
     question_id: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class AmplitudeQuestionRow(Base):
+    """Dedicated Amplitude placement items (exactly 10 per grade)."""
+
+    __tablename__ = "amplitude_questions"
+    __table_args__ = {"schema": "question_engine"}
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    grade: Mapped[int] = mapped_column(Integer, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    topic_id: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    chapter_name: Mapped[str] = mapped_column(Text, nullable=False)
+    sub_concept: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    skill: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    baseline_level: Mapped[int] = mapped_column(Integer, nullable=False)
+    question_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    chunk_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="approved")
+    origin: Mapped[str] = mapped_column(String(16), nullable=False, default="amplitude")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
 
 
 class ServedQuestionRow(Base):

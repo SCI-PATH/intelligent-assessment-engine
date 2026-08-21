@@ -14,7 +14,12 @@ OPENAPI_TAGS = [
     {"name": "Health", "description": "Liveness probe."},
     {
         "name": "Amplitude Diagnostic Test",
-        "description": "Survey + fixed 10-item quiz → BASIC | INTERMEDIATE | ADVANCED.",
+        "description": (
+            "Pre-use placement: chapters multi-select + mandatory past marks survey, "
+            "fixed 10 MCQ/TrueFalse quiz (amplitude_questions), "
+            "then BASIC | INTERMEDIATE | ADVANCED. "
+            "See GET /amplitude/chapters and docs/FRONTEND_INTEGRATION.md."
+        ),
     },
     {
         "name": "Quizzes and Testing Loops",
@@ -34,6 +39,8 @@ API_DESCRIPTION = """
 Clean layered architecture: `api` → `application` → `domain` / `adaptive` / `infrastructure`.
 
 **Inbound prefix:** `/api/v1/assessment-engine`
+
+**Frontend UI contract (screens, dropdowns, all endpoints):** [`docs/FRONTEND_INTEGRATION.md`](docs/FRONTEND_INTEGRATION.md)
 
 Peer URLs are hardcoded in `src/iae/config/peers.py` (`localhost:8002|8003|8004`).
 Set `PEER_HTTP_LIVE = True` for live httpx.
