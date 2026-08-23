@@ -5,10 +5,10 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
-from iae.core.curriculum import DEFAULT_GRADE
-from iae.core.models import Chunk
-from iae.core.protocols import IEmbedder
-from iae.core.skills import TopicRecord, describe_topic, topics_for_chapter
+from iae.domain.curriculum import DEFAULT_GRADE
+from iae.domain.models import Chunk
+from iae.domain.protocols import IEmbedder
+from iae.domain.skills import TopicRecord, describe_topic, topics_for_chapter
 
 # Below this cosine, fall back to the first topic of the chapter.
 _WEAK_SIMILARITY = 0.30

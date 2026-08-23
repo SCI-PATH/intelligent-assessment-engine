@@ -1,99 +1,231 @@
-# Frontend Integration Guide — Component 2 (Intelligent Assessment Engine)
+# Frontend Integration README — Component 2 (Intelligent Assessment Engine)
 
-**Audience:** Next.js frontend developers / frontend AI agents.  
-**Copy this file into the Next.js repo** and follow it as the integration contract.
+Copy this file into the Next.js (or other) frontend repo. It is the **complete UI/API contract** for building the student + teacher experiences against Component 2.
 
-**Base URL (local):** `http://localhost:8001`  
-**Auth:** none (research phase)  
-**Preferred API prefix:** `/api/v1`  
-**OpenAPI / Swagger (authoritative schemas):** `http://localhost:8001/docs`
+Team peer/C4 handshake summary: see also root [`INTEGRATION_README.md`](../INTEGRATION_README.md).
 
-```http
-Content-Type: application/json
-Accept: application/json
-```
+| | |
+|--|--|
+| **Base URL (local)** | `http://localhost:8001` |
+| **API prefix** | `/api/v1/assessment-engine` |
+| **Swagger (live contract)** | `http://localhost:8001/docs` |
+| **OpenAPI JSON** | `http://localhost:8001/openapi.json` |
+| **Auth** | none (research phase) |
+| **Headers** | `Content-Type: application/json` · `Accept: application/json` |
 
-Errors: FastAPI `{ "detail": string | object }`  
-Pass mark on graded items: `is_correct` when `accuracy_score >= 0.8`
+Errors: FastAPI `{ "detail": string | object }`.  
+Pass mark on graded items: `is_correct` when `accuracy_score >= 0.8`.
 
----
+**Do not call Component 4 from the browser.** Component 2 owns BKT snapshot + `assessment-submit` after grading.
 
-## 0) Frontend architecture note (mandatory)
-
-Adhere to the Next.js repo’s `developer_readme.md` folder structure.
-
-Suggested feature modules (names only — follow your repo’s conventions):
-
-- `features/amplitude/`
-- `features/quiz/` (customizable + post-lesson)
-- `features/history/`
-- `features/teacher/`
-- `features/dev-hub/` ← temporary developer dashboard (see §7)
-
-Do **not** call Component 4 (`assessment-submit` / `bkt-snapshot`) from the browser.  
-Component 2 owns those outbound calls after grading.
-
-Shared chapter IDs: use `G{grade}_C{chapter}` from Component 2’s catalog  
-(`data/chapter_ids_g6_g9.csv`), e.g. `G6_C8`. **Never** send `"8"` or `"Chapter 8"`.
+Peer hosts live in backend `src/iae/config/peers.py` only.
 
 ---
 
-## 1) Amplitude Test (initial category)
+## Suggested frontend modules
 
-Categories: **`BASIC` | `INTERMEDIATE` | `ADVANCED`** (no BKT).  
-Scoring: 60% quiz + 40% historical composite.
+| Module | Screens / jobs |
+|--------|----------------|
+| `features/amplitude/` | Post-signup placement: survey → 10-item quiz → category result |
+| `features/quiz/` | Customizable adaptive quiz + post-lesson loop |
+| `features/history/` | Past sessions, detail, optional AI analysis |
+| `features/teacher/` | Topic list, generate, review/approve/reject bank |
+| `features/dev-hub/` | Temporary buttons for all flows (optional) |
+
+Mock users (seeded):
+
+| `user_id` / `student_id` | Role | `class_code` |
+|--------------------------|------|--------------|
+| `mock-student-unassigned` | student | — |
+| `mock-student-class-a` | student | `CLASS-A` |
+| `mock-teacher-1` | teacher | `CLASS-A` |
+
+---
+
+## Shared UI conventions
+
+### Grade selector (all student flows)
+
+- **Control:** dropdown / select  
+- **Values:** `6` | `7` | `8` | `9`  
+- **API field:** `grade` (integer)
+
+### Chapter IDs (never free-text titles in create-quiz APIs)
+
+Canonical form: `G{grade}_C{chapter}` e.g. `G6_C8`, `G7_C5`.
+
+- Source of truth for Amplitude multi-select:  
+  `GET /api/v1/assessment-engine/amplitude/chapters?grade=7`  
+- Same catalog: repo file `data/chapter_ids_g6_g9.csv`  
+- **Never** send `"8"` or `"Chapter 8"` as a chapter id
+
+### Question types (rendering)
+
+| `question_type` | Student UI | Answer format |
+|-----------------|------------|---------------|
+| `MCQ` | Stem + 4 radio options A–D from `prompt.options` | `"A"` / `"B"` / `"C"` / `"D"` |
+| `TrueFalse` | Stem + True / False | `"True"` / `"False"` (capital T/F) |
+| `ShortAnswer` | Stem + text input | free string |
+| `MultiBlank` | `prompt.paragraph` with blanks + inputs | backend-specific; prefer matching blank order |
+
+**Never show** to students: `correct_answer`, `ideal_answer`, `answers`, `keywords`, `option_diagnostics`, `distractor_tag`, `distractor_label`. Amplitude `/quiz` already strips these; adaptive `/next` may return full `Question` — strip secrets in the FE.
+
+---
+
+## Feature 1 — Amplitude placement (post-registration / pre-lessons)
+
+**Goal:** Classify student as `BASIC` | `INTERMEDIATE` | `ADVANCED` before lessons.  
+**Scoring:** 60% quiz + 40% survey composite (backend). No BKT.
+
+### Screens / controls
+
+1. **Survey screen**
+   - Grade dropdown (6–9)
+   - **Past science marks** (required) dropdown: `BELOW_50` | `50_75` | `ABOVE_75`
+   - **Chapters completed** multi-select: load via `/amplitude/chapters?grade=` — show `chapter_title`, submit `chapter_id` list  
+     - Allow **select none** (`[]`) = student has not started the grade
+   - Study hours / week (number, 0–40, optional)
+   - Self-confidence slider 1–5 (optional)
+   - Science self-efficacy slider 1–5 — label: *“I can figure out science questions even when they are new or a bit hard.”*
+   - Prerequisite checklist (5 checkboxes) — send **count** 0–5 as `prerequisite_ready_count`:
+     1. I can understand a short science paragraph and say what it is mainly about  
+     2. I can read a labelled diagram, table, or simple graph in science  
+     3. I can follow step-by-step instructions for a science activity or experiment  
+     4. I can explain a science idea in my own words (not only memorize facts)  
+     5. I can use simple measurements in science (length, time, mass, or temperature)
+2. **Quiz screen** — exactly 10 items (MCQ + True/False only); same set for every student in that grade
+3. **Result screen** — show `category` + optional `weighted_score`; persist via `initial-category` for Lesson Engine
+
+### Endpoints
 
 | Step | Method | Path |
 |------|--------|------|
-| Survey | `POST` | `/api/v1/amplitude/survey` |
-| Fixed 10-item quiz | `GET` | `/api/v1/amplitude/quiz?grade=7` |
-| Evaluate | `POST` | `/api/v1/amplitude/evaluate` |
-| Read category | `GET` | `/api/v1/student/{student_id}/initial-category` |
+| Chapters for multi-select | `GET` | `/api/v1/assessment-engine/amplitude/chapters?grade=7` |
+| Save survey | `POST` | `/api/v1/assessment-engine/amplitude/survey` |
+| Load quiz | `GET` | `/api/v1/assessment-engine/amplitude/quiz?grade=7` |
+| Evaluate | `POST` | `/api/v1/assessment-engine/amplitude/evaluate` |
+| Read category | `GET` | `/api/v1/assessment-engine/students/{student_id}/initial-category` |
 
-### Survey
+#### Chapters response (example shape)
 
 ```json
 {
-  "user_id": "mock-student-class-a",
   "grade": 7,
-  "completed_chapters_count": 4,
-  "past_grade_marks_range": "50_75",
-  "study_hours_per_week": 5.0,
-  "self_confidence": 3
+  "count": 19,
+  "chapters": [
+    {
+      "chapter_id": "G7_C1",
+      "chapter": 1,
+      "chapter_title": "Plant Diversity",
+      "topic_ids": ["G7_C1_PLA_DIVER", "G7_C1_PLA_CLASSIF"]
+    }
+  ]
 }
 ```
 
-`past_grade_marks_range`: `BELOW_50` | `50_75` | `ABOVE_75`  
-`self_confidence`: 1–5
-
-### Evaluate
+#### Survey body
 
 ```json
 {
   "user_id": "mock-student-class-a",
   "grade": 7,
-  "completed_chapters_count": 4,
+  "completed_chapter_ids": [],
   "past_grade_marks_range": "50_75",
   "study_hours_per_week": 5.0,
   "self_confidence": 3,
-  "answers": { "<question_id>": "B" }
+  "science_self_efficacy": 4,
+  "prerequisite_ready_count": 3
 }
 ```
 
-Quiz prompts strip answer keys. Response includes `category`, `weighted_score`, `quiz_score`, `history_score`.
+- `past_grade_marks_range` is **required**
+- Prefer `completed_chapter_ids` (including `[]`). Legacy `completed_chapters_count` alone is still accepted
+
+#### Quiz response
+
+```json
+{
+  "grade": 7,
+  "count": 10,
+  "questions": [
+    {
+      "id": "<uuid>",
+      "chapter_name": "...",
+      "topic_id": "G7_C5_ACI_IDENTIF",
+      "skill": "...",
+      "dok_level": 1,
+      "question_type": "MCQ",
+      "grade": 7,
+      "prompt": {
+        "type": "MCQ",
+        "question": "...",
+        "options": { "A": "...", "B": "...", "C": "...", "D": "..." }
+      }
+    }
+  ]
+}
+```
+
+`dok_level` here is the **Amplitude Baseline Ladder** level (1–3), not adaptive-bank DOK 1–4.
+
+**409** if bank missing for that grade (ops must run `python -m scripts.generate_amplitude_bank`).
+
+#### Evaluate body
+
+```json
+{
+  "user_id": "mock-student-class-a",
+  "grade": 7,
+  "completed_chapter_ids": ["G7_C1", "G7_C2"],
+  "past_grade_marks_range": "50_75",
+  "study_hours_per_week": 5.0,
+  "self_confidence": 3,
+  "science_self_efficacy": 4,
+  "prerequisite_ready_count": 3,
+  "answers": {
+    "<question_id_1>": "B",
+    "<question_id_2>": "True"
+  }
+}
+```
+
+Response includes `category`, `quiz_score`, `history_score`, `weighted_score`, etc.
+
+#### Initial category (Lesson Engine / FE)
+
+`GET /api/v1/assessment-engine/students/mock-student-class-a/initial-category`
+
+```json
+{
+  "student_id": "mock-student-class-a",
+  "initial_category": "INTERMEDIATE",
+  "initial_category_score": 0.62,
+  "placement_category": "INTERMEDIATE"
+}
+```
 
 ---
 
-## 2) Customizable adaptive quiz (Elo DDA)
+## Feature 2 — Customizable adaptive quiz (Elo DDA)
+
+### Screens / controls
+
+- Grade dropdown (6–9)
+- **Chapter multi-select** (required ≥1) — use `/amplitude/chapters?grade=` or CSV; submit `chapter_id`s
+- Number of questions (1–30, default 5)
+- Optional question-type multi-select: `MCQ` | `TrueFalse` | `ShortAnswer` | `MultiBlank` (omit = all)
+- Loop: show `/next` → collect answer + optional timer → `POST /answer` until `is_complete`
+
+### Endpoints
 
 | Step | Method | Path |
 |------|--------|------|
-| Create | `POST` | `/api/v1/quizzes/customizable` |
-| Next | `GET` | `/api/v1/quizzes/{session_id}/next` |
-| Answer | `POST` | `/api/v1/quizzes/{session_id}/answer` |
-| Results | `GET` | `/api/v1/quizzes/{session_id}/results` |
+| Create | `POST` | `/api/v1/assessment-engine/quizzes/customizable` |
+| Next | `GET` | `/api/v1/assessment-engine/quizzes/{session_id}/next` |
+| Answer | `POST` | `/api/v1/assessment-engine/quizzes/{session_id}/answer` |
+| Results | `GET` | `/api/v1/assessment-engine/quizzes/{session_id}/results` |
 
-### Create
+#### Create
 
 ```json
 {
@@ -105,7 +237,9 @@ Quiz prompts strip answer keys. Response includes `category`, `weighted_score`, 
 }
 ```
 
-### Answer
+Response: `session_id`, `status`, `max_questions`, `elo_rating`, …
+
+#### Answer
 
 ```json
 {
@@ -115,15 +249,17 @@ Quiz prompts strip answer keys. Response includes `category`, `weighted_score`, 
 }
 ```
 
-Backend fetches C4 BKT snapshot at start and forwards each graded attempt to C4.
+Response: `grade` (GradeResult), `is_complete`, `elo_rating`, `status`.
+
+Backend may call Component 4 (mocked if peers offline).
 
 ---
 
-## 3) Post-lesson quiz (Component 1 → Component 2)
+## Feature 3 — Post-lesson quiz (Component 1 / 3 → C2)
 
-| Method | Path |
-|--------|------|
-| `POST` | `/api/v1/quiz/trigger-post-lesson` |
+Triggered when a lesson finishes. FE or peer services call:
+
+`POST /api/v1/assessment-engine/quizzes/post-lesson`
 
 ```json
 {
@@ -133,15 +269,15 @@ Backend fetches C4 BKT snapshot at start and forwards each graded attempt to C4.
 }
 ```
 
-Returns a session with `max_questions = 15`. Then use the same `/next` + `/answer` loop as customizable quizzes.
+Returns a session with `max_questions` typically **15**. Then reuse the same `/next` + `/answer` loop as customizable.
+
+**UI:** usually no chapter picker (chapter comes from lesson); show progress `questions_asked / max_questions`.
 
 ---
 
-## 4) Kill switch (Component 3 → Component 2)
+## Feature 4 — Kill switch (Component 3)
 
-| Method | Path |
-|--------|------|
-| `POST` | `/api/v1/quiz/{session_id}/terminate` |
+`POST /api/v1/assessment-engine/quizzes/{session_id}/terminate`
 
 ```json
 {
@@ -150,36 +286,45 @@ Returns a session with `max_questions = 15`. Then use the same `/next` + `/answe
 }
 ```
 
-Idempotent if the session already ended.
+Idempotent if already ended. FE can show “session ended by engagement engine”.
 
 ---
 
-## 5) Student history
+## Feature 5 — Student history
 
-| Method | Path |
-|--------|------|
-| `GET` | `/api/v1/student/{id}/sessions` |
-| `GET` | `/api/v1/student/{id}/sessions/{session_id}` |
-| `POST` | `/api/v1/student/{id}/sessions/{session_id}/analyze` |
+| Method | Path | UI |
+|--------|------|-----|
+| `GET` | `/api/v1/assessment-engine/students/{id}/sessions` | List past quizzes |
+| `GET` | `/api/v1/assessment-engine/students/{id}/sessions/{session_id}` | Detail / attempt trail |
+| `POST` | `/api/v1/assessment-engine/students/{id}/sessions/{session_id}/analyze` | Optional “AI analysis” button |
 
-Detail includes student answers + expected answers. Analyze returns constructive LLM feedback for wrong items.
+Also: Amplitude category via `.../initial-category` (above).
 
 ---
 
-## 6) Teacher dashboard
+## Feature 6 — Teacher hub
 
-Prefer `/api/v1/teacher/*`.
+### Screens / controls
+
+- Grade dropdown
+- Topics table from `GET .../teacher/topics?grade=`
+- Generate form: Topic ID select, DOK 1–4, question type, count
+- Review queue: filter by `status` (`pending` / `approved` / `rejected`), grade, etc.
+- Approve button / Reject form with reason enum + notes
+- Optional “add custom question” form
+
+### Endpoints
 
 | Method | Path | Notes |
 |--------|------|-------|
-| `GET` | `/api/v1/teacher/topics?grade=7` | Excel Topic IDs |
-| `POST` | `/api/v1/teacher/generate` | RAG → pending |
-| `GET` | `/api/v1/teacher/questions` | Filters: `status`, `grade`, `class_code`, `dok_level`, `question_type` |
-| `POST` | `/api/v1/teacher/questions/{id}/approve` | |
-| `POST` | `/api/v1/teacher/questions/{id}/reject` | reason enum |
-| `POST` | `/api/v1/teacher/questions` | custom add |
+| `GET` | `/api/v1/assessment-engine/teacher/topics?grade=7` | Topic ID catalog |
+| `POST` | `/api/v1/assessment-engine/teacher/generate` | RAG → `pending` items |
+| `GET` | `/api/v1/assessment-engine/teacher/questions` | Filters: `status`, `grade`, … |
+| `POST` | `/api/v1/assessment-engine/teacher/questions/{id}/approve` | |
+| `POST` | `/api/v1/assessment-engine/teacher/questions/{id}/reject` | |
+| `POST` | `/api/v1/assessment-engine/teacher/questions` | Manual add |
 
-### Reject
+#### Reject body
 
 ```json
 {
@@ -188,46 +333,81 @@ Prefer `/api/v1/teacher/*`.
 }
 ```
 
-Reasons: `FACTUAL_ERROR` | `OUT_OF_SCOPE` | `POOR_PHRASING` | `TOO_EASY` | `TOO_HARD` | `OTHER`  
-On `FACTUAL_ERROR`, backend may set `rejection_confirmed_ai=true`.
+Reasons: `FACTUAL_ERROR` | `OUT_OF_SCOPE` | `POOR_PHRASING` | `TOO_EASY` | `TOO_HARD` | `OTHER`
+
+#### Generate body
+
+```json
+{
+  "topic_id": "G6_C7_MAG_POLES",
+  "dok_level": 2,
+  "question_type": "MCQ",
+  "count": 1
+}
+```
 
 ---
 
-## 7) Temporary Dev Hub (required for sprint testing)
+## Health
 
-Build a temporary **Dev Hub** route (e.g. `/dev-hub`) with buttons that open each flow independently before final UI polish:
-
-1. **Amplitude** → survey form → load quiz → evaluate → show category  
-2. **Customizable Quiz** → pick chapter_ids → start → next/answer loop → results  
-3. **Post-lesson** → trigger with `chapter_id` → continue quiz loop  
-4. **Kill switch** → terminate active `session_id`  
-5. **Student History** → list sessions → detail → analyze  
-6. **Teacher** → list questions → approve / reject with reason  
-
-Mock users for local testing (seeded by Component 2):
-
-| user_id | role | class_code |
-|---------|------|------------|
-| `mock-student-unassigned` | student | — |
-| `mock-student-class-a` | student | `CLASS-A` |
-| `mock-teacher-1` | teacher | `CLASS-A` |
-
-Optional: add a user picker at the top of Dev Hub that sets `student_id` / teacher context.
+`GET /` or health route (see Swagger **Health** tag) — use for deploy readiness.
 
 ---
 
-## 8) Deprecated legacy paths (do not use for new UI)
+## Full endpoint map (Component 2 inbound)
 
-- `/assessment/placement/*` (old WEAK/AVERAGE/ADVANCED)
-- `/assessment/sessions/*` (old diagnostic-only loop)
-- `/teacher/*` (prefer `/api/v1/teacher`)
+| Method | Path |
+|--------|------|
+| `GET` | `/api/v1/assessment-engine/amplitude/chapters` |
+| `POST` | `/api/v1/assessment-engine/amplitude/survey` |
+| `GET` | `/api/v1/assessment-engine/amplitude/quiz` |
+| `POST` | `/api/v1/assessment-engine/amplitude/evaluate` |
+| `POST` | `/api/v1/assessment-engine/quizzes/customizable` |
+| `POST` | `/api/v1/assessment-engine/quizzes/post-lesson` |
+| `GET` | `/api/v1/assessment-engine/quizzes/{session_id}/next` |
+| `POST` | `/api/v1/assessment-engine/quizzes/{session_id}/answer` |
+| `GET` | `/api/v1/assessment-engine/quizzes/{session_id}/results` |
+| `POST` | `/api/v1/assessment-engine/quizzes/{session_id}/terminate` |
+| `GET` | `/api/v1/assessment-engine/students/{student_id}/initial-category` |
+| `GET` | `/api/v1/assessment-engine/students/{student_id}/sessions` |
+| `GET` | `/api/v1/assessment-engine/students/{student_id}/sessions/{session_id}` |
+| `POST` | `/api/v1/assessment-engine/students/{student_id}/sessions/{session_id}/analyze` |
+| `GET` | `/api/v1/assessment-engine/teacher/topics` |
+| `POST` | `/api/v1/assessment-engine/teacher/generate` |
+| `GET` | `/api/v1/assessment-engine/teacher/questions` |
+| `POST` | `/api/v1/assessment-engine/teacher/questions` |
+| `POST` | `/api/v1/assessment-engine/teacher/questions/{question_id}/approve` |
+| `POST` | `/api/v1/assessment-engine/teacher/questions/{question_id}/reject` |
+
+Exact request/response fields: prefer live Swagger at `/docs` (generated from the same Pydantic models).
 
 ---
 
-## 9) How to explore contracts in Swagger
+## Recommended user journeys
 
-1. Start Component 2: `uvicorn iae.api.main:app --reload --port 8001`  
-2. Open `http://localhost:8001/docs`  
-3. Expand tags: **Amplitude**, **Quizzes**, **Student History**, **Teacher Hub**  
-4. Click **Try it out** → fill JSON → **Execute**  
-5. Sync TypeScript types from `http://localhost:8001/openapi.json` if desired
+```text
+Signup → Amplitude survey → Amplitude quiz → show category
+     → (optional) Customizable quiz for practice
+     → Lesson (C1) → Post-lesson quiz → History
+Teacher → Topics → Generate → Review pending → Approve/Reject
+Engagement (C3) → may terminate an active session
+```
+
+---
+
+## Out of scope for FE (backend / peers)
+
+- Component 4 `assessment-submit` / `bkt-snapshot` payloads — see `docs/COMPONENT2_COMPONENT4_INTEGRATION.md` and `docs/QuestionEngine-BKT-Snapshot.md`
+- Cross-service peer URLs — `INTEGRATION_README.md` + `INTEGRATION_STEPS.md`
+
+---
+
+## Local smoke for FE developers
+
+```powershell
+# Backend running:
+uvicorn iae.api.main:app --reload --port 8001
+# Open http://localhost:8001/docs
+```
+
+Use Try-it-out with `mock-student-class-a` / grade `7` for Amplitude after the placement bank exists for that grade.

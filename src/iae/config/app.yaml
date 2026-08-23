@@ -20,6 +20,6 @@ models:
   llm_grader_model: llama-3.1-8b-instant
 
 bank:
-  questions_per_combo: 1          # questions generated per (chapter, sub_concept, dok, type)
+  questions_per_combo: 3          # exactly 3 questions per (topic_id, dok 1-4, question_type)
   generation_max_retries: 2
   retrieval_top_k: 4

@@ -1,21 +1,14 @@
--- =============================================================================
--- Neon PostgreSQL schema init for Intelligent Assessment Engine (Component 3)
--- =============================================================================
--- Safe to re-run on the shared Neon instance (idempotent IF NOT EXISTS).
--- Schema name is lowercase: question_engine
---
--- Apply in Neon SQL Editor, or:
---   psql "$DATABASE_URL" -f scripts/neon_schema_init.sql
---
--- Local equivalent (SQLAlchemy path):
---   python -m scripts.init_postgres
--- =============================================================================
-
+-- Admin / owner only: create schema once, then grant the app role usage+create
+-- on question_engine. App init (python -m scripts.init_postgres) does NOT run
+-- CREATE SCHEMA — it only creates tables inside the existing schema.
 CREATE SCHEMA IF NOT EXISTS question_engine;
 
--- ---------------------------------------------------------------------------
--- Core bank
--- ---------------------------------------------------------------------------
+-- Unused leftovers from earlier drafts (BKT lives in Component 4).
+DROP TABLE IF EXISTS question_engine.frustration_cues;
+DROP TABLE IF EXISTS question_engine.bkt_mastery;
+DROP TABLE IF EXISTS question_engine.past_paper_items;
+DROP TABLE IF EXISTS question_engine.placement_evaluations;
+
 CREATE TABLE IF NOT EXISTS question_engine.questions (
     id UUID PRIMARY KEY,
     grade INTEGER NOT NULL,
@@ -41,15 +34,9 @@ CREATE INDEX IF NOT EXISTS questions_bank_lookup
 CREATE INDEX IF NOT EXISTS questions_topic_status
     ON question_engine.questions (topic_id, status);
 
-CREATE INDEX IF NOT EXISTS questions_status
-    ON question_engine.questions (status);
-
 CREATE INDEX IF NOT EXISTS questions_grade_created
     ON question_engine.questions (grade, created_at DESC);
 
--- ---------------------------------------------------------------------------
--- Component 4 / BKT analytics events (written on every graded answer)
--- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS question_engine.analytics_events (
     id UUID PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -69,12 +56,6 @@ CREATE TABLE IF NOT EXISTS question_engine.analytics_events (
 
 CREATE INDEX IF NOT EXISTS analytics_events_user_topic
     ON question_engine.analytics_events (user_id, topic_id, created_at DESC);
-
-CREATE INDEX IF NOT EXISTS analytics_events_user_id
-    ON question_engine.analytics_events (user_id);
-
-CREATE INDEX IF NOT EXISTS analytics_events_topic_id
-    ON question_engine.analytics_events (topic_id);
 
 ALTER TABLE question_engine.analytics_events
     ADD COLUMN IF NOT EXISTS error_category TEXT;
@@ -97,9 +78,6 @@ ALTER TABLE question_engine.analytics_events
 ALTER TABLE question_engine.analytics_events
     ADD COLUMN IF NOT EXISTS source TEXT;
 
--- ---------------------------------------------------------------------------
--- Learners / placement
--- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS question_engine.users (
     user_id TEXT PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -117,33 +95,21 @@ ALTER TABLE question_engine.users
     ADD COLUMN IF NOT EXISTS placement_score DOUBLE PRECISION;
 ALTER TABLE question_engine.users
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'student';
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS class_code TEXT;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS display_name TEXT;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS study_hours_per_week DOUBLE PRECISION;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS self_confidence INTEGER;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS initial_category TEXT;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS initial_category_score DOUBLE PRECISION;
 
-CREATE TABLE IF NOT EXISTS question_engine.placement_evaluations (
-    id UUID PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
-    grade INTEGER NOT NULL,
-    completed_chapters_count INTEGER NOT NULL DEFAULT 0,
-    past_grade_marks_range TEXT NOT NULL,
-    quiz_correct INTEGER NOT NULL,
-    quiz_total INTEGER NOT NULL DEFAULT 10,
-    quiz_score DOUBLE PRECISION NOT NULL,
-    past_score DOUBLE PRECISION NOT NULL,
-    weighted_score DOUBLE PRECISION NOT NULL,
-    category TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT placement_eval_marks_chk
-        CHECK (past_grade_marks_range IN ('BELOW_50', '50_75', 'ABOVE_75')),
-    CONSTRAINT placement_eval_category_chk
-        CHECK (category IN ('WEAK', 'AVERAGE', 'ADVANCED')),
-    CONSTRAINT placement_eval_grade_chk CHECK (grade BETWEEN 6 AND 9)
-);
-
-CREATE INDEX IF NOT EXISTS placement_evaluations_user
-    ON question_engine.placement_evaluations (user_id, created_at DESC);
-
--- ---------------------------------------------------------------------------
--- Diagnostic sessions
--- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS question_engine.assessment_sessions (
     session_id UUID PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
@@ -165,8 +131,22 @@ CREATE TABLE IF NOT EXISTS question_engine.assessment_sessions (
 CREATE INDEX IF NOT EXISTS assessment_sessions_user
     ON question_engine.assessment_sessions (user_id, started_at DESC);
 
-CREATE INDEX IF NOT EXISTS assessment_sessions_topic_id
-    ON question_engine.assessment_sessions (topic_id);
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS session_kind TEXT DEFAULT 'diagnostic';
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS terminate_reason TEXT;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS allowed_question_types JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS scope_chapters JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS elo_rating DOUBLE PRECISION DEFAULT 1000.0;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS bkt_snapshot JSONB;
+ALTER TABLE question_engine.assessment_sessions
+    ADD COLUMN IF NOT EXISTS ai_analysis JSONB;
 
 CREATE TABLE IF NOT EXISTS question_engine.served_questions (
     user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
@@ -181,9 +161,6 @@ CREATE TABLE IF NOT EXISTS question_engine.served_questions (
 
 CREATE INDEX IF NOT EXISTS served_questions_session
     ON question_engine.served_questions (session_id);
-
-CREATE INDEX IF NOT EXISTS served_questions_topic_id
-    ON question_engine.served_questions (topic_id);
 
 CREATE TABLE IF NOT EXISTS question_engine.attempts (
     id UUID PRIMARY KEY,
@@ -206,12 +183,6 @@ CREATE INDEX IF NOT EXISTS attempts_session
 CREATE INDEX IF NOT EXISTS attempts_user_topic
     ON question_engine.attempts (user_id, topic_id, answered_at DESC);
 
-CREATE INDEX IF NOT EXISTS attempts_user_id
-    ON question_engine.attempts (user_id);
-
-CREATE INDEX IF NOT EXISTS attempts_topic_id
-    ON question_engine.attempts (topic_id);
-
 ALTER TABLE question_engine.attempts
     ADD COLUMN IF NOT EXISTS error_category TEXT;
 ALTER TABLE question_engine.attempts
@@ -224,92 +195,6 @@ ALTER TABLE question_engine.attempts
     ADD COLUMN IF NOT EXISTS concept_explanation TEXT;
 ALTER TABLE question_engine.attempts
     ADD COLUMN IF NOT EXISTS distractor_label TEXT;
-
--- ---------------------------------------------------------------------------
--- Placeholders for future team components (safe empty tables)
--- ---------------------------------------------------------------------------
--- Frustration / affective signals (no writers yet).
-CREATE TABLE IF NOT EXISTS question_engine.frustration_cues (
-    id UUID PRIMARY KEY,
-    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
-    session_id UUID REFERENCES question_engine.assessment_sessions (session_id),
-    cue_type TEXT NOT NULL,
-    cue_value JSONB NOT NULL DEFAULT '{}'::jsonb,
-    recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS frustration_cues_user_id
-    ON question_engine.frustration_cues (user_id);
-
--- BKT mastery state (Component 4 writes later; IAE only emits analytics_events today).
-CREATE TABLE IF NOT EXISTS question_engine.bkt_mastery (
-    user_id TEXT NOT NULL REFERENCES question_engine.users (user_id),
-    topic_id TEXT NOT NULL,
-    p_l DOUBLE PRECISION NOT NULL DEFAULT 0.0,
-    p_t DOUBLE PRECISION NOT NULL DEFAULT 0.0,
-    p_g DOUBLE PRECISION NOT NULL DEFAULT 0.0,
-    p_s DOUBLE PRECISION NOT NULL DEFAULT 0.0,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, topic_id)
-);
-
-CREATE INDEX IF NOT EXISTS bkt_mastery_topic_id
-    ON question_engine.bkt_mastery (topic_id);
-
--- Past-paper ingest / serving (not implemented yet).
-CREATE TABLE IF NOT EXISTS question_engine.past_paper_items (
-    item_id UUID PRIMARY KEY,
-    grade INTEGER,
-    topic_id TEXT,
-    year INTEGER,
-    paper_code TEXT,
-    prompt TEXT,
-    marking_scheme JSONB NOT NULL DEFAULT '{}'::jsonb
-);
-
-CREATE INDEX IF NOT EXISTS past_paper_items_topic_id
-    ON question_engine.past_paper_items (topic_id);
-
--- ---------------------------------------------------------------------------
--- Component 2 architecture extensions (Amplitude / DDA / teacher rejection)
--- ---------------------------------------------------------------------------
-ALTER TABLE question_engine.users
-    ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'student';
-ALTER TABLE question_engine.users
-    ADD COLUMN IF NOT EXISTS class_code TEXT;
-ALTER TABLE question_engine.users
-    ADD COLUMN IF NOT EXISTS display_name TEXT;
-ALTER TABLE question_engine.users
-    ADD COLUMN IF NOT EXISTS study_hours_per_week DOUBLE PRECISION;
-ALTER TABLE question_engine.users
-    ADD COLUMN IF NOT EXISTS self_confidence INTEGER;
-ALTER TABLE question_engine.users
-    ADD COLUMN IF NOT EXISTS initial_category TEXT;
-ALTER TABLE question_engine.users
-    ADD COLUMN IF NOT EXISTS initial_category_score DOUBLE PRECISION;
-
-ALTER TABLE question_engine.placement_evaluations
-    DROP CONSTRAINT IF EXISTS placement_eval_category_chk;
-ALTER TABLE question_engine.placement_evaluations
-    ADD CONSTRAINT placement_eval_category_chk
-    CHECK (category IN ('WEAK', 'AVERAGE', 'ADVANCED', 'BASIC', 'INTERMEDIATE'));
-
-ALTER TABLE question_engine.assessment_sessions
-    ADD COLUMN IF NOT EXISTS session_kind TEXT DEFAULT 'diagnostic';
-ALTER TABLE question_engine.assessment_sessions
-    ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
-ALTER TABLE question_engine.assessment_sessions
-    ADD COLUMN IF NOT EXISTS terminate_reason TEXT;
-ALTER TABLE question_engine.assessment_sessions
-    ADD COLUMN IF NOT EXISTS allowed_question_types JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE question_engine.assessment_sessions
-    ADD COLUMN IF NOT EXISTS scope_chapters JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE question_engine.assessment_sessions
-    ADD COLUMN IF NOT EXISTS elo_rating DOUBLE PRECISION DEFAULT 1000.0;
-ALTER TABLE question_engine.assessment_sessions
-    ADD COLUMN IF NOT EXISTS bkt_snapshot JSONB;
-ALTER TABLE question_engine.assessment_sessions
-    ADD COLUMN IF NOT EXISTS ai_analysis JSONB;
 
 ALTER TABLE question_engine.questions
     ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
@@ -351,3 +236,44 @@ CREATE TABLE IF NOT EXISTS question_engine.amplitude_fixed_items (
     PRIMARY KEY (grade, position),
     CONSTRAINT amplitude_fixed_pos_chk CHECK (position BETWEEN 1 AND 10)
 );
+
+CREATE TABLE IF NOT EXISTS question_engine.amplitude_questions (
+    id UUID PRIMARY KEY,
+    grade INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    topic_id TEXT NOT NULL DEFAULT '',
+    chapter_name TEXT NOT NULL,
+    sub_concept TEXT NOT NULL DEFAULT '',
+    skill TEXT NOT NULL DEFAULT '',
+    baseline_level INTEGER NOT NULL,
+    question_type TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    chunk_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    status TEXT NOT NULL DEFAULT 'approved',
+    origin TEXT NOT NULL DEFAULT 'amplitude',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT amplitude_questions_grade_pos UNIQUE (grade, position),
+    CONSTRAINT amplitude_questions_pos_chk CHECK (position BETWEEN 1 AND 10),
+    CONSTRAINT amplitude_questions_abl_chk CHECK (baseline_level BETWEEN 1 AND 3),
+    CONSTRAINT amplitude_questions_type_chk CHECK (question_type IN ('MCQ', 'TrueFalse')),
+    CONSTRAINT amplitude_questions_status_chk CHECK (status = 'approved'),
+    CONSTRAINT amplitude_questions_origin_chk CHECK (origin = 'amplitude'),
+    CONSTRAINT amplitude_questions_grade_chk CHECK (grade BETWEEN 6 AND 9)
+);
+
+CREATE INDEX IF NOT EXISTS amplitude_questions_grade_pos
+    ON question_engine.amplitude_questions (grade, position);
+
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS completed_chapter_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS science_self_efficacy INTEGER;
+ALTER TABLE question_engine.users
+    ADD COLUMN IF NOT EXISTS prerequisite_ready_count INTEGER;
+
+ALTER TABLE question_engine.amplitude_attempts
+    ADD COLUMN IF NOT EXISTS completed_chapter_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE question_engine.amplitude_attempts
+    ADD COLUMN IF NOT EXISTS science_self_efficacy INTEGER;
+ALTER TABLE question_engine.amplitude_attempts
+    ADD COLUMN IF NOT EXISTS prerequisite_ready_count INTEGER;

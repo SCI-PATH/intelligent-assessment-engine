@@ -3,17 +3,7 @@
 Unified JSON strategy — every event always contains the same keys. Fields that
 do not apply to the current ``question_type`` are explicitly ``null``.
 
-Component 4 base contract (always present):
-  user_id, topic_id, is_correct, question_type, question_id,
-  similarity_score, distractor_tag, distractor_label,
-  response_time_s, difficulty_level, subtopic_id,
-  chosen_distractor_text, source
-
-Component 2 enrichments for all four question types (null when N/A):
-  error_category, detailed_explanation, missed_blanks
-
-Persisted to ``question_engine.analytics_events``; optional HTTP POST is
-commented out until Component 4's ingest URL is wired via ``ANALYTICS_BASE_URL``.
+Contract: docs/COMPONENT2_COMPONENT4_INTEGRATION.md
 """
 
 from __future__ import annotations
@@ -21,13 +11,17 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from iae.core.models import DistractorTag, GradeResult, MCQPayload, Question, QuestionType
-from iae.core.protocols import IEmbedder, ILlmJson
-from iae.core.settings import get_settings
+from iae.domain.models import (
+    DistractorTag,
+    GradeResult,
+    MCQPayload,
+    OptionDiagnostic,
+    Question,
+    QuestionType,
+    TrueFalsePayload,
+)
+from iae.domain.protocols import IEmbedder, ILlmJson
 from iae.prompts import render
-
-# httpx is imported so the integration line below is ready to uncomment.
-import httpx  # noqa: F401
 
 _NEAR_MISS_MIN = 0.72
 _MISCONCEPTION_MIN = 0.40
@@ -141,6 +135,24 @@ def explain_mcq_distractor(
         return fallback
 
 
+def _lookup_mcq_diagnostics(
+    question: Question,
+    student_answer: str,
+) -> tuple[str | None, str | None]:
+    payload: MCQPayload = question.payload  # type: ignore[assignment]
+    letter = student_answer.strip().upper()
+    entry = (payload.option_diagnostics or {}).get(letter)
+    if entry is None:
+        return None, None
+    if isinstance(entry, OptionDiagnostic):
+        return entry.distractor_tag.value, entry.distractor_label
+    if isinstance(entry, dict):
+        tag = _nonempty_str(entry.get("distractor_tag"))
+        label = _nonempty_str(entry.get("distractor_label"))
+        return tag, label
+    return None, None
+
+
 def build_analytics_payload(
     *,
     user_id: str,
@@ -169,6 +181,10 @@ def build_analytics_payload(
             chosen_distractor_text = _nonempty_str(_mcq_option_text(payload_mcq, student_answer))
             distractor_tag = _nonempty_str(grade.distractor_tag)
             distractor_label = _nonempty_str(grade.distractor_label)
+            if distractor_tag is None or distractor_label is None:
+                stored_tag, stored_label = _lookup_mcq_diagnostics(question, student_answer)
+                distractor_tag = distractor_tag or stored_tag
+                distractor_label = distractor_label or stored_label
             if distractor_tag is None:
                 if embedder is None:
                     tag = DistractorTag.COMPLETE_MISS
@@ -179,7 +195,7 @@ def build_analytics_payload(
                         embedder=embedder,
                     )
                 distractor_tag = tag.value
-                distractor_label = explain_mcq_distractor(
+                distractor_label = distractor_label or explain_mcq_distractor(
                     question=question,
                     student_answer=student_answer,
                     tag=tag,
@@ -189,19 +205,24 @@ def build_analytics_payload(
     elif qtype == QuestionType.SHORT_ANSWER:
         similarity_score = float(grade.accuracy_score)
         error_category = _nonempty_str(grade.error_category)
-        detailed_explanation = _nonempty_str(grade.detailed_explanation)
+        if grade.is_correct:
+            error_category = error_category or "NO_ERROR"
+            detailed_explanation = None
+        else:
+            detailed_explanation = _nonempty_str(grade.detailed_explanation)
 
     elif qtype == QuestionType.MULTI_BLANK:
         similarity_score = float(grade.accuracy_score)
         error_category = _nonempty_str(grade.error_category)
-        if grade.missed_blanks:
+        if grade.is_correct:
+            error_category = error_category or "NO_ERROR"
+            missed_blanks = None
+        elif grade.missed_blanks:
             missed_blanks = {str(k): str(v) for k, v in grade.missed_blanks.items()}
 
     elif qtype == QuestionType.TRUE_FALSE:
-        detailed_explanation = _nonempty_str(grade.detailed_explanation) or _nonempty_str(
-            grade.concept_explanation
-        )
         if not grade.is_correct:
+            tf_payload: TrueFalsePayload = question.payload  # type: ignore[assignment]
             chosen = student_answer.strip()
             lower = chosen.lower()
             if lower.startswith("t"):
@@ -212,10 +233,19 @@ def build_analytics_payload(
                 chosen_distractor_text = _nonempty_str(chosen)
             distractor_tag = _nonempty_str(grade.distractor_tag)
             distractor_label = _nonempty_str(grade.distractor_label)
+            if distractor_tag is None and tf_payload.distractor_tag is not None:
+                tag = tf_payload.distractor_tag
+                distractor_tag = tag.value if isinstance(tag, DistractorTag) else str(tag)
+            if distractor_label is None and tf_payload.distractor_label:
+                distractor_label = str(tf_payload.distractor_label).strip()
             if distractor_tag is None:
                 distractor_tag = DistractorTag.MISCONCEPTION.value
             if distractor_label is None:
-                distractor_label = detailed_explanation or "Selected the incorrect True/False polarity"
+                distractor_label = "Selected the incorrect True/False polarity"
+            detailed_explanation = (
+                _nonempty_str(grade.detailed_explanation)
+                or _nonempty_str(grade.concept_explanation)
+            )
 
     response_time: float | None = None
     if response_time_s is not None:
@@ -241,30 +271,12 @@ def build_analytics_payload(
     }
     for key in _CONTRACT_KEYS:
         payload.setdefault(key, None)
-    # Optional multi-chapter scope (BKT snapshot contract). Omit when empty
-    # so single-topic clients stay backward compatible.
     if chapter_ids:
         payload["chapter_ids"] = list(chapter_ids)
     return payload
 
 
-def _component4_submit_url(base: str) -> str:
-    """Resolve Component 4's assessment-submit URL from ANALYTICS_BASE_URL."""
-    url = base.strip().rstrip("/")
-    if url.endswith("/assessment-submit"):
-        return url
-    return f"{url}/api/v1/assessment-submit"
-
-
 def send_analytics_event(payload: dict[str, Any]) -> None:
-    """POST the unified payload to Component 4 ``POST /api/v1/assessment-submit``."""
-    settings = get_settings()
-    base = settings.c4_base_url or settings.analytics_base_url
-    if not base:
-        return
-    url = _component4_submit_url(base)
-    try:
-        httpx.post(url, json=payload, timeout=5.0)
-    except Exception:
-        # Diagnostic flow must not fail if Component 4 is briefly unreachable.
-        return
+    """No-op: Component 4 submit is owned by ``Component4Client.submit_assessment``."""
+    _ = payload
+    return

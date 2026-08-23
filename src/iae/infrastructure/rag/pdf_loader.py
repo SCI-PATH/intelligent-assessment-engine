@@ -16,13 +16,13 @@ from pathlib import Path
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from iae.core.curriculum import (
+from iae.domain.curriculum import (
     DEFAULT_GRADE,
     PdfPart,
     chapter_for_page,
     get_grade_pdf_parts,
 )
-from iae.core.models import Chunk
+from iae.domain.models import Chunk
 
 DEFAULT_CHUNK_SIZE = 900
 DEFAULT_CHUNK_OVERLAP = 150

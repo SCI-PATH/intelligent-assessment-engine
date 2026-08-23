@@ -17,7 +17,7 @@ for _p in (str(_ROOT), str(_ROOT / "src")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from iae.core.models import UserRole
+from iae.domain.models import UserRole
 from iae.infrastructure.postgres.amplitude_repo import PostgresAmplitudeRepository
 from iae.infrastructure.postgres.engine import get_session_factory, init_schema
 

@@ -15,7 +15,13 @@ class HealthResponse(BaseModel):
     "/",
     response_model=HealthResponse,
     summary="Health check",
-    description="Returns service liveness. Useful for load balancers and smoke tests.",
+    description=(
+        "**Purpose:** Liveness probe for load balancers, Docker HEALTHCHECK, and smoke tests.\n\n"
+        "**Peer services:** none.\n\n"
+        "**Response:** `{ \"status\": \"ok\", \"service\": \"intelligent-assessment-engine\" }`.\n\n"
+        "**How to Test:** Open `/docs` → Execute this endpoint → expect 200. "
+        "Or browser: `http://127.0.0.1:8001/`."
+    ),
     responses={200: {"description": "Service is up."}},
 )
 def health_check() -> HealthResponse:

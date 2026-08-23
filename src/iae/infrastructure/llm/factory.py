@@ -1,4 +1,4 @@
-from iae.core.settings import get_settings
+from iae.config.settings import get_settings
 from iae.infrastructure.llm.groq_client import GroqJsonLlm
 from iae.infrastructure.llm.openai_client import OpenAIJsonLlm
 

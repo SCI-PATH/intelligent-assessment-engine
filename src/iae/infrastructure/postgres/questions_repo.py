@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from iae.core.models import Question, QuestionOrigin, QuestionStatus, QuestionType, RejectionReason
+from iae.domain.models import Question, QuestionOrigin, QuestionStatus, QuestionType, RejectionReason
 from iae.infrastructure.postgres.orm import QuestionRow
 
 
@@ -84,8 +84,30 @@ class PostgresQuestionRepository:
         dok_level: int,
         question_type: QuestionType,
         excluded_ids: list[str],
+        topic_id: str = "",
+        exclude_sub_concepts: list[str] | None = None,
     ) -> Question | None:
         relaxations: list[dict] = []
+        if topic_id:
+            relaxations.extend(
+                [
+                    {
+                        "chapter_name": chapter_name,
+                        "topic_id": topic_id,
+                        "dok_level": dok_level,
+                        "question_type": question_type.value,
+                    },
+                    {
+                        "chapter_name": chapter_name,
+                        "topic_id": topic_id,
+                        "dok_level": dok_level,
+                    },
+                    {
+                        "chapter_name": chapter_name,
+                        "topic_id": topic_id,
+                    },
+                ]
+            )
         if sub_concept:
             relaxations.extend(
                 [
@@ -116,9 +138,14 @@ class PostgresQuestionRepository:
                 {"chapter_name": chapter_name},
             ]
         )
+        blocked_subs = [s for s in (exclude_sub_concepts or []) if s and str(s).strip()]
         with self._session_factory() as session:
             for filters in relaxations:
-                stmt = self._approved_query(filters, excluded_ids).order_by(func.random()).limit(1)
+                stmt = self._approved_query(
+                    filters,
+                    excluded_ids,
+                    exclude_sub_concepts=blocked_subs,
+                ).order_by(func.random()).limit(1)
                 row = session.execute(stmt).scalar_one_or_none()
                 if row is not None:
                     return _to_domain(row)
@@ -225,7 +252,12 @@ class PostgresQuestionRepository:
             return _to_domain(row)
 
     @staticmethod
-    def _approved_query(filters: dict, excluded_ids: list[str]) -> Select[tuple[QuestionRow]]:
+    def _approved_query(
+        filters: dict,
+        excluded_ids: list[str],
+        *,
+        exclude_sub_concepts: list[str] | None = None,
+    ) -> Select[tuple[QuestionRow]]:
         stmt = select(QuestionRow).filter_by(status=QuestionStatus.APPROVED.value, **filters)
         excluded: list[UUID] = []
         for qid in excluded_ids:
@@ -235,4 +267,8 @@ class PostgresQuestionRepository:
                 continue
         if excluded:
             stmt = stmt.where(QuestionRow.id.not_in(excluded))
+        # Soft variety: avoid recently used sub_concepts when callers request it.
+        blocked = [s.strip() for s in (exclude_sub_concepts or []) if s and str(s).strip()]
+        if blocked:
+            stmt = stmt.where(QuestionRow.sub_concept.not_in(blocked))
         return stmt

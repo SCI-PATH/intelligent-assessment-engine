@@ -1,201 +1,27 @@
-"""HTTP request/response models.
-
-Kept separate from ``iae.core.models`` so the API surface can evolve without
-touching the domain layer.
-"""
+"""HTTP request/response models for the Assessment Engine API."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from iae.core.models import (
-    AttemptRecord,
+from iae.domain.models import (
     GradeResult,
     PastGradeMarksRange,
     Question,
     QuestionPayload,
-    QuestionStatus,
     QuestionType,
     RejectionReason,
-    RlState,
-    RuleTrace,
 )
 
 
 class ErrorDetail(BaseModel):
-    """Standard FastAPI error body."""
-
     detail: str = Field(examples=["Session not found."])
 
 
-class CreateSessionRequest(BaseModel):
-    """Start an adaptive diagnostic session for one curriculum chapter."""
-
-    chapter_name: str = Field(
-        description="Exact curriculum chapter title for the chosen grade.",
-        examples=["Magnets"],
-    )
-    grade: int = Field(default=6, ge=6, le=9, description="Student grade year (6–9).")
-    user_id: str | None = Field(
-        default=None,
-        description="Optional stable student id. Auto-generated if omitted.",
-        examples=["student-42"],
-    )
-
-
-class SessionResponse(BaseModel):
-    session_id: str = Field(description="Use this id for `/next`, `/answer`, and `/results`.")
-    user_id: str
-    scope_chapter: str
-    questions_asked: int = Field(description="How many items have already been served.")
-    max_questions: int = Field(description="Session ends when questions_asked reaches this.")
-
-
-class ActionTelemetry(BaseModel):
-    target_chapter: str
-    next_difficulty_level: int
-    next_question_type: QuestionType
-    next_sub_concept: str
-    rule_triggered: str
-    dok_reason: str
-    question_type_reason: str
-    dok_summary: str = ""
-    type_summary: str = ""
-    dok_trace: RuleTrace | None = None
-    type_trace: RuleTrace | None = None
-    estimated_theta: float
-    item_b: float
-    previous_response_time_seconds: float
-    rapid_guessing_detected: bool
-    format_simplification_triggered: bool
-
-
-class TelemetryPayload(BaseModel):
-    """Adaptive-policy X-ray returned with each next question."""
-
-    state: RlState
-    action: ActionTelemetry
-    rolling_accuracy: float = Field(ge=0.0, le=1.0)
-    questions_asked: int
-
-
-class NextQuestionResponse(BaseModel):
-    question: Question = Field(
-        description=(
-            "Full bank item including answer keys in `payload`. "
-            "Do not render correct answers to students."
-        )
-    )
-    telemetry: TelemetryPayload
-
-
-class SubmitAnswerRequest(BaseModel):
-    """Grade one student response inside an active session."""
-
-    question_id: str = Field(description="Must match the question returned by `/next`.")
-    student_answer: str = Field(
-        description=(
-            "MCQ: option letter (A–D). TrueFalse: `True`/`False`. "
-            "ShortAnswer: free text. MultiBlank: answers joined as configured by the client "
-            "(typically comma- or newline-separated)."
-        ),
-        examples=["B"],
-    )
-    time_taken_seconds: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Client-measured response time; feeds rapid-guessing heuristics.",
-    )
-
-
-class SubmitAnswerResponse(BaseModel):
-    grade: GradeResult = Field(description="Diagnostic grading result for this attempt.")
-    questions_asked: int
-    is_complete: bool = Field(description="True when the session has reached max_questions.")
-
-
-class ResultsResponse(BaseModel):
-    scope_chapter: str
-    questions_asked: int
-    correct_count: int
-    raw_accuracy: float
-    history: list[AttemptRecord]
-
-
-class ChaptersResponse(BaseModel):
-    grade: int
-    chapters: list[str] = Field(description="Curriculum chapter titles for this grade.")
-    max_questions: int
-
-
-class TeacherTopicItem(BaseModel):
-    grade: int
-    topic_id: str = Field(examples=["G6_C7_MAG_POLES"])
-    chapter_title: str
-    skill: str
-    chapter_number: int | None = None
-    domain: str = ""
-    concept_code: str = ""
-
-
-class TeacherTopicsResponse(BaseModel):
-    grade: int
-    topics: list[TeacherTopicItem]
-
-
-class GenerateQuestionsRequest(BaseModel):
-    """Generate pending bank items from Chroma RAG for one Topic ID."""
-
-    topic_id: str = Field(examples=["G6_C7_MAG_POLES"])
-    skill: str | None = Field(
-        default=None,
-        description="Optional skill override; defaults to the Excel skill for the Topic ID.",
-    )
-    dok_level: int = Field(default=2, ge=1, le=4, description="Depth of Knowledge level 1–4.")
-    question_type: QuestionType = QuestionType.MCQ
-    count: int = Field(default=1, ge=1, le=8, description="How many items to generate.")
-
-
-class GenerateQuestionsResponse(BaseModel):
-    created: int
-    questions: list[Question] = Field(description="New items stored as `pending` until approved.")
-
-
-class TeacherQuestionListResponse(BaseModel):
-    questions: list[Question]
-
-
-class CreateTeacherQuestionRequest(BaseModel):
-    """Manually insert a teacher-authored bank item (stored as pending)."""
-
-    grade: int = Field(default=6, ge=6, le=9)
-    chapter_name: str = ""
-    topic_id: str
-    skill: str = ""
-    dok_level: int = Field(ge=1, le=4)
-    question_type: QuestionType
-    payload: QuestionPayload
-    sub_concept: str = ""
-
-
-class PlacementSurveyRequest(BaseModel):
-    """Persist the student's self-report before the placement quiz."""
-
-    user_id: str = Field(examples=["student-42"])
-    grade: int = Field(ge=6, le=9)
-    completed_chapters_count: int = Field(
-        ge=0,
-        description="How many chapters the student reports having completed this year.",
-    )
-    past_grade_marks_range: PastGradeMarksRange = Field(
-        description="Self-reported prior marks band.",
-        examples=[PastGradeMarksRange.BAND_50_75],
-    )
+# --- Amplitude / placement ---
 
 
 class PlacementQuizItem(BaseModel):
-    """Public quiz prompt — answer keys are stripped."""
-
     id: str
     chapter_name: str
     topic_id: str = ""
@@ -212,44 +38,100 @@ class PlacementQuizResponse(BaseModel):
     questions: list[PlacementQuizItem]
 
 
-class PlacementEvaluateRequest(BaseModel):
-    """Compute and persist WEAK / AVERAGE / ADVANCED from quiz + past marks."""
-
-    user_id: str
-    grade: int = Field(ge=6, le=9)
-    completed_chapters_count: int = Field(ge=0)
-    past_grade_marks_range: PastGradeMarksRange
-    quiz_correct: int = Field(ge=0, description="Number of placement-quiz items answered correctly.")
-    quiz_total: int = Field(default=10, ge=1, le=50, description="Usually 10.")
-
-
-# ---------------------------------------------------------------------------
-# /api/v1 schemas
-# ---------------------------------------------------------------------------
-
-
 class AmplitudeSurveyRequest(BaseModel):
-    """Five historical inputs for the Amplitude Test."""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "user_id": "mock-student-class-a",
+                    "grade": 7,
+                    "completed_chapter_ids": [],
+                    "past_grade_marks_range": "50_75",
+                    "study_hours_per_week": 5.0,
+                    "self_confidence": 3,
+                    "science_self_efficacy": 4,
+                    "prerequisite_ready_count": 3,
+                }
+            ]
+        }
+    )
 
-    user_id: str = Field(examples=["mock-student-class-a"])
-    grade: int = Field(ge=6, le=9)
-    completed_chapters_count: int = Field(ge=0)
-    past_grade_marks_range: PastGradeMarksRange
-    study_hours_per_week: float | None = Field(default=None, ge=0, le=40)
-    self_confidence: int | None = Field(default=None, ge=1, le=5)
+    user_id: str = Field(
+        default="mock-student-class-a",
+        examples=["mock-student-class-a", "mock-student-unassigned"],
+    )
+    grade: int = Field(default=7, ge=6, le=9)
+    past_grade_marks_range: PastGradeMarksRange = Field(
+        default=PastGradeMarksRange.BAND_50_75,
+        description="Mandatory usual / past science marks band.",
+    )
+    completed_chapter_ids: list[str] | None = Field(
+        default_factory=list,
+        description=(
+            "Canonical chapter_ids for this grade (e.g. G6_C8). "
+            "Send [] if the student has not completed any chapter yet. "
+            "Omit only for legacy clients that send completed_chapters_count."
+        ),
+        examples=[[], ["G7_C1", "G7_C2"]],
+    )
+    completed_chapters_count: int | None = Field(
+        default=None,
+        ge=0,
+        description="Legacy fallback when completed_chapter_ids is omitted.",
+    )
+    study_hours_per_week: float | None = Field(default=5.0, ge=0, le=40)
+    self_confidence: int | None = Field(default=3, ge=1, le=5)
+    science_self_efficacy: int | None = Field(
+        default=4,
+        ge=1,
+        le=5,
+        description="Bandura-style: I can figure out science questions even when they are new or a bit hard.",
+    )
+    prerequisite_ready_count: int | None = Field(
+        default=3,
+        ge=0,
+        le=5,
+        description="How many of the five prerequisite checklist items the student ticked.",
+    )
 
 
 class AmplitudeEvaluateRequest(BaseModel):
-    """Grade the fixed 10-item Amplitude quiz and persist BASIC|INTERMEDIATE|ADVANCED."""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "user_id": "mock-student-class-a",
+                    "grade": 7,
+                    "completed_chapter_ids": [],
+                    "past_grade_marks_range": "50_75",
+                    "study_hours_per_week": 5.0,
+                    "self_confidence": 3,
+                    "science_self_efficacy": 4,
+                    "prerequisite_ready_count": 3,
+                    "answers": {
+                        "REPLACE_WITH_QUESTION_ID_1": "A",
+                        "REPLACE_WITH_QUESTION_ID_2": "True",
+                    },
+                }
+            ]
+        }
+    )
 
-    user_id: str
-    grade: int = Field(ge=6, le=9)
-    completed_chapters_count: int = Field(ge=0)
-    past_grade_marks_range: PastGradeMarksRange
-    study_hours_per_week: float | None = Field(default=None, ge=0, le=40)
-    self_confidence: int | None = Field(default=None, ge=1, le=5)
+    user_id: str = Field(default="mock-student-class-a")
+    grade: int = Field(default=7, ge=6, le=9)
+    past_grade_marks_range: PastGradeMarksRange = Field(
+        default=PastGradeMarksRange.BAND_50_75,
+    )
+    completed_chapter_ids: list[str] | None = Field(default_factory=list)
+    completed_chapters_count: int | None = Field(default=None, ge=0)
+    study_hours_per_week: float | None = Field(default=5.0, ge=0, le=40)
+    self_confidence: int | None = Field(default=3, ge=1, le=5)
+    science_self_efficacy: int | None = Field(default=4, ge=1, le=5)
+    prerequisite_ready_count: int | None = Field(default=3, ge=0, le=5)
     answers: dict[str, str] = Field(
-        description="Map of question_id → student answer for the fixed 10 items."
+        default_factory=dict,
+        description="Map of question_id → student answer for the fixed 10 items. "
+        "Paste real ids from GET /amplitude/quiz.",
     )
 
 
@@ -260,33 +142,91 @@ class AmplitudeCategoryResponse(BaseModel):
     placement_category: str | None = None
 
 
+# --- Quizzes ---
+
+
+class SubmitAnswerRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "question_id": "REPLACE_WITH_ID_FROM_NEXT",
+                    "student_answer": "B",
+                    "time_taken_seconds": 20.0,
+                }
+            ]
+        }
+    )
+
+    question_id: str = Field(
+        default="REPLACE_WITH_ID_FROM_NEXT",
+        examples=["REPLACE_WITH_ID_FROM_NEXT"],
+    )
+    student_answer: str = Field(default="B", examples=["B", "True", "False"])
+    time_taken_seconds: float = Field(default=20.0, ge=0.0)
+
+
 class CreateCustomizableQuizRequest(BaseModel):
-    student_id: str
-    grade: int = Field(ge=6, le=9)
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "student_id": "mock-student-class-a",
+                    "grade": 6,
+                    "chapters": ["G6_C8", "G6_C7"],
+                    "num_questions": 2,
+                    "question_types": ["MCQ", "TrueFalse"],
+                }
+            ]
+        }
+    )
+
+    student_id: str = Field(default="mock-student-class-a", examples=["mock-student-class-a"])
+    grade: int = Field(default=6, ge=6, le=9)
     chapters: list[str] = Field(
+        default_factory=lambda: ["G6_C8", "G6_C7"],
         min_length=1,
-        description=(
-            "Canonical chapter_ids from data/chapter_ids_g6_g9.csv "
-            "(e.g. `G6_C8`). Chapter titles are also accepted and normalized."
-        ),
+        description="Canonical chapter_ids from data/chapter_ids_g6_g9.csv (e.g. G6_C8).",
         examples=[["G6_C8", "G6_C7"]],
     )
-    num_questions: int = Field(default=5, ge=1, le=30)
-    question_types: list[QuestionType] | None = None
+    num_questions: int = Field(default=2, ge=1, le=30)
+    question_types: list[QuestionType] | None = Field(
+        default_factory=lambda: [QuestionType.MCQ, QuestionType.TRUE_FALSE],
+    )
 
 
 class TriggerPostLessonRequest(BaseModel):
-    student_id: str
-    chapter_id: str = Field(
-        description="Canonical chapter_id e.g. `G6_C8` (not a bare number).",
-        examples=["G6_C8"],
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "student_id": "mock-student-class-a",
+                    "chapter_id": "G6_C8",
+                    "grade": 6,
+                }
+            ]
+        }
     )
+
+    student_id: str = Field(default="mock-student-class-a", examples=["mock-student-class-a"])
+    chapter_id: str = Field(default="G6_C8", examples=["G6_C8"])
     grade: int = Field(default=6, ge=6, le=9)
 
 
 class TerminateSessionRequest(BaseModel):
-    reason: str | None = "component_3_kill_switch"
-    source: str = Field(default="component_3", description="Caller identity, e.g. component_3.")
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "reason": "frustration_threshold",
+                    "source": "component_3",
+                }
+            ]
+        }
+    )
+
+    reason: str | None = "frustration_threshold"
+    source: str = Field(default="component_3")
 
 
 class QuizSessionResponse(BaseModel):
@@ -307,6 +247,8 @@ class QuizNextResponse(BaseModel):
     questions_asked: int
     max_questions: int
     target_dok: int | None = None
+    target_topic_id: str | None = None
+    target_question_type: str | None = None
 
 
 class QuizAnswerResponse(BaseModel):
@@ -318,6 +260,100 @@ class QuizAnswerResponse(BaseModel):
     status: str
 
 
+# --- Teacher ---
+
+
+class TeacherTopicItem(BaseModel):
+    grade: int
+    topic_id: str = Field(examples=["G6_C7_MAG_POLES"])
+    chapter_title: str
+    skill: str
+    chapter_number: int | None = None
+    domain: str = ""
+    concept_code: str = ""
+
+
+class TeacherTopicsResponse(BaseModel):
+    grade: int
+    topics: list[TeacherTopicItem]
+
+
+class GenerateQuestionsRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "topic_id": "G6_C7_MAG_POLES",
+                    "skill": None,
+                    "dok_level": 2,
+                    "question_type": "MCQ",
+                    "count": 1,
+                }
+            ]
+        }
+    )
+
+    topic_id: str = Field(default="G6_C7_MAG_POLES", examples=["G6_C7_MAG_POLES"])
+    skill: str | None = None
+    dok_level: int = Field(default=2, ge=1, le=4)
+    question_type: QuestionType = QuestionType.MCQ
+    count: int = Field(default=1, ge=1, le=8)
+
+
+class GenerateQuestionsResponse(BaseModel):
+    created: int
+    questions: list[Question]
+
+
+class TeacherQuestionListResponse(BaseModel):
+    questions: list[Question]
+
+
+class CreateTeacherQuestionRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "grade": 6,
+                    "chapter_name": "Magnets",
+                    "topic_id": "G6_C7_MAG_POLES",
+                    "skill": "Magnetic poles",
+                    "dok_level": 1,
+                    "question_type": "TrueFalse",
+                    "sub_concept": "Poles",
+                    "payload": {
+                        "type": "TrueFalse",
+                        "question": "Unlike poles of a magnet attract each other.",
+                        "correct_answer": "True",
+                        "distractor_tag": "MISCONCEPTION",
+                        "distractor_label": "Believes like poles attract",
+                    },
+                }
+            ]
+        }
+    )
+
+    grade: int = Field(default=6, ge=6, le=9)
+    chapter_name: str = "Magnets"
+    topic_id: str = Field(default="G6_C7_MAG_POLES")
+    skill: str = "Magnetic poles"
+    dok_level: int = Field(default=1, ge=1, le=4)
+    question_type: QuestionType = QuestionType.TRUE_FALSE
+    payload: QuestionPayload
+    sub_concept: str = "Poles"
+
+
 class RejectQuestionRequest(BaseModel):
-    reason: RejectionReason
-    notes: str | None = None
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "reason": "POOR_PHRASING",
+                    "notes": "Stem is ambiguous for Grade 6.",
+                }
+            ]
+        }
+    )
+
+    reason: RejectionReason = RejectionReason.POOR_PHRASING
+    notes: str | None = "Stem is ambiguous for Grade 6."

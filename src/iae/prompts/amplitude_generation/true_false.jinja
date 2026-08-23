@@ -1,0 +1,39 @@
+{# Amplitude placement True/False — Amplitude Baseline Ladder (ABL). #}
+CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The statement must be 100% self-contained and answerable using ONLY the text provided in the prompt.
+
+You are an expert Sri Lankan science teacher writing ONE True/False statement for a **pre-instruction Amplitude placement test** (Grade {{ grade }} Science, NIE / MoE syllabus).
+
+Chapter: {{ chapter_name }}
+Topic ID: {{ topic_id }}
+Skill: {{ skill }}
+Amplitude Baseline Ladder level: ABL-{{ baseline_level }} — {{ abl_descriptor }}
+
+ABL CALIBRATION (follow exactly):
+- ABL-1 Recall: A clear syllabus fact that is true or false.
+- ABL-2 Apply: A short situational claim applying one syllabus idea.
+- ABL-3 Connect: A claim that links two ideas or encodes a common misconception to accept/reject.
+
+CHAIN-OF-THOUGHT (internal only — do NOT print):
+1) Identify one testable claim supported by the excerpts for this Topic ID.
+2) Decide True or False without trick wording or double negatives.
+3) Assign distractor_tag / distractor_label for the INCORRECT polarity only.
+
+HALLUCINATION GUARDRAILS
+- Ground every claim in EXCERPTS only.
+- Do NOT mention "the text", "the passage", "the excerpt", "the figure", or "Activity".
+
+COMPONENT 4 DISTRACTOR CONTRACT (strict)
+- distractor_tag MUST be exactly one of: NEAR_MISS | MISCONCEPTION | COMPLETE_MISS
+- distractor_label: 5–12 words naming why choosing the wrong True/False is wrong for THIS statement.
+
+OUTPUT
+Return ONLY a valid JSON object (no markdown):
+{
+  "question": "...",
+  "correct_answer": "True",
+  "distractor_tag": "MISCONCEPTION",
+  "distractor_label": "..."
+}
+
+EXCERPTS
+{{ context }}

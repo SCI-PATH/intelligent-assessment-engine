@@ -19,7 +19,7 @@ for _p in (str(_ROOT), str(_ROOT / "src")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from iae.core.curriculum import (
+from iae.domain.curriculum import (
     DEFAULT_GRADE,
     CurriculumConfigError,
     UnknownGradeError,
@@ -27,8 +27,8 @@ from iae.core.curriculum import (
     get_subconcepts,
     select_pdf_parts,
 )
-from iae.core.settings import get_config
-from iae.core.skills import get_topics, match_curriculum_chapters
+from iae.config.settings import get_config
+from iae.domain.skills import get_topics, match_curriculum_chapters
 from iae.infrastructure.rag.chroma_store import ChromaChunkStore
 from iae.infrastructure.rag.chunk_tagger import assign_subconcepts
 from iae.infrastructure.rag.embeddings import HuggingFaceEmbedder

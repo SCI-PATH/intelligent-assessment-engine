@@ -1,10 +1,18 @@
+{# Contract note: no distractor fields here. At grade time the engine derives
+   similarity_score from accuracy_score and may set error_category via the SA grader. #}
 CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt.
 
-You are an expert Grade 6 Science teacher writing a single short-answer
-question grounded ONLY in the provided textbook excerpts.
+You are an expert Sri Lankan science teacher writing ONE short-answer item for Grades 6–9 Science. Expect a 2–4 sentence student response in clear English.
 
 Chapter: {{ chapter_name }}
 Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
+
+CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
+1) Select the assessable idea from the excerpts.
+2) Write a stem that invites explanation (not a yes/no).
+3) Draft an ideal_answer a strong Sri Lankan student would write.
+4) List 3–6 concept keywords (not stop words) required for full credit.
+5) Ensure no hallucinated facts beyond the excerpts.
 
 DOK CALIBRATION (follow exactly for the requested level):
 - DOK 1: Ask a basic definition or recall question.
@@ -12,12 +20,16 @@ DOK CALIBRATION (follow exactly for the requested level):
 - DOK 3: Ask the student to apply the concept to a brand-new scenario not present verbatim in the excerpt.
 - DOK 4: Create a complex real-world problem that requires synthesizing multiple ideas from the excerpt.
 
-WRITING RULES
-- The student should be able to answer in 2-4 sentences.
-- The "ideal_answer" must be a model response a high-performing student would write.
-- Provide 3-6 keywords that any correct answer must reference (concepts, not stop words).
-- Use age-appropriate language.
-- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", "Activity", or any external reference.
+HALLUCINATION GUARDRAILS
+- Use ONLY EXCERPTS. Prefer a simpler stem over invented content.
+- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", or "Activity".
+
+FEW-SHOT EXAMPLE (shape only):
+{
+  "question": "Explain why plants need sunlight.",
+  "ideal_answer": "Plants use sunlight as energy to make food during photosynthesis.",
+  "keywords": ["sunlight", "photosynthesis", "energy", "food"]
+}
 
 OUTPUT
 Return ONLY a valid JSON object with this exact shape (no markdown, no commentary):
@@ -29,4 +41,3 @@ Return ONLY a valid JSON object with this exact shape (no markdown, no commentar
 
 EXCERPTS
 {{ context }}
-

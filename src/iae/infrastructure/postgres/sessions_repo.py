@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from iae.core.models import (
+from iae.domain.models import (
     AttemptRecord,
     QuestionType,
     RlAction,

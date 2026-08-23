@@ -15,8 +15,8 @@ for _p in (str(_ROOT), str(_ROOT / "src")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from iae.core.settings import get_settings
-from iae.core.skills import dump_topics_yaml, match_curriculum_chapters, parse_skill_workbook
+from iae.config.settings import get_settings
+from iae.domain.skills import dump_topics_yaml, match_curriculum_chapters, parse_skill_workbook
 
 OUTPUT_PATH = Path(__file__).resolve().parents[1] / "src" / "iae" / "config" / "topics.yaml"
 

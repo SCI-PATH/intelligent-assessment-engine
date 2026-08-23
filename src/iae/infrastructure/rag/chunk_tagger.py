@@ -10,9 +10,9 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
-from iae.core.curriculum import DEFAULT_GRADE, subconcepts_for_chapter
-from iae.core.models import Chunk, SubConcept
-from iae.core.protocols import IEmbedder
+from iae.domain.curriculum import DEFAULT_GRADE, subconcepts_for_chapter
+from iae.domain.models import Chunk, SubConcept
+from iae.domain.protocols import IEmbedder
 
 
 def _cosine(a: list[float], b: list[float]) -> float:

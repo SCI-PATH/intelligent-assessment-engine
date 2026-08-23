@@ -11,11 +11,13 @@ from typing import Iterable
 
 from pydantic import ValidationError
 
-from iae.core.curriculum import get_chapter_names
-from iae.core.models import (
+from iae.domain.curriculum import get_chapter_names
+from iae.domain.models import (
     Chunk,
+    DistractorTag,
     MCQPayload,
     MultiBlankPayload,
+    OptionDiagnostic,
     Question,
     QuestionOrigin,
     QuestionStatus,
@@ -23,8 +25,8 @@ from iae.core.models import (
     ShortAnswerPayload,
     TrueFalsePayload,
 )
-from iae.core.protocols import IEmbedder, ILlmJson, IVectorStore
-from iae.core.skills import get_topic, normalize_chapter_name, topics_for_chapter
+from iae.domain.protocols import IEmbedder, ILlmJson, IVectorStore
+from iae.domain.skills import get_topic, normalize_chapter_name, topics_for_chapter
 from iae.prompts import render
 
 DOK_DESCRIPTORS: dict[int, str] = {
@@ -66,6 +68,14 @@ def _canonicalize_blanks(paragraph: str) -> str:
     return _BLANK_TOKEN_RE.sub("[_____]", paragraph)
 
 
+def _parse_distractor_tag(raw: object) -> DistractorTag:
+    value = str(raw or "").strip().upper()
+    try:
+        return DistractorTag(value)
+    except ValueError:
+        return DistractorTag.MISCONCEPTION
+
+
 def _shuffle_mcq_options(raw: dict) -> dict:
     options = raw.get("options", {})
     correct_letter = str(raw.get("correct_answer", "")).strip().upper()
@@ -75,19 +85,40 @@ def _shuffle_mcq_options(raw: dict) -> dict:
     pairs = [(k, str(v).strip()) for k, v in options.items()]
     random.shuffle(pairs)
     letters = ("A", "B", "C", "D")
+    old_to_new: dict[str, str] = {}
 
     new_options: dict[str, str] = {}
     new_correct = "A"
     for idx, (old_key, text) in enumerate(pairs):
         letter = letters[idx]
+        old_to_new[str(old_key).strip().upper()] = letter
         new_options[letter] = text
         if old_key == correct_letter:
             new_correct = letter
+
+    # Remap option_diagnostics keys to post-shuffle letters (wrong options only).
+    raw_diag = raw.get("option_diagnostics") or {}
+    new_diag: dict[str, dict[str, str]] = {}
+    if isinstance(raw_diag, dict):
+        for old_key, entry in raw_diag.items():
+            new_letter = old_to_new.get(str(old_key).strip().upper())
+            if not new_letter or new_letter == new_correct:
+                continue
+            if not isinstance(entry, dict):
+                continue
+            label = str(entry.get("distractor_label") or "").strip()
+            if not label:
+                continue
+            new_diag[new_letter] = {
+                "distractor_tag": _parse_distractor_tag(entry.get("distractor_tag")).value,
+                "distractor_label": label,
+            }
 
     return {
         "question": str(raw.get("question", "")).strip(),
         "options": new_options,
         "correct_answer": new_correct,
+        "option_diagnostics": new_diag,
     }
 
 
@@ -127,15 +158,31 @@ def _normalize_true_false(raw: dict) -> dict:
         canonical = "False"
     else:
         raise ValueError("TrueFalse correct_answer must be True/False")
-    return {
+    tag = _parse_distractor_tag(raw.get("distractor_tag"))
+    label = str(raw.get("distractor_label") or "").strip()
+    result: dict = {
         "question": str(raw.get("question", "")).strip(),
         "correct_answer": canonical,
     }
+    if label:
+        result["distractor_tag"] = tag
+        result["distractor_label"] = label
+    return result
 
 
 def build_payload(qtype: QuestionType, raw: dict):
     if qtype == QuestionType.MCQ:
-        return MCQPayload(**_shuffle_mcq_options(raw))
+        normalized = _shuffle_mcq_options(raw)
+        diag_raw = normalized.pop("option_diagnostics", {}) or {}
+        diagnostics: dict[str, OptionDiagnostic] = {}
+        for letter, entry in diag_raw.items():
+            if not isinstance(entry, dict):
+                continue
+            diagnostics[letter] = OptionDiagnostic(
+                distractor_tag=_parse_distractor_tag(entry.get("distractor_tag")),
+                distractor_label=str(entry.get("distractor_label") or "").strip(),
+            )
+        return MCQPayload(**normalized, option_diagnostics=diagnostics)
     if qtype == QuestionType.SHORT_ANSWER:
         return ShortAnswerPayload(**_normalize_short_answer(raw))
     if qtype == QuestionType.MULTI_BLANK:

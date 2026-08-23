@@ -20,7 +20,7 @@ for _p in (str(_ROOT), str(_ROOT / "src")):
 
 from sqlalchemy import text
 
-from iae.core.settings import get_settings
+from iae.config.settings import get_settings
 from iae.infrastructure.postgres.engine import get_engine
 
 
@@ -61,6 +61,14 @@ def main() -> int:
         print(f"tables ({len(tables)}):")
         for name in tables:
             print(f"  - {name}")
+        if not tables:
+            print("WARN: schema is empty — run: python -m scripts.init_postgres")
+            print("PARTIAL_OK (connected; no tables yet)")
+            return 0
+        if "questions" not in tables:
+            print("WARN: questions table missing — run: python -m scripts.init_postgres")
+            print("PARTIAL_OK")
+            return 0
         qcount = conn.execute(
             text("SELECT COUNT(*) FROM question_engine.questions")
         ).scalar_one()

@@ -28,3 +28,6 @@ frontend/
 
 # Cursor IDE local plans (not part of the product)
 .cursor/plans/
+
+# Local Postgres DDL (keep on disk; do not publish)
+src/iae/infrastructure/postgres/schema.sql

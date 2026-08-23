@@ -21,14 +21,14 @@ for _p in (str(_ROOT), str(_ROOT / "src")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from iae.core.curriculum import (
+from iae.domain.curriculum import (
     DEFAULT_GRADE,
     CurriculumConfigError,
     UnknownGradeError,
     get_chapters,
     select_pdf_parts,
 )
-from iae.core.settings import get_config, get_settings
+from iae.config.settings import get_config, get_settings
 from iae.infrastructure.llm.groq_client import GroqJsonLlm
 from iae.prompts import render
 

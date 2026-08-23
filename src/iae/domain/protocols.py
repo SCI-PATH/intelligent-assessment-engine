@@ -1,0 +1,174 @@
+"""Capability interfaces (Dependency Inversion).
+
+The application layer depends only on these protocols. Concrete implementations
+live in `iae.infrastructure.*` and `iae.adaptive.*` and are wired in
+`iae.api.bootstrap`.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Iterable, Protocol, runtime_checkable
+
+from iae.domain.models import (
+    AttemptRecord,
+    Chunk,
+    GradeResult,
+    PastGradeMarksRange,
+    PlacementEvaluation,
+    Question,
+    QuestionStatus,
+    QuestionType,
+    RlAction,
+    RlState,
+    SessionState,
+    StudentProfile,
+)
+
+
+@runtime_checkable
+class IEmbedder(Protocol):
+    def embed(self, texts: list[str]) -> list[list[float]]: ...
+
+
+@runtime_checkable
+class IVectorStore(Protocol):
+    """Persistent embedding store for RAG chunks (Chroma)."""
+
+    def replace_grade(
+        self,
+        grade: int,
+        chunks: Iterable[Chunk],
+        embeddings: list[list[float]],
+    ) -> int: ...
+
+    def query(
+        self,
+        query_embedding: list[float],
+        *,
+        n_results: int,
+        grade: int | None = None,
+        chapter_name: str | None = None,
+        topic_id: str | None = None,
+    ) -> list[Chunk]: ...
+
+    def find(
+        self,
+        *,
+        grade: int | None = None,
+        chapter_name: str | None = None,
+        topic_id: str | None = None,
+        limit: int | None = None,
+    ) -> list[Chunk]: ...
+
+    def count(self, *, grade: int | None = None) -> int: ...
+
+
+@runtime_checkable
+class ILlmJson(Protocol):
+    """LLM client constrained to return parsed JSON objects."""
+
+    def generate_json(self, prompt: str, *, temperature: float = 0.3) -> dict: ...
+
+
+@runtime_checkable
+class IQuestionRepository(Protocol):
+    def insert_many(self, questions: Iterable[Question]) -> int: ...
+
+    def find_one_unused(
+        self,
+        *,
+        chapter_name: str,
+        sub_concept: str,
+        dok_level: int,
+        question_type: QuestionType,
+        excluded_ids: list[str],
+        topic_id: str = "",
+        exclude_sub_concepts: list[str] | None = None,
+    ) -> Question | None: ...
+
+    def count_matching(
+        self,
+        *,
+        chapter_name: str | None = None,
+        sub_concept: str | None = None,
+        dok_level: int | None = None,
+        question_type: QuestionType | None = None,
+    ) -> int: ...
+
+    def get(self, question_id: str) -> Question | None: ...
+
+    def list_questions(
+        self,
+        *,
+        status: QuestionStatus | None = None,
+        topic_id: str | None = None,
+        grade: int | None = None,
+        limit: int = 100,
+    ) -> list[Question]: ...
+
+    def set_status(self, question_id: str, status: QuestionStatus) -> Question | None: ...
+
+
+@runtime_checkable
+class ISessionRepository(Protocol):
+    def create(self, session: SessionState) -> SessionState: ...
+
+    def get(self, session_id: str) -> SessionState | None: ...
+
+    def update(self, session: SessionState) -> None: ...
+
+    def served_question_ids(self, user_id: str) -> list[str]: ...
+
+    def mark_served(
+        self,
+        *,
+        user_id: str,
+        question_id: str,
+        session_id: str,
+        topic_id: str = "",
+        source: str = "bank",
+    ) -> None: ...
+
+    def record_attempt(
+        self,
+        attempt: AttemptRecord,
+        *,
+        user_id: str,
+        session_id: str,
+        topic_id: str = "",
+        similarity_score: float | None = None,
+        distractor_tag: str | None = None,
+        distractor_label: str | None = None,
+    ) -> None: ...
+
+
+@runtime_checkable
+class IRlPolicy(Protocol):
+    def cold_start_action(self, scope_chapter: str) -> RlAction: ...
+
+    def next_action(self, state: RlState, history: list[AttemptRecord]) -> RlAction: ...
+
+
+@runtime_checkable
+class IGradingService(Protocol):
+    def grade(self, question: Question, student_answer: str) -> GradeResult: ...
+
+
+@runtime_checkable
+class IAnalyticsRepository(Protocol):
+    def insert(self, payload: dict[str, Any], *, session_id: str | None = None) -> str: ...
+
+
+@runtime_checkable
+class IPlacementRepository(Protocol):
+    def upsert_survey(
+        self,
+        *,
+        user_id: str,
+        grade: int,
+        completed_chapters_count: int,
+        past_grade_marks_range: PastGradeMarksRange,
+    ) -> StudentProfile: ...
+
+    def save_evaluation(self, evaluation: PlacementEvaluation) -> PlacementEvaluation: ...
+

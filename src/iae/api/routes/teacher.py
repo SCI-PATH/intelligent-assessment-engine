@@ -1,29 +1,31 @@
-"""Teacher question-bank endpoints. No auth in this research phase."""
+"""Teacher Hub routes under /api/v1/assessment-engine."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from iae.api.bootstrap import Container
+from iae.api.deps import get_container
+from iae.api.integration_ids import MOCK_TEACHER_1, resolve_teacher_id
 from iae.api.schemas import (
     CreateTeacherQuestionRequest,
     ErrorDetail,
     GenerateQuestionsRequest,
     GenerateQuestionsResponse,
+    RejectQuestionRequest,
     TeacherQuestionListResponse,
     TeacherTopicItem,
     TeacherTopicsResponse,
 )
 from iae.application.question_generation import RateLimitExceeded
-from iae.application.teacher import NoRagContextError, UnknownTopicError
-from iae.core.curriculum import DEFAULT_GRADE
-from iae.core.models import Question, QuestionStatus
+from iae.application.teacher_service import NoRagContextError, UnknownTopicError
+from iae.domain.curriculum import DEFAULT_GRADE
+from iae.domain.models import Question, QuestionStatus, QuestionType
 
-router = APIRouter(prefix="/teacher", tags=["Teacher Hub"])
-
-
-def get_container(request: Request) -> Container:
-    return request.app.state.container  # type: ignore[no-any-return]
+router = APIRouter(
+    prefix="/api/v1/assessment-engine/teacher",
+    tags=["Teacher Hub"],
+)
 
 
 @router.get(
@@ -31,22 +33,16 @@ def get_container(request: Request) -> Container:
     response_model=TeacherTopicsResponse,
     summary="List skill catalog topics",
     description=(
-        "Returns Excel-derived Topic IDs for a grade (`topics.yaml`), including "
-        "chapter title, skill text, domain, and concept code."
+        "**Purpose:** List Excel Topic IDs / skills for a grade.\n\n"
+        "**Caller:** Frontend (teacher).\n\n"
+        "**Query:** `grade` (6–9)."
     ),
-    responses={200: {"description": "Topic catalog for the grade."}},
 )
 def list_topics(
-    grade: int = Query(
-        default=DEFAULT_GRADE,
-        ge=6,
-        le=9,
-        description="Curriculum grade year.",
-        examples=[6],
-    ),
+    grade: int = Query(default=6, ge=6, le=9, examples=[6]),
     container: Container = Depends(get_container),
 ) -> TeacherTopicsResponse:
-    """List Excel Topic IDs and skills for a grade."""
+    _ = resolve_teacher_id(MOCK_TEACHER_1)
     topics = container.teacher_service.list_topics(grade)
     return TeacherTopicsResponse(
         grade=grade,
@@ -70,21 +66,15 @@ def list_topics(
     response_model=GenerateQuestionsResponse,
     summary="Generate questions from RAG",
     description=(
-        "Uses Chroma chunks tagged with the given Topic ID to generate new bank "
-        "items via the LLM. Items are stored as `pending` until approved."
+        "**Purpose:** LLM + Chroma RAG → new `pending` bank items for a Topic ID.\n\n"
+        "**Caller:** Frontend (teacher). Needs Chroma data."
     ),
-    responses={
-        200: {"description": "Generated pending questions."},
-        400: {"model": ErrorDetail, "description": "Unknown Topic ID."},
-        409: {"model": ErrorDetail, "description": "No RAG context for this topic."},
-        429: {"model": ErrorDetail, "description": "LLM provider rate limit."},
-    },
 )
 def generate_questions(
     payload: GenerateQuestionsRequest,
     container: Container = Depends(get_container),
 ) -> GenerateQuestionsResponse:
-    """Generate pending bank items from Chroma RAG for one Topic ID."""
+    _ = resolve_teacher_id(MOCK_TEACHER_1)
     try:
         created = container.teacher_service.generate(
             topic_id=payload.topic_id,
@@ -106,30 +96,38 @@ def generate_questions(
     "/questions",
     response_model=TeacherQuestionListResponse,
     summary="List bank questions",
-    description="Filter the Postgres question bank by status, Topic ID, and/or grade.",
-    responses={200: {"description": "Matching questions (newest first)."}},
+    description=(
+        "**Purpose:** Review queue for the question bank.\n\n"
+        "**Caller:** Frontend (teacher).\n\n"
+        "**Query filters:** `status`, `grade`, `class_code`, `dok_level`, `question_type`, `topic_id`, `limit`."
+    ),
 )
 def list_questions(
-    status: QuestionStatus | None = Query(
+    status: QuestionStatus | None = Query(default=QuestionStatus.APPROVED),
+    topic_id: str | None = Query(default=None),
+    grade: int | None = Query(default=6, ge=6, le=9),
+    class_code: str | None = Query(
         default=None,
-        description="Filter by approval status.",
-        examples=["pending"],
+        description="Filter to grades of students in this class (standalone: CLASS-A).",
     ),
-    topic_id: str | None = Query(
-        default=None,
-        description="Exact Topic ID filter.",
-        examples=["G6_C7_MAG_POLES"],
-    ),
-    grade: int | None = Query(default=None, ge=6, le=9, description="Grade year filter."),
-    limit: int = Query(default=100, ge=1, le=500, description="Max rows to return."),
+    dok_level: int | None = Query(default=None, ge=1, le=4),
+    question_type: QuestionType | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=500),
     container: Container = Depends(get_container),
 ) -> TeacherQuestionListResponse:
-    """List bank questions filtered by status, topic_id, and/or grade."""
+    _ = resolve_teacher_id(MOCK_TEACHER_1)
+    # --- LIVE INTEGRATION (uncomment tomorrow): scope by authenticated teacher class ---
+    # teacher_id = resolve_teacher_id(<auth_header_user_id>)
+    # class_code = class_code or lookup_class_for_teacher(teacher_id)
+
     return TeacherQuestionListResponse(
         questions=container.teacher_service.list_questions(
             status=status,
             topic_id=topic_id,
             grade=grade,
+            class_code=class_code,
+            dok_level=dok_level,
+            question_type=question_type,
             limit=limit,
         )
     )
@@ -139,17 +137,20 @@ def list_questions(
     "/questions/{question_id}/approve",
     response_model=Question,
     summary="Approve a question",
-    description="Sets status to `approved` so diagnostic/placement flows can serve it.",
-    responses={
-        200: {"description": "Updated question."},
-        404: {"model": ErrorDetail, "description": "Question not found."},
-    },
+    description=(
+        "**Purpose:** Set status=`approved` so student quizzes can serve the item.\n\n"
+        "**Caller:** Frontend (teacher)."
+    ),
 )
 def approve_question(
-    question_id: str,
+    question_id: str = Path(
+        ...,
+        description="Paste id from GET /teacher/questions.",
+        examples=["REPLACE_WITH_QUESTION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> Question:
-    """Mark a bank item approved so students can be served it."""
+    _ = resolve_teacher_id(MOCK_TEACHER_1)
     try:
         return container.teacher_service.set_status(question_id, QuestionStatus.APPROVED)
     except KeyError:
@@ -159,22 +160,32 @@ def approve_question(
 @router.post(
     "/questions/{question_id}/reject",
     response_model=Question,
-    summary="Reject a question (legacy)",
+    summary="Reject with reason",
     description=(
-        "Deprecated: prefer `POST /api/v1/teacher/questions/{id}/reject` with a reason body."
+        "**Purpose:** Reject a bank item with a structured reason.\n\n"
+        "**Caller:** Frontend (teacher).\n\n"
+        "**Request:** `{ \"reason\": \"FACTUAL_ERROR\", \"notes\": \"...\" }`.\n"
+        "Reasons: `FACTUAL_ERROR` | `OUT_OF_SCOPE` | `POOR_PHRASING` | "
+        "`TOO_EASY` | `TOO_HARD` | `OTHER`."
     ),
-    responses={
-        200: {"description": "Updated question."},
-        404: {"model": ErrorDetail, "description": "Question not found."},
-    },
+    responses={404: {"model": ErrorDetail}},
 )
 def reject_question(
-    question_id: str,
+    payload: RejectQuestionRequest,
+    question_id: str = Path(
+        ...,
+        description="Paste id from GET /teacher/questions.",
+        examples=["REPLACE_WITH_QUESTION_ID"],
+    ),
     container: Container = Depends(get_container),
 ) -> Question:
-    """Mark a bank item rejected (not served to students)."""
+    _ = resolve_teacher_id(MOCK_TEACHER_1)
     try:
-        return container.teacher_service.set_status(question_id, QuestionStatus.REJECTED)
+        return container.teacher_service.reject(
+            question_id,
+            reason=payload.reason,
+            notes=payload.notes,
+        )
     except KeyError:
         raise HTTPException(status_code=404, detail="Question not found.") from None
 
@@ -184,19 +195,15 @@ def reject_question(
     response_model=Question,
     summary="Add a custom teacher question",
     description=(
-        "Inserts a manually authored item linked to a known Topic ID. "
-        "Stored as `pending` / origin `teacher` until approved."
+        "**Purpose:** Insert a teacher-authored item linked to a known Topic ID.\n\n"
+        "**Caller:** Frontend (teacher)."
     ),
-    responses={
-        200: {"description": "Created question."},
-        400: {"model": ErrorDetail, "description": "Unknown Topic ID or invalid payload."},
-    },
 )
 def add_custom_question(
     payload: CreateTeacherQuestionRequest,
     container: Container = Depends(get_container),
 ) -> Question:
-    """Insert a teacher-authored pending bank item for a known Topic ID."""
+    _ = resolve_teacher_id(MOCK_TEACHER_1)
     try:
         return container.teacher_service.add_custom(
             grade=payload.grade,
