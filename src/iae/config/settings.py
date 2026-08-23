@@ -23,7 +23,7 @@ class AppSettings(BaseSettings):
     llm_provider: str = Field(default="groq", alias="LLM_PROVIDER")
     openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
 
-    api_base_url: str = Field(default="http://localhost:8001", alias="API_BASE_URL")
+    api_base_url: str = Field(default="http://localhost:8004", alias="API_BASE_URL")
     database_url: str = Field(
         default="postgresql+psycopg://iae:iae@localhost:5432/iae",
         alias="DATABASE_URL",

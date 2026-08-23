@@ -79,10 +79,12 @@ python -m scripts.qa.test_amplitude_evaluate
 ## 5. Start API
 
 ```powershell
-uvicorn iae.api.main:app --reload --port 8001
+$env:PYTHONPATH = "src"
+uvicorn iae.api.main:app --reload --port 8004
 ```
 
-Swagger: http://localhost:8001/docs
+Swagger: http://localhost:8004/docs  
+OpenAPI: http://localhost:8004/openapi.json
 
 ## 6. Smoke + validation (second terminal)
 
@@ -101,7 +103,7 @@ python -m iae.evaluation.run_validation
 ## Streamlit (optional)
 
 ```powershell
-$env:API_BASE_URL = "http://localhost:8001"
+$env:API_BASE_URL = "http://localhost:8004"
 streamlit run frontend_test/streamlit_app.py
 ```
 

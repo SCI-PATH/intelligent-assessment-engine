@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/src \
     HOST=0.0.0.0 \
-    PORT=8001 \
+    PORT=8004 \
     CHROMA_PERSIST_DIR=/app/data/chroma_db
 
 # System deps for psycopg / some scientific wheels
@@ -23,6 +23,7 @@ COPY src ./src
 COPY data/chapter_ids_g6_g9.csv ./data/chapter_ids_g6_g9.csv
 COPY data/skills/.gitkeep ./data/skills/
 COPY scripts/neon_schema_init.sql ./scripts/neon_schema_init.sql
+COPY scripts/ingest_and_tag_chunks.py ./scripts/ingest_and_tag_chunks.py
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
@@ -37,9 +38,9 @@ RUN addgroup --system app \
 
 USER app
 
-EXPOSE 8001
+EXPOSE 8004
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/', timeout=4)"
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/', timeout=4)"
 
-CMD ["uvicorn", "iae.api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "iae.api.main:app", "--host", "0.0.0.0", "--port", "8004"]

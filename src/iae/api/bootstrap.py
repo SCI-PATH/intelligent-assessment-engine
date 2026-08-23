@@ -15,7 +15,7 @@ from iae.infrastructure.clients import Component1Client, Component3Client, Compo
 from iae.infrastructure.llm.factory import build_json_llm
 from iae.infrastructure.postgres.amplitude_repo import PostgresAmplitudeRepository
 from iae.infrastructure.postgres.analytics_repo import PostgresAnalyticsRepository
-from iae.infrastructure.postgres.engine import get_session_factory, init_schema
+from iae.infrastructure.postgres.engine import get_session_factory
 from iae.infrastructure.postgres.questions_repo import PostgresQuestionRepository
 from iae.infrastructure.postgres.sessions_repo import PostgresSessionRepository
 from iae.infrastructure.rag.chroma_store import ChromaChunkStore
@@ -40,7 +40,9 @@ def build_container() -> Container:
     settings = get_settings()
     config = get_config()
 
-    init_schema()
+    # Schema/tables are managed in Neon already — do not re-run schema.sql on boot
+    # (CREATE SCHEMA needs privileges the app role may not have).
+    # Manual apply if needed: python -m scripts.init_postgres
     session_factory = get_session_factory()
     questions_repo = PostgresQuestionRepository(session_factory)
     analytics_repo = PostgresAnalyticsRepository(session_factory)

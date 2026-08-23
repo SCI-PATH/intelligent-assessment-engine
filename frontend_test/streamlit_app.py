@@ -8,7 +8,7 @@ from typing import Any
 import requests
 import streamlit as st
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8001")
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8004")
 PREFIX = "/api/v1/assessment-engine"
 TIMEOUT = 90
 

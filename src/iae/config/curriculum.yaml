@@ -6,14 +6,14 @@
 # stable ids. Every chapter in a multi-file grade must set `pdf_id`.
 #
 # To add / finish a grade:
-#   1. Drop the PDF(s) at the paths below.
+#   1. Place PDFs under data/textbooks/ (shared mount from LPE; see deployment-orchestration).
 #   2. Fill `chapters` from each file's Table of Contents (1-based PDF pages).
 #   3. Run: python -m scripts.extract_subconcepts --grade N
 #   4. Hand-review src/iae/config/subconcepts.yaml
 #   5. Run: python -m scripts.ingest_and_tag_chunks --grade N
 grades:
   6:
-    pdf: data/grade_6_science.pdf
+    pdf: data/textbooks/science G-6 E.pdf
     subject: Science
     chapters:
       - name: Wonders of the Living World
@@ -54,9 +54,9 @@ grades:
     subject: Science
     pdfs:
       - id: part1
-        path: data/grade_7_science_part1.pdf
+        path: data/textbooks/science G-7 P-I E.pdf
       - id: part2
-        path: data/grade_7_science_part2.pdf
+        path: data/textbooks/science G-7 P-II E.pdf
     chapters:
       - name: Plant Diversity
         pdf_id: part1
@@ -139,9 +139,9 @@ grades:
     subject: Science
     pdfs:
       - id: part1
-        path: data/grade_8_science_part1.pdf
+        path: data/textbooks/science G8 P-I E.pdf
       - id: part2
-        path: data/grade_8_science_part2.pdf
+        path: data/textbooks/science G-8 P-II E.pdf
     chapters:
       - name: Importance of Microorganisms
         pdf_id: part1
@@ -208,9 +208,9 @@ grades:
     subject: Science
     pdfs:
       - id: part1
-        path: data/grade_9_science_part1.pdf
+        path: data/textbooks/science G-9 P-I E.pdf
       - id: part2
-        path: data/grade_9_science_part2.pdf
+        path: data/textbooks/Science Part II English G-9.pdf
     chapters:
       - name: Applications of Micro-organisms
         pdf_id: part1

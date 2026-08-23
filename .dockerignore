@@ -29,6 +29,5 @@ scripts/pipeline/
 scripts/db/
 scripts/test_engine_e2e.py
 scripts/extract_subconcepts.py
-scripts/ingest_and_tag_chunks.py
 scripts/generate_bank.py
 scripts/sync_skill_catalog.py

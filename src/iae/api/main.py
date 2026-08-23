@@ -45,7 +45,7 @@ Clean layered architecture: `api` → `application` → `domain` / `adaptive` / 
 Peer URLs are hardcoded in `src/iae/config/peers.py` (`localhost:8002|8003|8004`).
 Set `PEER_HTTP_LIVE = True` for live httpx.
 
-**Base URL (local):** `http://localhost:8001` · Docs: [`/docs`](/docs)
+**Base URL (local):** `http://localhost:8004` · Docs: [`/docs`](/docs)
 """
 
 
