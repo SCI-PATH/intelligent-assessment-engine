@@ -9,7 +9,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src \
     HOST=0.0.0.0 \
     PORT=8004 \
-    CHROMA_PERSIST_DIR=/app/data/chroma_db
+    CHROMA_PERSIST_DIR=/app/data/chroma_db \
+    HOME=/app/data \
+    HF_HOME=/app/data/cache/huggingface
 
 # System deps for psycopg / some scientific wheels
 RUN apt-get update \
