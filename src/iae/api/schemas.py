@@ -203,14 +203,35 @@ class TriggerPostLessonRequest(BaseModel):
                     "student_id": "mock-student-class-a",
                     "chapter_id": "G6_C8",
                     "grade": 6,
-                }
+                },
+                {
+                    "student_id": "mock-student-class-a",
+                    "grade": 6,
+                },
             ]
         }
     )
 
     student_id: str = Field(default="mock-student-class-a", examples=["mock-student-class-a"])
-    chapter_id: str = Field(default="G6_C8", examples=["G6_C8"])
-    grade: int = Field(default=6, ge=6, le=9)
+    chapter_id: str | None = Field(
+        default=None,
+        examples=["G6_C8"],
+        description=(
+            "Canonical chapter_id (e.g. G6_C8). "
+            "Omit to resolve from Component 1 GET /api/v1/lessons/active-chapter."
+        ),
+    )
+    grade: int | None = Field(default=None, ge=6, le=9)
+
+
+class PostLessonContextResponse(BaseModel):
+    """Chapter context resolved before / during post-lesson start."""
+
+    student_id: str
+    chapter_id: str
+    grade: int
+    source: str
+    lesson_id: str | None = None
 
 
 class TerminateSessionRequest(BaseModel):

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from iae.api.bootstrap import Container
 from iae.api.deps import get_container
@@ -10,6 +10,7 @@ from iae.api.integration_ids import resolve_grade, resolve_student_id, resolve_t
 from iae.api.schemas import (
     CreateCustomizableQuizRequest,
     ErrorDetail,
+    PostLessonContextResponse,
     QuizAnswerResponse,
     QuizNextResponse,
     QuizSessionResponse,
@@ -82,14 +83,50 @@ def create_customizable(
     return _session_response(session)
 
 
+@router.get(
+    "/post-lesson/context",
+    response_model=PostLessonContextResponse,
+    summary="Resolve chapter for post-lesson (from C1 when omitted)",
+    description=(
+        "**Purpose:** Ask Component 1 which `chapter_id` to use before starting "
+        "a post-lesson quiz (or preview what C2 would resolve).\n\n"
+        "**Outbound Component 1:** `GET {COMPONENT_1_URL}/api/v1/lessons/active-chapter"
+        "?student_id=...` (mocked while `PEER_HTTP_LIVE=False`).\n\n"
+        "**Caller:** Frontend. Prefer this when the FE does not already know the lesson chapter.\n\n"
+        "Then call `POST /quizzes/post-lesson` with the returned `chapter_id` "
+        "(or omit `chapter_id` and let POST resolve C1 again)."
+    ),
+    responses={400: {"model": ErrorDetail}},
+)
+def post_lesson_context(
+    student_id: str | None = Query(default=None, examples=["mock-student-class-a"]),
+    grade: int | None = Query(default=None, ge=6, le=9),
+    container: Container = Depends(get_container),
+) -> PostLessonContextResponse:
+    sid = resolve_student_id(student_id)
+    try:
+        resolved = container.quiz_service.resolve_post_lesson_chapter(
+            student_id=sid,
+            chapter_id=None,
+            grade=grade,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return PostLessonContextResponse(**resolved)
+
+
 @router.post(
     "/post-lesson",
     response_model=QuizSessionResponse,
     summary="Start post-lesson quiz (Component 1 / Component 3)",
     description=(
         "**Purpose:** Open a 15-question chapter quiz after a lesson completes.\n\n"
-        "**Caller:** Component 1 and Component 3 (pass completed `chapter_id`).\n\n"
-        "**Outbound:** C4 BKT snapshot at start; optional C1 quiz-ready notify.\n\n"
+        "**Caller:** Frontend, Component 1, or Component 3.\n\n"
+        "**Chapter resolution:**\n"
+        "- If `chapter_id` is sent → use it.\n"
+        "- If omitted → `GET` Component 1 `/api/v1/lessons/active-chapter` "
+        "(mock while peers offline).\n\n"
+        "**Outbound:** C4 BKT snapshot at start; C1 quiz-ready notify after session create.\n\n"
         "**Request body:**\n"
         "```json\n"
         "{\n"
@@ -97,7 +134,8 @@ def create_customizable(
         '  "chapter_id": "G6_C7",\n'
         '  "grade": 6\n'
         "}\n"
-        "```\n\n"
+        "```\n"
+        "`chapter_id` may be omitted to resolve from C1.\n\n"
         "**How to Test:** Execute → use `session_id` with `/next` + `/answer`."
     ),
 )
@@ -108,13 +146,16 @@ def trigger_post_lesson(
     student_id = resolve_student_id(payload.student_id)
     # --- LIVE INTEGRATION (uncomment tomorrow): pass C1 student_id through unchanged ---
     # student_id = (payload.student_id or "").strip() or student_id
-    grade = resolve_grade(payload.grade)
+    grade = resolve_grade(payload.grade) if payload.grade is not None else None
 
-    session = container.quiz_service.trigger_post_lesson(
-        student_id=student_id,
-        chapter_id=payload.chapter_id,
-        grade=grade,
-    )
+    try:
+        session = container.quiz_service.trigger_post_lesson(
+            student_id=student_id,
+            chapter_id=payload.chapter_id,
+            grade=grade if grade is not None else payload.grade,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _session_response(session)
 
 

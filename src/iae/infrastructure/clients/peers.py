@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 
 from iae.config.peers import (
+    C1_ACTIVE_CHAPTER_PATH,
     C1_QUIZ_READY_PATH,
     C3_SESSION_TERMINATED_PATH,
     C4_ASSESSMENT_SUBMIT_PATH,
@@ -180,6 +181,55 @@ class Component4Client:
 class Component1Client:
     """Lesson Engine (Component 1)."""
 
+    def fetch_active_chapter(self, *, student_id: str) -> dict[str, Any]:
+        """Return the chapter C1 says this student just finished / is on.
+
+        Expected live response (adjust field names when C1 confirms):
+          {
+            "student_id": "...",
+            "chapter_id": "G6_C8",
+            "grade": 6,
+            "lesson_id": "optional"
+          }
+        """
+        mock = {
+            "ok": True,
+            "source": "hardcoded_mock",
+            "student_id": student_id,
+            "chapter_id": "G6_C8",
+            "grade": 6,
+            "lesson_id": None,
+        }
+        # --- HARDCODED MOCK (active while PEER_HTTP_LIVE is False) ---
+        if not PEER_HTTP_LIVE:
+            logger.info("C1 active-chapter mock for student=%s → %s", student_id, mock["chapter_id"])
+            return mock
+
+        # --- LIVE INTEGRATION ---
+        url = join_url(component_1_base_url(), C1_ACTIVE_CHAPTER_PATH)
+        try:
+            with httpx.Client(timeout=_timeout()) as client:
+                response = client.get(url, params={"student_id": student_id})
+                response.raise_for_status()
+                data = response.json()
+                if isinstance(data, dict) and (data.get("chapter_id") or "").strip():
+                    data.setdefault("source", "live")
+                    data.setdefault("student_id", student_id)
+                    return data
+                logger.warning("C1 active-chapter missing chapter_id — mock fallback")
+        except Exception as exc:
+            logger.warning("C1 active-chapter failed (%s) — mock fallback", exc)
+        return mock
+
+        # Example live call:
+        # with httpx.Client(timeout=_timeout()) as client:
+        #     response = client.get(
+        #         join_url(component_1_base_url(), C1_ACTIVE_CHAPTER_PATH),
+        #         params={"student_id": student_id},
+        #     )
+        #     response.raise_for_status()
+        #     return response.json()
+
     def notify_quiz_ready(self, *, student_id: str, chapter_id: str, session_id: str) -> dict[str, Any]:
         mock = {
             "ok": True,
@@ -213,7 +263,7 @@ class Component1Client:
             logger.warning("C1 notify failed (%s) — mock fallback", exc)
         return mock
 
-        # with httpx.Client(timeout=_timeout()) as client:
+        # with httpx.Client(timeout=_timeout()):
         #     client.post(
         #         join_url(component_1_base_url(), C1_QUIZ_READY_PATH),
         #         json={"student_id": student_id, "chapter_id": chapter_id, "session_id": session_id},
