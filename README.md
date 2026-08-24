@@ -9,7 +9,7 @@ Component 2 generates, banks, serves, and grades Sri Lankan science questions fo
 | **Component 4** (BKT / Analytics) | Owns mastery; C2 calls BKT snapshot + assessment-submit |
 
 **Inbound API prefix:** `/api/v1/assessment-engine`  
-**Local service:** `http://localhost:8001` · Swagger: `/docs`
+**Local service:** `http://localhost:8004` · Swagger: `/docs`
 
 ---
 
@@ -110,13 +110,13 @@ $env:PYTHONPATH = "src"
 python -m scripts.db.test_connection
 python -m scripts.init_postgres
 python -m scripts.db.seed_mock_users
-uvicorn iae.api.main:app --reload --port 8001
+uvicorn iae.api.main:app --reload --port 8004
 ```
 
 Streamlit: `streamlit run frontend_test/streamlit_app.py`  
 Smoke: `python -m scripts.qa.smoke_v1`
 
-Peer URLs are **hardcoded** in `src/iae/config/peers.py` (`http://localhost:8002|8003|8004`). Set `PEER_HTTP_LIVE = True` for live httpx; while `False`, CSV-aligned mocks are used.
+Peer URLs are **hardcoded** in `src/iae/config/peers.py` (`http://localhost:8000|8002|8003`). Set `PEER_HTTP_LIVE = True` for live httpx; while `False`, CSV-aligned mocks are used.
 
 ---
 

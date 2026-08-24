@@ -2,10 +2,10 @@
 
 Hardcoded hosts — edit THIS FILE for deployment (do not use .env for peer URLs).
 
-Local placeholders (Component 2 itself runs on :8001):
-  Component 1 (Lesson Engine)     → :8002
-  Component 3 (Engagement)        → :8003
-  Component 4 (Learner Analytics) → :8004
+Local placeholders (Component 2 itself runs on :8004; User Management uses :8001):
+  Component 1 (Lesson Engine)     → :8000
+  Component 3 (Engagement)        → :8002
+  Component 4 (Learner Analytics) → :8003
 
 Set ``PEER_HTTP_LIVE = True`` only when those services are actually reachable.
 While False, feature services return hardcoded mock JSON (httpx blocks stay
@@ -17,9 +17,9 @@ from __future__ import annotations
 # ---------------------------------------------------------------------------
 # Deploy: replace these three strings with production base URLs.
 # ---------------------------------------------------------------------------
-COMPONENT_1_URL = "http://localhost:8002"
-COMPONENT_3_URL = "http://localhost:8003"
-COMPONENT_4_URL = "http://localhost:8004"
+COMPONENT_1_URL = "http://localhost:8000"
+COMPONENT_3_URL = "http://localhost:8002"
+COMPONENT_4_URL = "http://localhost:8003"
 
 # False → hardcoded mocks in diagnostic_quiz / peer clients.
 # True  → uncommented httpx calls against the URLs above.

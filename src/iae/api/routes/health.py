@@ -20,7 +20,7 @@ class HealthResponse(BaseModel):
         "**Peer services:** none.\n\n"
         "**Response:** `{ \"status\": \"ok\", \"service\": \"intelligent-assessment-engine\" }`.\n\n"
         "**How to Test:** Open `/docs` → Execute this endpoint → expect 200. "
-        "Or browser: `http://127.0.0.1:8001/`."
+        "Or browser: `http://127.0.0.1:8004/`."
     ),
     responses={200: {"description": "Service is up."}},
 )

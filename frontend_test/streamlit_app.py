@@ -8,7 +8,7 @@ from typing import Any
 import requests
 import streamlit as st
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8001")
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8004")
 PREFIX = "/api/v1/assessment-engine"
 TIMEOUT = 90
 
@@ -56,7 +56,7 @@ def _api_error(exc: Exception) -> None:
     if isinstance(exc, requests.HTTPError) and exc.response is not None:
         st.error(f"HTTP {exc.response.status_code}: {exc.response.text}")
     elif isinstance(exc, requests.ConnectionError):
-        st.error(f"Cannot reach API at `{API_BASE_URL}`. Start uvicorn on port 8001.")
+        st.error(f"Cannot reach API at `{API_BASE_URL}`. Start uvicorn on port 8004.")
     else:
         st.error(str(exc))
 

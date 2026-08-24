@@ -6,10 +6,10 @@ Team peer/C4 handshake summary: see also root [`INTEGRATION_README.md`](../INTEG
 
 | | |
 |--|--|
-| **Base URL (local)** | `http://localhost:8001` |
+| **Base URL (local)** | `http://localhost:8004` |
 | **API prefix** | `/api/v1/assessment-engine` |
-| **Swagger (live contract)** | `http://localhost:8001/docs` |
-| **OpenAPI JSON** | `http://localhost:8001/openapi.json` |
+| **Swagger (live contract)** | `http://localhost:8004/docs` |
+| **OpenAPI JSON** | `http://localhost:8004/openapi.json` |
 | **Auth** | none (research phase) |
 | **Headers** | `Content-Type: application/json` · `Accept: application/json` |
 
@@ -406,8 +406,8 @@ Engagement (C3) → may terminate an active session
 
 ```powershell
 # Backend running:
-uvicorn iae.api.main:app --reload --port 8001
-# Open http://localhost:8001/docs
+uvicorn iae.api.main:app --reload --port 8004
+# Open http://localhost:8004/docs
 ```
 
 Use Try-it-out with `mock-student-class-a` / grade `7` for Amplitude after the placement bank exists for that grade.

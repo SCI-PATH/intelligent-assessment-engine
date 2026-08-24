@@ -22,11 +22,13 @@ python -m scripts.db.seed_mock_users
 **File:** `src/iae/config/peers.py`
 
 ```python
-COMPONENT_1_URL = "http://localhost:8002"
-COMPONENT_3_URL = "http://localhost:8003"
-COMPONENT_4_URL = "http://localhost:8004"
+COMPONENT_1_URL = "http://localhost:8000"
+COMPONENT_3_URL = "http://localhost:8002"
+COMPONENT_4_URL = "http://localhost:8003"
 PEER_HTTP_LIVE = False  # True when peers are reachable
 ```
+
+Component 2 (this service) runs on **:8004** locally.
 
 **Clients / mocks:** `src/iae/infrastructure/clients/peers.py`
 
@@ -44,7 +46,7 @@ PEER_HTTP_LIVE = False  # True when peers are reachable
 
 ```powershell
 $env:PYTHONPATH = "src"
-uvicorn iae.api.main:app --reload --port 8001
+uvicorn iae.api.main:app --reload --port 8004
 python -m scripts.qa.smoke_v1
 python -m iae.evaluation.run_validation
 ```

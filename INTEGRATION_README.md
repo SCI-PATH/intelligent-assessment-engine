@@ -5,9 +5,9 @@
 
 | | |
 |--|--|
-| **Local base URL** | `http://localhost:8001` |
+| **Local base URL** | `http://localhost:8004` |
 | **API prefix** | `/api/v1/assessment-engine` |
-| **OpenAPI** | `http://localhost:8001/docs` |
+| **OpenAPI** | `http://localhost:8004/docs` |
 | **Headers** | `Content-Type: application/json` · `Accept: application/json` |
 | **Auth** | none (research phase) |
 
