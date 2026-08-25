@@ -9,7 +9,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src \
     HOST=0.0.0.0 \
     PORT=8004 \
-    CHROMA_PERSIST_DIR=/app/data/chroma_db
+    CHROMA_PERSIST_DIR=/app/data/chroma_db \
+    HOME=/app/data \
+    HF_HOME=/app/data/cache/huggingface
 
 # System deps for psycopg / some scientific wheels
 RUN apt-get update \
@@ -23,6 +25,7 @@ COPY src ./src
 COPY data/chapter_ids_g6_g9.csv ./data/chapter_ids_g6_g9.csv
 COPY data/skills/.gitkeep ./data/skills/
 COPY scripts/neon_schema_init.sql ./scripts/neon_schema_init.sql
+COPY scripts/ingest_and_tag_chunks.py ./scripts/ingest_and_tag_chunks.py
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
