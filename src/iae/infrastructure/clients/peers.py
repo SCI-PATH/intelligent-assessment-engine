@@ -1,6 +1,7 @@
 """Peer HTTP helpers with hardcoded mocks beside commented live httpx calls.
 
-Toggle live traffic via ``iae.config.peers.PEER_HTTP_LIVE``.
+Toggle live traffic via ``iae.config.peers.PEER_HTTP_LIVE`` (C1/C3) and
+``C4_HTTP_LIVE`` (C4 :8003). Live calls run first; mocks are the fallback.
 Mocks use real ``topic_id`` values from ``data/chapter_ids_g6_g9.csv``.
 """
 
@@ -17,6 +18,7 @@ from iae.config.peers import (
     C3_SESSION_TERMINATED_PATH,
     C4_ASSESSMENT_SUBMIT_PATH,
     C4_BKT_SNAPSHOT_PATH,
+    C4_HTTP_LIVE,
     PEER_HTTP_LIVE,
     component_1_base_url,
     component_3_base_url,
@@ -118,12 +120,10 @@ class Component4Client:
     def fetch_bkt_snapshot(self, *, user_id: str, chapter_ids: list[str]) -> dict[str, Any]:
         mock = mock_bkt_snapshot(user_id=user_id, chapter_ids=chapter_ids)
 
-        # --- HARDCODED MOCK (active while PEER_HTTP_LIVE is False) ---
-        if not PEER_HTTP_LIVE:
+        if not C4_HTTP_LIVE:
             logger.info("C4 bkt-snapshot mock for user=%s chapters=%s", user_id, chapter_ids)
             return mock
 
-        # --- LIVE INTEGRATION (uncomment body when peers are deployed; set PEER_HTTP_LIVE=True) ---
         url = join_url(component_4_base_url(), C4_BKT_SNAPSHOT_PATH)
         body = {"user_id": user_id, "chapter_ids": chapter_ids}
         try:
@@ -133,28 +133,18 @@ class Component4Client:
                 data = response.json()
                 if isinstance(data, dict):
                     data.setdefault("source", "live")
+                    logger.info("C4 bkt-snapshot live ok user=%s chapters=%s", user_id, chapter_ids)
                     return data
         except Exception as exc:
             logger.warning("C4 bkt-snapshot failed (%s) — mock fallback", exc)
         return mock
 
-        # Example live call kept for copy-paste clarity during integration:
-        # with httpx.Client(timeout=_timeout()) as client:
-        #     response = client.post(
-        #         join_url(component_4_base_url(), C4_BKT_SNAPSHOT_PATH),
-        #         json={"user_id": user_id, "chapter_ids": chapter_ids},
-        #     )
-        #     response.raise_for_status()
-        #     return response.json()
-
     def submit_assessment(self, payload: dict[str, Any]) -> dict[str, Any]:
         mock = mock_assessment_submit(payload)
 
-        # --- HARDCODED MOCK (active while PEER_HTTP_LIVE is False) ---
-        if not PEER_HTTP_LIVE:
+        if not C4_HTTP_LIVE:
             return mock
 
-        # --- LIVE INTEGRATION ---
         url = join_url(component_4_base_url(), C4_ASSESSMENT_SUBMIT_PATH)
         try:
             with httpx.Client(timeout=_timeout()) as client:
@@ -168,14 +158,6 @@ class Component4Client:
         except Exception as exc:
             logger.warning("C4 assessment-submit failed (%s) — mock fallback", exc)
             return mock
-
-        # with httpx.Client(timeout=_timeout()) as client:
-        #     response = client.post(
-        #         join_url(component_4_base_url(), C4_ASSESSMENT_SUBMIT_PATH),
-        #         json=payload,
-        #     )
-        #     response.raise_for_status()
-        #     return response.json()
 
 
 class Component1Client:

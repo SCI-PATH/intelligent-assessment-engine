@@ -46,7 +46,7 @@ Clean layered architecture: `api` → `application` → `domain` / `adaptive` / 
 **Frontend UI contract (screens, dropdowns, all endpoints):** [`docs/FRONTEND_INTEGRATION.md`](docs/FRONTEND_INTEGRATION.md)
 
 Peer URLs are hardcoded in `src/iae/config/peers.py` (`C1 :8000`, `C3 :8002`, `C4 :8003` deployed hosts).
-Set `PEER_HTTP_LIVE = True` for live httpx.
+C4 is live (`C4_HTTP_LIVE`); C1/C3 stay mocked until `PEER_HTTP_LIVE = True`.
 
 **Base URL (local):** `http://localhost:8004` · Docs: [`/docs`](/docs)
 """

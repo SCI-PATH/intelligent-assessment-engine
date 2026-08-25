@@ -9,9 +9,9 @@ Local vs deployed (port map):
   Component 4 (Learner Analytics) → :8003  → http://52.66.167.213:8003
   Component 2 (this service)      → :8004  → http://43.204.6.115:8004
 
-Set ``PEER_HTTP_LIVE = True`` only when those services are actually reachable.
-While False, feature services return hardcoded mock JSON (httpx blocks stay
-commented beside the mocks for one-line live activation).
+Per-peer live flags: try the deployed host first, fall back to hardcoded mock
+on timeout / HTTP error. ``PEER_HTTP_LIVE`` is the default for C1 / C3.
+C4 (:8003) is live now; turn the others on the same way when they are reachable.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ COMPONENT_4_URL = "http://52.66.167.213:8003"
 # False → hardcoded mocks in peer clients.
 # True  → live httpx against the URLs above (falls back to mock on error).
 PEER_HTTP_LIVE = False
+C4_HTTP_LIVE = True  # deployed :8003 first; mock fallback if C4 is down
 
 # Outbound path constants (peers own these routes; no host/port here)
 C4_BKT_SNAPSHOT_PATH = "/api/v1/quiz/bkt-snapshot"
