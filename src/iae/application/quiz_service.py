@@ -119,16 +119,64 @@ class QuizService:
         )
         return self._sessions.create(state)
 
-    def trigger_post_lesson(self, *, student_id: str, chapter_id: str, grade: int = 6) -> SessionState:
+    def resolve_post_lesson_chapter(
+        self,
+        *,
+        student_id: str,
+        chapter_id: str | None = None,
+        grade: int | None = None,
+    ) -> dict:
+        """Resolve chapter for post-lesson: explicit body wins, else C1 active-chapter."""
+        source = "request"
+        raw = (chapter_id or "").strip()
+        resolved_grade = grade
+        lesson_id = None
+        if not raw:
+            ctx = self._c1.fetch_active_chapter(student_id=student_id)
+            raw = str(ctx.get("chapter_id") or "").strip()
+            source = str(ctx.get("source") or "component_1")
+            lesson_id = ctx.get("lesson_id")
+            if resolved_grade is None and ctx.get("grade") is not None:
+                try:
+                    resolved_grade = int(ctx["grade"])
+                except (TypeError, ValueError):
+                    resolved_grade = None
+        if not raw:
+            raise ValueError(
+                "chapter_id is required (pass it in the body or ensure C1 active-chapter returns one)."
+            )
+        g = resolved_grade if resolved_grade is not None else 6
+        cid = normalize_chapter_id(raw, grade=g) or raw
+        return {
+            "chapter_id": cid,
+            "grade": g,
+            "source": source,
+            "lesson_id": lesson_id,
+            "student_id": student_id,
+        }
+
+    def trigger_post_lesson(
+        self,
+        *,
+        student_id: str,
+        chapter_id: str | None = None,
+        grade: int | None = 6,
+    ) -> SessionState:
         config = get_config()
-        cid = normalize_chapter_id(chapter_id, grade=grade) or chapter_id.strip()
+        resolved = self.resolve_post_lesson_chapter(
+            student_id=student_id,
+            chapter_id=chapter_id,
+            grade=grade,
+        )
+        cid = resolved["chapter_id"]
+        g = int(resolved["grade"])
         bkt = self._c4.fetch_bkt_snapshot(user_id=student_id, chapter_ids=[cid])
         state = SessionState(
             session_id=str(uuid4()),
             user_id=student_id,
             scope_chapter=cid,
             scope_chapters=[cid],
-            grade=grade,
+            grade=g,
             max_questions=config.post_lesson_max_questions,
             session_kind=SessionKind.POST_LESSON,
             status=SessionStatus.ACTIVE,

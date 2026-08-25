@@ -37,6 +37,11 @@ class AppSettings(BaseSettings):
 
     http_client_timeout_s: float = Field(default=3.0, alias="HTTP_CLIENT_TIMEOUT_S")
     debug_agent_log: bool = Field(default=False, alias="DEBUG_AGENT_LOG")
+    log_http_payloads: bool = Field(
+        default=True,
+        alias="LOG_HTTP_PAYLOADS",
+        description="Print request/response JSON bodies in the uvicorn terminal.",
+    )
 
 
 class AppConfig:

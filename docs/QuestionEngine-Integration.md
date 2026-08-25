@@ -3,7 +3,7 @@
 **From:** Component 4 — Learner Profile Analytics & GenAI Support  
 **To:** Component 2 — Intelligent Science Assessment / Question Engine  
 **Endpoint:** `POST /api/v1/assessment-submit`  
-**Base URL (local dev):** `http://127.0.0.1:8000`  
+**Base URL (local dev):** `http://127.0.0.1:8003`  
 **When to call:** **Once per scored question attempt**, immediately after the student submits an answer and you know if it is correct or wrong.
 
 For the full cross-component overview, see [`INTEGRATIONS.md`](../INTEGRATIONS.md).

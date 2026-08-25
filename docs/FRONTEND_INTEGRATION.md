@@ -6,10 +6,10 @@ Team peer/C4 handshake summary: see also root [`INTEGRATION_README.md`](../INTEG
 
 | | |
 |--|--|
-| **Base URL (local)** | `http://localhost:8001` |
+| **Base URL (local)** | `http://localhost:8004` |
 | **API prefix** | `/api/v1/assessment-engine` |
-| **Swagger (live contract)** | `http://localhost:8001/docs` |
-| **OpenAPI JSON** | `http://localhost:8001/openapi.json` |
+| **Swagger (live contract)** | `http://localhost:8004/docs` |
+| **OpenAPI JSON** | `http://localhost:8004/openapi.json` |
 | **Auth** | none (research phase) |
 | **Headers** | `Content-Type: application/json` · `Accept: application/json` |
 
@@ -259,6 +259,14 @@ Backend may call Component 4 (mocked if peers offline).
 
 Triggered when a lesson finishes. FE or peer services call:
 
+**Optional — resolve chapter from Lesson Engine first:**
+
+`GET /api/v1/assessment-engine/quizzes/post-lesson/context?student_id=...`
+
+C2 calls C1 `GET /api/v1/lessons/active-chapter` (mocked offline) and returns `{ chapter_id, grade, source }`.
+
+Then:
+
 `POST /api/v1/assessment-engine/quizzes/post-lesson`
 
 ```json
@@ -269,9 +277,11 @@ Triggered when a lesson finishes. FE or peer services call:
 }
 ```
 
+`chapter_id` may be **omitted** — C2 will resolve it from C1 the same way as `/post-lesson/context`.
+
 Returns a session with `max_questions` typically **15**. Then reuse the same `/next` + `/answer` loop as customizable.
 
-**UI:** usually no chapter picker (chapter comes from lesson); show progress `questions_asked / max_questions`.
+**UI:** usually no chapter picker (chapter comes from lesson / C1); show progress `questions_asked / max_questions`.
 
 ---
 
@@ -364,6 +374,7 @@ Reasons: `FACTUAL_ERROR` | `OUT_OF_SCOPE` | `POOR_PHRASING` | `TOO_EASY` | `TOO_
 | `POST` | `/api/v1/assessment-engine/amplitude/evaluate` |
 | `POST` | `/api/v1/assessment-engine/quizzes/customizable` |
 | `POST` | `/api/v1/assessment-engine/quizzes/post-lesson` |
+| `GET` | `/api/v1/assessment-engine/quizzes/post-lesson/context` |
 | `GET` | `/api/v1/assessment-engine/quizzes/{session_id}/next` |
 | `POST` | `/api/v1/assessment-engine/quizzes/{session_id}/answer` |
 | `GET` | `/api/v1/assessment-engine/quizzes/{session_id}/results` |
@@ -406,8 +417,8 @@ Engagement (C3) → may terminate an active session
 
 ```powershell
 # Backend running:
-uvicorn iae.api.main:app --reload --port 8001
-# Open http://localhost:8001/docs
+uvicorn iae.api.main:app --reload --port 8004
+# Open http://localhost:8004/docs
 ```
 
 Use Try-it-out with `mock-student-class-a` / grade `7` for Amplitude after the placement bank exists for that grade.

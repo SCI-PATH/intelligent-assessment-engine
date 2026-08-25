@@ -20,8 +20,8 @@ Inbound notes from Component 4:
 |--|--|
 | **Method / path** | `POST /api/v1/assessment-submit` |
 | **Owner** | Component 4 |
-| **Local base (C4)** | `http://127.0.0.1:8000` (or whatever port C4 runs on) |
-| **Full URL** | `http://127.0.0.1:8000/api/v1/assessment-submit` |
+| **Local base (C4)** | `http://127.0.0.1:8003` |
+| **Full URL** | `http://127.0.0.1:8003/api/v1/assessment-submit` |
 | **When** | Once per scored attempt, immediately after Component 2 finishes grading |
 | **Headers** | `Content-Type: application/json` · `Accept: application/json` |
 | **Body** | Unified JSON below (same keys every time; unused fields are `null`) |
@@ -29,7 +29,7 @@ Inbound notes from Component 4:
 ### Component 2 wiring
 
 1. Student / frontend calls **our** API:  
-   `POST http://localhost:8001/api/v1/assessment-engine/quizzes/{session_id}/answer`
+   `POST http://localhost:8004/api/v1/assessment-engine/quizzes/{session_id}/answer`
 2. We grade → build the unified payload → save a local copy in  
    `question_engine.analytics_events`
 3. We forward the **same JSON** to Component 4:
@@ -45,7 +45,7 @@ Set in `.env` (base only — path is appended in code):
 Peer hosts: edit `src/iae/config/peers.py` (`COMPONENT_4_URL`, `PEER_HTTP_LIVE`). Do not put peer URLs in `.env`.
 
 ```python
-COMPONENT_4_URL = "http://localhost:8004"
+COMPONENT_4_URL = "http://localhost:8003"
 PEER_HTTP_LIVE = False
 ```
 ANALYTICS_BASE_URL=http://127.0.0.1:8003
@@ -134,13 +134,13 @@ Every request body contains **all** keys. Non-applicable values are explicitly `
 
 These are the **JSON bodies** posted to:
 
-`POST http://127.0.0.1:8000/api/v1/assessment-submit`
+`POST http://127.0.0.1:8003/api/v1/assessment-submit`
 
 ### 1) MCQ — correct
 
 ```http
 POST /api/v1/assessment-submit HTTP/1.1
-Host: 127.0.0.1:8000
+Host: 127.0.0.1:8003
 Content-Type: application/json
 ```
 
@@ -356,7 +356,7 @@ Content-Type: application/json
 ## End-to-end flow
 
 ```text
-Frontend                         Component 2 (port 8001)              Component 4 (port 8000)
+Frontend                         Component 2 (port 8004)              Component 4 (port 8003)
    |                                      |                                      |
    |  POST /api/v1/assessment-engine/quizzes/{id}/answer                                     |
    |  { question_id, student_answer, time_taken_seconds }                       |
@@ -408,22 +408,22 @@ canonical values — please accept these four strings:
 
 ```powershell
 # .env
-ANALYTICS_BASE_URL=http://127.0.0.1:8000
+ANALYTICS_BASE_URL=http://127.0.0.1:8003
 
 $env:PYTHONPATH = "src"
-uvicorn iae.api.main:app --reload --port 8001
+uvicorn iae.api.main:app --reload --port 8004
 ```
 
 **Component 4**
 
-- Service listening on `http://127.0.0.1:8000`
+- Service listening on `http://127.0.0.1:8003`
 - Route: `POST /api/v1/assessment-submit`
 - Accept the unified JSON bodies in this file
 
 **Smoke test body** (paste into Swagger / curl against C4):
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/assessment-submit ^
+curl -X POST http://127.0.0.1:8003/api/v1/assessment-submit ^
   -H "Content-Type: application/json" ^
   -d "{\"user_id\":\"student_001\",\"topic_id\":\"G6_C7_MAG_POLES\",\"question_id\":\"q-test\",\"question_type\":\"MCQ\",\"is_correct\":false,\"similarity_score\":null,\"distractor_tag\":\"MISCONCEPTION\",\"distractor_label\":\"Treats like poles as attracting\",\"chosen_distractor_text\":\"South pole attracts another south pole\",\"error_category\":null,\"detailed_explanation\":null,\"missed_blanks\":null,\"response_time_s\":45.2,\"difficulty_level\":2,\"subtopic_id\":\"Magnetic poles\",\"source\":\"question_engine_v1\"}"
 ```

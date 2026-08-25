@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from iae.api.bootstrap import build_container
+from iae.api.request_logging import RequestResponseLoggingMiddleware
 from iae.api.routes import amplitude, health, history, quizzes, teacher
+from iae.config.settings import get_settings
 
 OPENAPI_TAGS = [
     {"name": "Health", "description": "Liveness probe."},
@@ -42,8 +45,8 @@ Clean layered architecture: `api` → `application` → `domain` / `adaptive` / 
 
 **Frontend UI contract (screens, dropdowns, all endpoints):** [`docs/FRONTEND_INTEGRATION.md`](docs/FRONTEND_INTEGRATION.md)
 
-Peer URLs are hardcoded in `src/iae/config/peers.py` (`localhost:8002|8003|8004`).
-Set `PEER_HTTP_LIVE = True` for live httpx.
+Peer URLs are hardcoded in `src/iae/config/peers.py` (`C1 :8000`, `C3 :8002`, `C4 :8003` deployed hosts).
+C4 is live (`C4_HTTP_LIVE`); C1/C3 stay mocked until `PEER_HTTP_LIVE = True`.
 
 **Base URL (local):** `http://localhost:8004` · Docs: [`/docs`](/docs)
 """
@@ -56,6 +59,15 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    settings = get_settings()
+    if settings.log_http_payloads:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+            force=True,
+        )
+        logging.getLogger("iae.http").setLevel(logging.INFO)
+
     app = FastAPI(
         title="Intelligent Assessment Engine",
         version="0.6.0",
@@ -75,6 +87,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    if settings.log_http_payloads:
+        app.add_middleware(RequestResponseLoggingMiddleware)
     app.include_router(health.router)
     app.include_router(amplitude.router)
     app.include_router(quizzes.router)
