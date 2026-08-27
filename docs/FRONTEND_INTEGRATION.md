@@ -263,7 +263,17 @@ Triggered when a lesson finishes. FE or peer services call:
 
 `GET /api/v1/assessment-engine/quizzes/post-lesson/context?student_id=...`
 
-C2 calls C1 `GET /api/v1/lessons/active-chapter` (mocked offline) and returns `{ chapter_id, grade, source }`.
+C2 calls C1 `GET /progress?user_id=` (mocked offline) and returns `{ chapter_id, grade, source, lesson_id }`.
+
+**Chapter resolution rule** (same for context + `POST /post-lesson`):
+
+| Body `chapter_id` | Behavior | `source` |
+|-------------------|----------|----------|
+| omitted | Always ask C1 | `component_1` (live) or `fallback` |
+| `G{grade}_C8` (Game/FE stub) | Prefer live C1 over the stub | `component_1` or `fallback` |
+| other explicit (e.g. `G7_C2`) | Trust the request | `request` |
+
+`fallback` is grade-aware `G{g}_C8` and is used **only** when C1 HTTP/parse/map fails (or `C1_HTTP_LIVE=False`).
 
 Then:
 
@@ -278,6 +288,7 @@ Then:
 ```
 
 `chapter_id` may be **omitted** — C2 will resolve it from C1 the same way as `/post-lesson/context`.
+If the Game sends stub `G7_C8`, C2 still prefers live C1 (so you get the real `G7_Cn`, not chapter 8).
 
 Returns a session with `max_questions` typically **15**. Then reuse the same `/next` + `/answer` loop as customizable.
 

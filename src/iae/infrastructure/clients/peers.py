@@ -39,12 +39,19 @@ from iae.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-_FALLBACK_CHAPTER_ID = "G6_C8"
+_FALLBACK_CHAPTER_NUMBER = 8
 _FALLBACK_GRADE = 6
 
 
 def _timeout() -> float:
     return float(get_settings().http_client_timeout_s)
+
+
+def _fallback_chapter_id(grade: int | None = None) -> tuple[str, int]:
+    """Grade-aware offline stub: ``G{g}_C8`` (defaults grade 6 → G6_C8)."""
+    g = int(grade) if grade in (6, 7, 8, 9) else _FALLBACK_GRADE
+    cid = chapter_id_from_grade_and_number(g, _FALLBACK_CHAPTER_NUMBER) or f"G{g}_C{_FALLBACK_CHAPTER_NUMBER}"
+    return cid, g
 
 
 def _csv_topics_for_chapters(chapter_ids: list[str]) -> tuple[list[str], dict[str, list[str]]]:
@@ -126,15 +133,24 @@ def mock_assessment_submit(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _c1_active_chapter_mock(*, student_id: str) -> dict[str, Any]:
-    return {
+def _c1_active_chapter_mock(
+    *,
+    student_id: str,
+    grade: int | None = None,
+    error: str | None = None,
+) -> dict[str, Any]:
+    cid, g = _fallback_chapter_id(grade)
+    out: dict[str, Any] = {
         "ok": True,
-        "source": "hardcoded_mock",
+        "source": "fallback",
         "student_id": student_id,
-        "chapter_id": _FALLBACK_CHAPTER_ID,
-        "grade": _FALLBACK_GRADE,
+        "chapter_id": cid,
+        "grade": g,
         "lesson_id": None,
     }
+    if error:
+        out["error"] = error
+    return out
 
 
 def _map_c1_progress_to_chapter(data: dict[str, Any]) -> tuple[str, int, str | None] | None:
@@ -270,20 +286,26 @@ class Component4Client:
 class Component1Client:
     """Lesson Engine (Component 1)."""
 
-    def fetch_active_chapter(self, *, student_id: str) -> dict[str, Any]:
+    def fetch_active_chapter(
+        self,
+        *,
+        student_id: str,
+        grade: int | None = None,
+    ) -> dict[str, Any]:
         """Resolve the chapter for post-lesson quiz scoping.
 
         Live: ``GET {COMPONENT_1_URL}/progress?user_id=`` then map C1 lesson
         identity (``g6_sci_03`` / grade+chapter_number) → canonical ``G6_C3``.
-        Prefers the last ``completed_lesson_ids`` entry (just-finished lesson).
+        Prefers the lesson just finished for post-lesson handoff.
 
         Always returns a usable dict; never raises. On live-off / timeout /
-        HTTP / parse failure → hardcoded ``G6_C8`` mock.
+        HTTP / parse failure → grade-aware ``G{g}_C8`` fallback
+        (``source=fallback``). Live success uses ``source=component_1``.
         """
-        mock = _c1_active_chapter_mock(student_id=student_id)
+        mock = _c1_active_chapter_mock(student_id=student_id, grade=grade)
         if not C1_HTTP_LIVE:
             logger.info(
-                "C1 active-chapter mock for student=%s → %s",
+                "C1 active-chapter fallback (C1_HTTP_LIVE=False) student=%s → %s",
                 student_id,
                 mock["chapter_id"],
             )
@@ -296,35 +318,41 @@ class Component1Client:
                 response.raise_for_status()
                 data = response.json()
             if not isinstance(data, dict):
-                logger.warning("C1 /progress non-object body — mock fallback")
-                return mock
+                err = "C1 /progress non-object body"
+                logger.warning("%s student=%s — fallback %s", err, student_id, mock["chapter_id"])
+                return _c1_active_chapter_mock(student_id=student_id, grade=grade, error=err)
 
             mapped = _map_c1_progress_to_chapter(data)
             if mapped is None:
-                logger.warning(
-                    "C1 /progress could not map chapter for student=%s — mock fallback",
-                    student_id,
-                )
-                return mock
+                err = "C1 /progress could not map chapter"
+                logger.warning("%s student=%s — fallback %s", err, student_id, mock["chapter_id"])
+                return _c1_active_chapter_mock(student_id=student_id, grade=grade, error=err)
 
-            chapter_id, grade, lesson_id = mapped
+            chapter_id, resolved_grade, lesson_id = mapped
             logger.info(
-                "C1 active-chapter live student=%s → %s (lesson=%s)",
+                "C1 active-chapter live student=%s → %s (lesson=%s grade=%s)",
                 student_id,
                 chapter_id,
                 lesson_id,
+                resolved_grade,
             )
             return {
                 "ok": True,
-                "source": "live",
+                "source": "component_1",
                 "student_id": student_id,
                 "chapter_id": chapter_id,
-                "grade": grade,
+                "grade": resolved_grade,
                 "lesson_id": lesson_id,
             }
         except Exception as exc:
-            logger.warning("C1 active-chapter failed (%s) — mock fallback", exc)
-            return mock
+            err = str(exc)
+            logger.warning(
+                "C1 active-chapter failed student=%s err=%s — fallback %s",
+                student_id,
+                err,
+                mock["chapter_id"],
+            )
+            return _c1_active_chapter_mock(student_id=student_id, grade=grade, error=err)
 
     def notify_quiz_ready(self, *, student_id: str, chapter_id: str, session_id: str) -> dict[str, Any]:
         """Best-effort notify; C1 may not expose quiz-ready — never fail the quiz."""

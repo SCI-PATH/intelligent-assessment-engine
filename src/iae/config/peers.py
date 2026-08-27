@@ -27,7 +27,7 @@ COMPONENT_4_URL = "http://52.66.167.213:8003"
 # False → hardcoded mocks in peer clients.
 # True  → live httpx against the URLs above (falls back to mock on error).
 PEER_HTTP_LIVE = False
-C1_HTTP_LIVE = True  # Lesson Engine :8000; mock fallback (G6_C8) if C1 is down
+C1_HTTP_LIVE = True  # Lesson Engine :8000; grade-aware G{g}_C8 fallback if C1 is down
 C4_HTTP_LIVE = True  # deployed :8003 first; mock fallback if C4 is down
 
 # Outbound path constants (peers own these routes; no host/port here)

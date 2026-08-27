@@ -217,8 +217,11 @@ class TriggerPostLessonRequest(BaseModel):
         default=None,
         examples=["G6_C8"],
         description=(
-            "Canonical chapter_id (e.g. G6_C8). "
-            "Omit to resolve from Component 1 GET /progress?user_id= (maps to G6_Cn; falls back to G6_C8)."
+            "Canonical chapter_id (e.g. G7_C2). "
+            "Omit to resolve from Component 1 GET /progress. "
+            "G{grade}_C8 is treated as a client stub and live C1 still wins; "
+            "other explicit chapters are trusted. "
+            "Fallback G{g}_C8 only when C1 is unreachable/unmappable."
         ),
     )
     grade: int | None = Field(default=None, ge=6, le=9)
