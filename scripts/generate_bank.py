@@ -1,8 +1,9 @@
 """Pre-generate the chapter-level question bank into PostgreSQL.
 
-RAG context is retrieved from local Chroma (Topic ID metadata). Generated
-items are stored as ``approved`` so the student demo can serve them.
-Teacher-triggered generation uses the same helpers and stores ``pending``.
+For every (Topic ID × DOK × Question Type), aim for 3 conceptually distinct
+items (accept 1–2 if further attempts are paraphrases). Items are stored as
+``approved`` so the student demo can serve them. Teacher-triggered generation
+uses the same helpers and stores ``pending``.
 """
 
 from __future__ import annotations
@@ -20,8 +21,7 @@ from iae.application.question_generation import (
     RateLimitExceeded,
     curriculum_chapter_for_topic,
     format_context,
-    generate_one,
-    majority_topic,
+    generate_distinct_for_combo,
     retrieve_chunks,
     topics_for_bank_chapter,
 )
@@ -45,7 +45,7 @@ def main() -> int:
         "--per-combo",
         type=int,
         default=None,
-        help="Override questions_per_combo from app.yaml (Rule of 3 default = 3).",
+        help="Override questions_per_combo from app.yaml (aim for 3 distinct).",
     )
     parser.add_argument("--stop-on-rate-limit", action="store_true", default=True, help="Stop immediately on provider 429/TPD limit.")
     args = parser.parse_args()
@@ -62,9 +62,10 @@ def main() -> int:
         )
         return 1
 
-    llm = build_json_llm(model=config.llm_model)
+    llm = build_json_llm(timeout_s=config.groq_timeout_s)
     embedder = HuggingFaceEmbedder(config.embedding_model)
     per_combo = args.per_combo or config.questions_per_combo
+    jaccard_max = config.distinctness_jaccard_max
     chapters = args.chapter or get_chapter_names(args.grade)
     if args.topic_id:
         topic = get_topic(args.topic_id)
@@ -81,42 +82,51 @@ def main() -> int:
 
     succeeded = 0
     failed = 0
+    skipped_clones = 0
     pending: list[Question] = []
     print(
         f"Generating grade {args.grade}: {len(chapters)} chapters, "
-        f"{per_combo} per (dok × type) combo. OpenAI calls can take ~10–60s each."
+        f"aim {per_combo} distinct per (topic × dok × type). "
+        f"Groq fallbacks={config.groq_fallbacks}"
     )
 
     try:
         for chapter in chapters:
-            topic_ids = topics_for_bank_chapter(chapter, args.grade, args.topic_id)
-            chunks = retrieve_chunks(
-                store=store,
-                embedder=embedder,
-                grade=args.grade,
-                chapter=chapter,
-                topic_ids=topic_ids,
-                top_k=config.retrieval_top_k,
-            )
-            if not chunks:
-                print(f"  skip {chapter}: no Chroma chunks")
+            topic_ids = [t for t in topics_for_bank_chapter(chapter, args.grade, args.topic_id) if t]
+            if not topic_ids:
+                print(f"  skip {chapter}: no Topic IDs in catalog")
                 continue
+            print(f"\n[{chapter}] topics={len(topic_ids)}")
 
-            context = format_context(c.text for c in chunks)
-            chunk_ids = [c.id for c in chunks]
-            topic_id, skill = majority_topic(chunks)
-            if args.topic_id:
-                topic = get_topic(args.topic_id)
-                topic_id = args.topic_id
-                skill = topic.skill if topic else skill
-            chapter_scope = skill or "ChapterWide"
-            print(f"\n[{chapter}] topic={topic_id or '-'} chunks={len(chunks)}")
+            for topic_id in topic_ids:
+                topic = get_topic(topic_id)
+                skill = topic.skill if topic else ""
+                chunks = retrieve_chunks(
+                    store=store,
+                    embedder=embedder,
+                    grade=args.grade,
+                    chapter=chapter,
+                    topic_ids=[topic_id],
+                    top_k=config.retrieval_top_k,
+                )
+                if not chunks:
+                    print(f"  skip {topic_id}: no Chroma chunks")
+                    continue
 
-            for dok in (1, 2, 3, 4):
-                for qtype in QuestionType:
-                    for _ in range(per_combo):
-                        print(f"  generating dok={dok} type={qtype.value} ...", flush=True)
-                        question = generate_one(
+                context = format_context(c.text for c in chunks)
+                chunk_ids = [c.id for c in chunks]
+                chapter_scope = skill or "ChapterWide"
+                print(f"  topic={topic_id} chunks={len(chunks)}")
+
+                for dok in (1, 2, 3, 4):
+                    for qtype in QuestionType:
+                        print(
+                            f"    generating dok={dok} type={qtype.value} "
+                            f"(target {per_combo} distinct) ...",
+                            flush=True,
+                        )
+                        before = len(pending) + succeeded
+                        produced = generate_distinct_for_combo(
                             llm=llm,
                             chapter=chapter,
                             sub_concept=chapter_scope,
@@ -128,21 +138,29 @@ def main() -> int:
                             topic_id=topic_id,
                             skill=skill,
                             max_retries=config.generation_max_retries,
+                            target_count=per_combo,
+                            jaccard_max=jaccard_max,
                             status=QuestionStatus.APPROVED,
                             origin=QuestionOrigin.AI,
                             stop_on_rate_limit=args.stop_on_rate_limit,
                         )
-                        if question is None:
+                        if not produced:
                             failed += 1
-                            print("    failed")
+                            print("      failed (0 distinct)")
                             continue
-                        pending.append(question)
-                        succeeded += 1
-                        print(f"    ok (total {succeeded})")
+                        if len(produced) < per_combo:
+                            skipped_clones += per_combo - len(produced)
+                        pending.extend(produced)
+                        succeeded += len(produced)
+                        print(
+                            f"      ok n={len(produced)} distinct "
+                            f"(total {succeeded})"
+                        )
                         if len(pending) >= 25:
                             questions_repo.insert_many(pending)
                             pending.clear()
-                            print(f"  flushed batch to DB")
+                            print("  flushed batch to DB")
+                        _ = before  # silence unused if refactor
     except RateLimitExceeded as exc:
         print(f"\nStopped early due to provider limit: {exc}")
     except KeyboardInterrupt:
@@ -151,7 +169,10 @@ def main() -> int:
     if pending:
         questions_repo.insert_many(pending)
 
-    print(f"\nDone. Inserted {succeeded} questions, {failed} failures.")
+    print(
+        f"\nDone. Inserted {succeeded} questions, {failed} empty combos, "
+        f"~{skipped_clones} clone slots left unfilled (by design)."
+    )
     return 0
 
 

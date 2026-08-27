@@ -49,8 +49,8 @@ def build_container() -> Container:
     sessions_repo = PostgresSessionRepository(session_factory)
     amplitude_repo = PostgresAmplitudeRepository(session_factory)
 
-    llm = build_json_llm(model=config.llm_grader_model)
-    generator_llm = build_json_llm(model=config.llm_model)
+    llm = build_json_llm(timeout_s=config.groq_grader_timeout_s)
+    generator_llm = build_json_llm(timeout_s=config.groq_timeout_s)
     embedder = HuggingFaceEmbedder(config.embedding_model)
     grading = GradingService(llm=llm, embedder=embedder)
     c1 = Component1Client()

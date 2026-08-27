@@ -151,6 +151,34 @@ class PostgresQuestionRepository:
                     return _to_domain(row)
         return None
 
+    def list_approved_for_chapters(
+        self,
+        *,
+        chapter_names: list[str],
+        question_types: list[QuestionType] | None = None,
+        grade: int | None = None,
+        limit: int = 2000,
+    ) -> list[Question]:
+        """One round-trip preload for quiz-session in-memory DDA selection."""
+        names = [n for n in chapter_names if n and str(n).strip()]
+        if not names:
+            return []
+        stmt = (
+            select(QuestionRow)
+            .where(QuestionRow.status == QuestionStatus.APPROVED.value)
+            .where(QuestionRow.chapter_name.in_(names))
+            .limit(max(1, limit))
+        )
+        if grade is not None:
+            stmt = stmt.where(QuestionRow.grade == grade)
+        if question_types:
+            stmt = stmt.where(
+                QuestionRow.question_type.in_([t.value for t in question_types])
+            )
+        with self._session_factory() as session:
+            rows = session.execute(stmt).scalars().all()
+            return [_to_domain(row) for row in rows]
+
     def count_matching(
         self,
         *,

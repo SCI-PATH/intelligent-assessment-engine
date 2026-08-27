@@ -9,12 +9,12 @@ CORRECT ANSWER
 STUDENT ANSWER
 {{ student_answer }}
 
-CHAIN-OF-THOUGHT (internal only — do NOT print): classify the wrong polarity, then name the misconception briefly.
+CHAIN-OF-THOUGHT (internal only — do NOT print): classify the wrong polarity, then name the misconception.
 
 Return ONLY a strict JSON object:
 {
   "distractor_tag": "NEAR_MISS | MISCONCEPTION | COMPLETE_MISS",
-  "distractor_label": "Short 5-12 word phrase naming the misconception",
+  "distractor_label": "One complete standalone sentence naming the concept and exact reasoning error",
   "concept_explanation": "One sentence that states the correct scientific fact."
 }
 
@@ -23,6 +23,7 @@ Rules:
   - NEAR_MISS: student almost has the idea but flipped a detail.
   - MISCONCEPTION: student holds a systematic wrong scientific idea.
   - COMPLETE_MISS: blank, nonsense, or unrelated to the statement.
-- distractor_label describes what the wrong True/False choice reveals (not the full statement).
+- distractor_label MUST make sense alone (reader never saw the statement). Name the concept and the exact error.
+- BANNED: "this topic", "the question", "the statement", "the student has a misconception" alone.
 - concept_explanation: exactly one sentence grounded in school science; no invented facts.
 - No markdown, no commentary.

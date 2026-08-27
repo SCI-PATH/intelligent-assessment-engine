@@ -28,8 +28,8 @@ from iae.domain.curriculum import (
     get_chapters,
     select_pdf_parts,
 )
-from iae.config.settings import get_config, get_settings
-from iae.infrastructure.llm.groq_client import GroqJsonLlm
+from iae.config.settings import get_config
+from iae.infrastructure.llm.factory import build_json_llm
 from iae.prompts import render
 
 OUTPUT_PATH = Path(__file__).resolve().parents[1] / "src" / "iae" / "config" / "subconcepts.yaml"
@@ -103,9 +103,8 @@ def main() -> int:
             print(f"PDF not found: {path}", file=sys.stderr)
         return 1
 
-    settings = get_settings()
     config = get_config()
-    llm = GroqJsonLlm(model=config.llm_model, api_key=settings.groq_api_key)
+    llm = build_json_llm(timeout_s=config.groq_timeout_s)
 
     previous = _load_existing_manifest()
     if subset:

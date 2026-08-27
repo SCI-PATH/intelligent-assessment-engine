@@ -7,6 +7,7 @@ refresh at quiz start and after every assessment-submit response.
 from __future__ import annotations
 
 import logging
+import random
 import re
 from typing import Any
 from uuid import uuid4
@@ -46,6 +47,9 @@ logger = logging.getLogger(__name__)
 
 # Game / FE often stubs chapter 8 when it does not know the real lesson chapter.
 _CLIENT_FALLBACK_CHAPTER_RE = re.compile(r"^G([6-9])_C8$", re.IGNORECASE)
+
+# Process-local chapter bank for DDA selection (preserves per-item Elo/policy).
+_SESSION_BANK: dict[str, list[Question]] = {}
 
 
 def _is_client_fallback_chapter_id(chapter_id: str | None, *, grade: int | None = None) -> bool:
@@ -156,7 +160,9 @@ class QuizService:
             elo_rating=_elo_from_bkt_snapshot(bkt),
             bkt_snapshot=bkt,
         )
-        return self._sessions.create(state)
+        created = self._sessions.create(state)
+        self._preload_session_bank(created)
+        return created
 
     def resolve_post_lesson_chapter(
         self,
@@ -334,6 +340,7 @@ class QuizService:
             bkt_snapshot=bkt,
         )
         created = self._sessions.create(state)
+        self._preload_session_bank(created)
         self._c1.notify_quiz_ready(
             student_id=student_id,
             chapter_id=cid,
@@ -350,13 +357,39 @@ class QuizService:
         session.status = SessionStatus.TERMINATED
         session.terminate_reason = reason
         self._sessions.update(session)
+        _SESSION_BANK.pop(session_id, None)
         self._c3.notify_session_terminated(session_id=session_id, reason=reason)
         return session
 
-    def _find_question(
-        self,
+    def _preload_session_bank(self, session: SessionState) -> list[Question]:
+        """Load approved chapter items once; DDA still picks item-by-item from this pool."""
+        chapter_ids = session.scope_chapters or [session.scope_chapter]
+        bank_chapters = bank_chapter_names(chapter_ids, grade=session.grade)
+        types = session.allowed_question_types or None
+        pool = self._questions.list_approved_for_chapters(
+            chapter_names=bank_chapters,
+            question_types=types,
+            grade=session.grade,
+        )
+        _SESSION_BANK[session.session_id] = pool
+        logger.info(
+            "session bank preloaded session_id=%s chapters=%s n=%s",
+            session.session_id,
+            bank_chapters,
+            len(pool),
+        )
+        return pool
+
+    def _session_bank(self, session: SessionState) -> list[Question]:
+        cached = _SESSION_BANK.get(session.session_id)
+        if cached is not None:
+            return cached
+        return self._preload_session_bank(session)
+
+    @staticmethod
+    def _pick_from_pool(
+        pool: list[Question],
         *,
-        bank_chapters: list[str],
         types: list[QuestionType],
         target_dok: int,
         excluded_ids: list[str],
@@ -364,59 +397,93 @@ class QuizService:
         preferred_type: QuestionType | None = None,
         exclude_sub_concepts: list[str] | None = None,
     ) -> Question | None:
+        """In-memory equivalent of nested find_one_unused fallbacks (no Neon round-trips)."""
+        excluded = set(excluded_ids)
+        blocked_subs = {
+            s.strip() for s in (exclude_sub_concepts or []) if s and str(s).strip()
+        }
         ordered_types = list(types)
         if preferred_type and preferred_type in ordered_types:
             ordered_types = [preferred_type] + [t for t in ordered_types if t != preferred_type]
-        blocked_subs = exclude_sub_concepts
 
-        # Prefer exact topic + preferred type + target DOK.
-        for chapter in bank_chapters:
-            for qtype in ordered_types:
-                question = self._questions.find_one_unused(
-                    chapter_name=chapter,
-                    sub_concept="",
-                    dok_level=target_dok,
-                    question_type=qtype,
-                    excluded_ids=excluded_ids,
-                    topic_id=topic_id,
-                    exclude_sub_concepts=blocked_subs,
-                )
-                if question:
-                    return question
+        candidates = [
+            q
+            for q in pool
+            if q.id not in excluded
+            and (not blocked_subs or (q.sub_concept or "").strip() not in blocked_subs)
+        ]
+        if not candidates:
+            return None
 
-        # DOK fallbacks, still preferring topic_id when set.
-        for chapter in bank_chapters:
-            for dok in (target_dok, 2, 1, 3, 4):
-                for qtype in ordered_types:
-                    question = self._questions.find_one_unused(
-                        chapter_name=chapter,
-                        sub_concept="",
-                        dok_level=dok,
-                        question_type=qtype,
-                        excluded_ids=excluded_ids,
-                        topic_id=topic_id,
-                        exclude_sub_concepts=blocked_subs,
-                    )
-                    if question:
-                        return question
+        dok_order = [target_dok] + [d for d in (2, 1, 3, 4) if d != target_dok]
 
-        # Chapter-wide fallback (drop topic filter).
+        def _choose(rows: list[Question]) -> Question | None:
+            if not rows:
+                return None
+            return random.choice(rows)
+
+        # Prefer exact topic + preferred type + target DOK, then relax.
         if topic_id:
-            for chapter in bank_chapters:
-                for dok in (target_dok, 2, 1, 3, 4):
-                    for qtype in ordered_types:
-                        question = self._questions.find_one_unused(
-                            chapter_name=chapter,
-                            sub_concept="",
-                            dok_level=dok,
-                            question_type=qtype,
-                            excluded_ids=excluded_ids,
-                            topic_id="",
-                            exclude_sub_concepts=blocked_subs,
-                        )
-                        if question:
-                            return question
-        return None
+            for dok in dok_order:
+                for qtype in ordered_types:
+                    hit = _choose(
+                        [
+                            q
+                            for q in candidates
+                            if q.topic_id == topic_id
+                            and q.dok_level == dok
+                            and q.question_type == qtype
+                        ]
+                    )
+                    if hit:
+                        return hit
+            for dok in dok_order:
+                hit = _choose(
+                    [q for q in candidates if q.topic_id == topic_id and q.dok_level == dok]
+                )
+                if hit:
+                    return hit
+            hit = _choose([q for q in candidates if q.topic_id == topic_id])
+            if hit:
+                return hit
+
+        for dok in dok_order:
+            for qtype in ordered_types:
+                hit = _choose(
+                    [q for q in candidates if q.dok_level == dok and q.question_type == qtype]
+                )
+                if hit:
+                    return hit
+            hit = _choose([q for q in candidates if q.dok_level == dok])
+            if hit:
+                return hit
+
+        for qtype in ordered_types:
+            hit = _choose([q for q in candidates if q.question_type == qtype])
+            if hit:
+                return hit
+        return _choose(candidates)
+
+    def _find_question(
+        self,
+        *,
+        pool: list[Question],
+        types: list[QuestionType],
+        target_dok: int,
+        excluded_ids: list[str],
+        topic_id: str = "",
+        preferred_type: QuestionType | None = None,
+        exclude_sub_concepts: list[str] | None = None,
+    ) -> Question | None:
+        return self._pick_from_pool(
+            pool,
+            types=types,
+            target_dok=target_dok,
+            excluded_ids=excluded_ids,
+            topic_id=topic_id,
+            preferred_type=preferred_type,
+            exclude_sub_concepts=exclude_sub_concepts,
+        )
 
     def next_question(self, session_id: str) -> tuple[Question, Any]:
         from iae.adaptive.multivariate_policy import MultivariateDecision
@@ -429,13 +496,14 @@ class QuizService:
         if session.questions_asked >= session.max_questions:
             session.status = SessionStatus.COMPLETED
             self._sessions.update(session)
+            _SESSION_BANK.pop(session_id, None)
             raise NoQuestionAvailable("Session already complete.")
 
         chapter_ids = session.scope_chapters or [session.scope_chapter]
-        bank_chapters = bank_chapter_names(chapter_ids, grade=session.grade)
         types = session.allowed_question_types or list(QuestionType)
         session_used = list(session.used_question_ids)
         permanently_blocked = self._sessions.served_question_ids(session.user_id)
+        pool = self._session_bank(session)
 
         recent_topics: list[str] = []
         for attempt in session.history[-5:]:
@@ -473,7 +541,7 @@ class QuizService:
         question = None
         if recent_subs:
             question = self._find_question(
-                bank_chapters=bank_chapters,
+                pool=pool,
                 types=types,
                 target_dok=decision.dok_level,
                 excluded_ids=excluded,
@@ -485,7 +553,7 @@ class QuizService:
         # Graceful fallback: ignore sub_concept variety; still honor used_question_ids.
         if question is None:
             question = self._find_question(
-                bank_chapters=bank_chapters,
+                pool=pool,
                 types=types,
                 target_dok=decision.dok_level,
                 excluded_ids=excluded,
@@ -496,7 +564,7 @@ class QuizService:
 
         if question is None:
             question = self._find_question(
-                bank_chapters=bank_chapters,
+                pool=pool,
                 types=types,
                 target_dok=decision.dok_level,
                 excluded_ids=session_used,
@@ -506,7 +574,7 @@ class QuizService:
 
         if question is None:
             question = self._find_question(
-                bank_chapters=bank_chapters,
+                pool=pool,
                 types=types,
                 target_dok=decision.dok_level,
                 excluded_ids=[],
@@ -633,6 +701,7 @@ class QuizService:
         )
         if session.questions_asked >= session.max_questions:
             session.status = SessionStatus.COMPLETED
+            _SESSION_BANK.pop(session.session_id, None)
         self._sessions.update(session)
         return result, session, elo
 

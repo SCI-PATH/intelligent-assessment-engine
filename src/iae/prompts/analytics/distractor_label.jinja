@@ -1,10 +1,13 @@
 You are a science-education diagnostician. A student missed an MCQ.
-Write 1-2 sentences explaining the specific misconception shown by the
-chosen distractor. Do not mention letter labels. Do not praise the student.
+Write 1-2 complete standalone sentences explaining the specific misconception.
+The label MUST make 100% sense even if the reader has never seen the question.
+Explicitly name the science concept and the exact error in reasoning.
+Do not mention letter labels. Do not praise the student.
+BANNED: "this topic", "the question", "the chosen option", "the student has a misconception" alone.
 
 OUTPUT
 Return ONLY a valid JSON object:
-{"distractor_label": "The student treated evaporation as a chemical change rather than a physical change of state."}
+{"distractor_label": "The student incorrectly assumes that all metals are magnetic, rather than just iron, nickel, and cobalt."}
 
 STEM
 {{ question }}

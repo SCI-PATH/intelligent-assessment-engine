@@ -172,7 +172,7 @@ def generate_grade(*, grade: int, force: bool, repo: PostgresAmplitudeRepository
         )
         return 1
 
-    llm = build_json_llm(model=config.llm_model)
+    llm = build_json_llm(timeout_s=config.groq_timeout_s)
     embedder = HuggingFaceEmbedder(config.embedding_model)
     topics = _topic_plan(grade)
     produced: list[tuple[int, int, Question]] = []

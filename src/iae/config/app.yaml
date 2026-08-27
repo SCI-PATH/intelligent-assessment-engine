@@ -16,10 +16,19 @@ amplitude:
 
 models:
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
-  llm_model: llama-3.1-8b-instant
-  llm_grader_model: llama-3.1-8b-instant
+  # Centralized Groq fallback chain (single GROQ_API_KEY). Primary → secondary → previous.
+  groq_fallbacks:
+    - openai/gpt-oss-120b
+    - qwen/qwen3.6-27b
+    - llama-3.1-8b-instant
+  # Aliases kept for older scripts; resolved to groq_fallbacks[0] when present.
+  llm_model: openai/gpt-oss-120b
+  llm_grader_model: openai/gpt-oss-120b
+  groq_timeout_s: 20
+  groq_grader_timeout_s: 8
 
 bank:
-  questions_per_combo: 3          # exactly 3 questions per (topic_id, dok 1-4, question_type)
+  questions_per_combo: 3          # aim for 3 distinct per (topic_id, dok, question_type); accept 1–2 if clones
   generation_max_retries: 2
   retrieval_top_k: 4
+  distinctness_jaccard_max: 0.85  # reject paraphrase if token Jaccard vs prior stem >= this

@@ -6,6 +6,14 @@ You are an expert Sri Lankan science teacher writing ONE True/False statement fo
 
 Chapter: {{ chapter_name }}
 Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
+{% if avoid_stems %}
+DISTINCTNESS (mandatory)
+- Do NOT reword or paraphrase any of these prior statements for this same topic/DOK/type:
+{% for stem in avoid_stems %}
+  - {{ stem }}
+{% endfor %}
+- Write a conceptually different claim (different idea or skill focus).
+{% endif %}
 
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 1) Identify one testable claim supported by the excerpts.
@@ -24,16 +32,19 @@ HALLUCINATION GUARDRAILS
 - Avoid double negatives and absolute words ("always", "never") unless scientifically essential.
 - Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", or "Activity".
 
-COMPONENT 4 DISTRACTOR CONTRACT (strict)
+COMPONENT 4 DISTRACTOR CONTRACT (strict — C4 reads labels in isolation)
 - distractor_tag MUST be exactly one of: NEAR_MISS | MISCONCEPTION | COMPLETE_MISS
-- distractor_label: 5–12 words naming the specific misconception revealed by choosing the wrong polarity for THIS statement.
+- distractor_label MUST be a complete standalone sentence that makes 100% sense even if the reader has NEVER seen the True/False statement.
+- Name the science concept and the exact reasoning error revealed by choosing the wrong polarity.
+- BANNED: "this topic", "the question", "the statement", "the student has a misconception" (alone).
+- GOOD example: "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel."
 
 FEW-SHOT EXAMPLE (shape only):
 {
   "question": "Unlike poles of a magnet attract each other.",
   "correct_answer": "True",
   "distractor_tag": "MISCONCEPTION",
-  "distractor_label": "Believes like magnetic poles attract"
+  "distractor_label": "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel and unlike poles attract."
 }
 
 OUTPUT
@@ -42,7 +53,7 @@ Return ONLY a valid JSON object with this exact shape (no markdown, no commentar
   "question": "...",
   "correct_answer": "True",
   "distractor_tag": "MISCONCEPTION",
-  "distractor_label": "Believes like magnetic poles attract"
+  "distractor_label": "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel and unlike poles attract."
 }
 
 EXCERPTS

@@ -5,6 +5,14 @@ You are an expert Sri Lankan science teacher writing ONE cloze (fill-in-the-blan
 
 Chapter: {{ chapter_name }}
 Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
+{% if avoid_stems %}
+DISTINCTNESS (mandatory)
+- Do NOT reword or paraphrase any of these prior paragraphs for this same topic/DOK/type:
+{% for stem in avoid_stems %}
+  - {{ stem }}
+{% endfor %}
+- Write a conceptually different cloze paragraph.
+{% endif %}
 
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 1) Outline a short coherent paragraph from the excerpts.

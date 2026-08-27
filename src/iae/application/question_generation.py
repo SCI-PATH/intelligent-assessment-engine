@@ -44,6 +44,7 @@ PROMPT_FOR_TYPE: dict[QuestionType, str] = {
 }
 
 _BLANK_TOKEN_RE = re.compile(r"\[_+\]|_{3,}|\[\s*blank\s*\d+\s*\]|\[\s*\]", re.IGNORECASE)
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
 class RateLimitExceeded(RuntimeError):
@@ -62,6 +63,49 @@ def curriculum_chapter_for_topic(topic_chapter_title: str, grade: int) -> str:
         if normalize_chapter_name(name) == needle:
             return name
     return topic_chapter_title
+
+
+def stem_text(question: Question) -> str:
+    """Comparable stem / statement / paragraph for distinctness checks."""
+    payload = question.payload
+    if isinstance(payload, MCQPayload):
+        return str(payload.question or "").strip()
+    if isinstance(payload, ShortAnswerPayload):
+        return str(payload.question or "").strip()
+    if isinstance(payload, TrueFalsePayload):
+        return str(payload.question or "").strip()
+    if isinstance(payload, MultiBlankPayload):
+        return str(payload.paragraph or "").strip()
+    return ""
+
+
+def _tokens(text: str) -> set[str]:
+    return set(_TOKEN_RE.findall(text.lower()))
+
+
+def token_jaccard(a: str, b: str) -> float:
+    ta, tb = _tokens(a), _tokens(b)
+    if not ta and not tb:
+        return 1.0
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / len(ta | tb)
+
+
+def is_distinct_stem(
+    candidate: str,
+    prior_stems: list[str],
+    *,
+    jaccard_max: float = 0.85,
+) -> bool:
+    """True when candidate is not a near-paraphrase of any prior stem."""
+    cand = (candidate or "").strip()
+    if not cand:
+        return False
+    for prior in prior_stems:
+        if token_jaccard(cand, prior) >= jaccard_max:
+            return False
+    return True
 
 
 def _canonicalize_blanks(paragraph: str) -> str:
@@ -261,6 +305,7 @@ def generate_one(
     status: QuestionStatus = QuestionStatus.PENDING,
     origin: QuestionOrigin = QuestionOrigin.AI,
     stop_on_rate_limit: bool = True,
+    avoid_stems: list[str] | None = None,
 ) -> Question | None:
     prompt = render(
         PROMPT_FOR_TYPE[qtype],
@@ -269,6 +314,7 @@ def generate_one(
         dok_level=dok,
         dok_descriptor=DOK_DESCRIPTORS[dok],
         context=context,
+        avoid_stems=list(avoid_stems or []),
     )
     last_error: Exception | None = None
     for attempt in range(max_retries + 1):
@@ -301,6 +347,69 @@ def generate_one(
     return None
 
 
+def generate_distinct_for_combo(
+    *,
+    llm: ILlmJson,
+    chapter: str,
+    sub_concept: str,
+    dok: int,
+    qtype: QuestionType,
+    context: str,
+    chunk_ids: list[str],
+    grade: int,
+    topic_id: str,
+    skill: str,
+    max_retries: int,
+    target_count: int = 3,
+    jaccard_max: float = 0.85,
+    status: QuestionStatus = QuestionStatus.PENDING,
+    origin: QuestionOrigin = QuestionOrigin.AI,
+    stop_on_rate_limit: bool = True,
+    max_attempts: int | None = None,
+) -> list[Question]:
+    """Aim for ``target_count`` conceptually distinct items; keep 1+ if clones only.
+
+    One high-quality distinct question is preferred over three paraphrases.
+    """
+    target = max(1, int(target_count))
+    attempts_budget = max_attempts if max_attempts is not None else target + 2
+    produced: list[Question] = []
+    stems: list[str] = []
+    for _ in range(attempts_budget):
+        if len(produced) >= target:
+            break
+        question = generate_one(
+            llm=llm,
+            chapter=chapter,
+            sub_concept=sub_concept,
+            dok=dok,
+            qtype=qtype,
+            context=context,
+            chunk_ids=chunk_ids,
+            grade=grade,
+            topic_id=topic_id,
+            skill=skill,
+            max_retries=max_retries,
+            status=status,
+            origin=origin,
+            stop_on_rate_limit=stop_on_rate_limit,
+            avoid_stems=stems,
+        )
+        if question is None:
+            continue
+        text = stem_text(question)
+        if stems and not is_distinct_stem(text, stems, jaccard_max=jaccard_max):
+            print(
+                f"    skip clone dok={dok} type={qtype.value} "
+                f"(jaccard vs prior >= {jaccard_max})"
+            )
+            continue
+        produced.append(question)
+        if text:
+            stems.append(text)
+    return produced
+
+
 def generate_for_topic(
     *,
     llm: ILlmJson,
@@ -315,6 +424,7 @@ def generate_for_topic(
     max_retries: int = 2,
     status: QuestionStatus = QuestionStatus.PENDING,
     origin: QuestionOrigin = QuestionOrigin.AI,
+    jaccard_max: float = 0.85,
 ) -> list[Question]:
     topic = get_topic(topic_id)
     if topic is None:
@@ -335,26 +445,23 @@ def generate_for_topic(
         )
     context = format_context(c.text for c in chunks)
     chunk_ids = [c.id for c in chunks]
-    produced: list[Question] = []
-    for _ in range(max(1, count)):
-        question = generate_one(
-            llm=llm,
-            chapter=chapter,
-            sub_concept=resolved_skill or topic.skill or "ChapterWide",
-            dok=dok_level,
-            qtype=question_type,
-            context=context,
-            chunk_ids=chunk_ids,
-            grade=topic.grade,
-            topic_id=topic.topic_id,
-            skill=resolved_skill,
-            max_retries=max_retries,
-            status=status,
-            origin=origin,
-        )
-        if question is not None:
-            produced.append(question)
-    return produced
+    return generate_distinct_for_combo(
+        llm=llm,
+        chapter=chapter,
+        sub_concept=resolved_skill or topic.skill or "ChapterWide",
+        dok=dok_level,
+        qtype=question_type,
+        context=context,
+        chunk_ids=chunk_ids,
+        grade=topic.grade,
+        topic_id=topic.topic_id,
+        skill=resolved_skill,
+        max_retries=max_retries,
+        target_count=max(1, count),
+        jaccard_max=jaccard_max,
+        status=status,
+        origin=origin,
+    )
 
 
 def topics_for_bank_chapter(chapter: str, grade: int, topic_id: str | None) -> list[str | None]:

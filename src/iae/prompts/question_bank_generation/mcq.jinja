@@ -7,6 +7,14 @@ You are an expert Sri Lankan science teacher writing ONE multiple-choice item fo
 
 Chapter: {{ chapter_name }}
 Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
+{% if avoid_stems %}
+DISTINCTNESS (mandatory)
+- Do NOT reword or paraphrase any of these prior stems for this same topic/DOK/type:
+{% for stem in avoid_stems %}
+  - {{ stem }}
+{% endfor %}
+- Write a conceptually different question (different idea, scenario, or skill focus).
+{% endif %}
 
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 1) Extract the single science idea from the excerpts that matches this chapter.
@@ -26,13 +34,18 @@ HALLUCINATION GUARDRAILS
 - Do not invent Sri Lankan place names, lab results, or textbook figure numbers.
 - Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", "Activity", or any external reference.
 
-COMPONENT 4 DISTRACTOR CONTRACT (strict)
+COMPONENT 4 DISTRACTOR CONTRACT (strict — C4 reads labels in isolation)
 - distractor_tag MUST be exactly one of these three strings (no synonyms, no lowercase):
   NEAR_MISS | MISCONCEPTION | COMPLETE_MISS
 - NEAR_MISS: option is almost correct; shares most of the right idea but flips a detail.
 - MISCONCEPTION: option encodes a systematic wrong scientific belief about this topic.
 - COMPLETE_MISS: option is irrelevant or off-topic relative to the stem.
-- distractor_label MUST be a short phrase (5–12 words) that names the specific learner error for THAT option in THIS question (not a generic template). Example: "Reverses which magnetic poles attract".
+- distractor_label MUST be a complete standalone sentence that makes 100% sense even if the reader has NEVER seen the question, options, or stem.
+- The sentence MUST explicitly name (1) the science concept and (2) the exact error in reasoning.
+- BANNED phrasing: "this topic", "the question", "the chosen option", "the student has a misconception", "incorrect option", "wrong answer".
+- GOOD example: "The student incorrectly assumes that all metals are magnetic, rather than just iron, nickel, and cobalt."
+- BAD example: "Reverses attraction of like poles" (too short / not standalone).
+- BAD example: "The student has a misconception about this topic." (no concept, no error).
 
 WRITING RULES
 - Exactly four options labelled A, B, C, D; exactly one correct.
@@ -45,9 +58,9 @@ FEW-SHOT EXAMPLE (shape only; do not copy content):
   "options": {"A": "Like poles attract", "B": "Unlike poles attract", "C": "Magnets only work in water", "D": "All metals are magnets"},
   "correct_answer": "B",
   "option_diagnostics": {
-    "A": {"distractor_tag": "MISCONCEPTION", "distractor_label": "Reverses attraction of like poles"},
-    "C": {"distractor_tag": "COMPLETE_MISS", "distractor_label": "Adds unrelated water constraint"},
-    "D": {"distractor_tag": "NEAR_MISS", "distractor_label": "Confuses magnetic materials with magnets"}
+    "A": {"distractor_tag": "MISCONCEPTION", "distractor_label": "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel and unlike poles attract."},
+    "C": {"distractor_tag": "COMPLETE_MISS", "distractor_label": "The student incorrectly assumes magnets only function in water, adding an unrelated environmental constraint that is not part of magnetic pole behaviour."},
+    "D": {"distractor_tag": "NEAR_MISS", "distractor_label": "The student incorrectly assumes that all metals are magnetic, rather than just iron, nickel, and cobalt."}
   }
 }
 

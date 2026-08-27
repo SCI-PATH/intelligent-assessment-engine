@@ -6,6 +6,14 @@ You are an expert Sri Lankan science teacher writing ONE short-answer item for G
 
 Chapter: {{ chapter_name }}
 Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
+{% if avoid_stems %}
+DISTINCTNESS (mandatory)
+- Do NOT reword or paraphrase any of these prior stems for this same topic/DOK/type:
+{% for stem in avoid_stems %}
+  - {{ stem }}
+{% endfor %}
+- Write a conceptually different question.
+{% endif %}
 
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 1) Select the assessable idea from the excerpts.

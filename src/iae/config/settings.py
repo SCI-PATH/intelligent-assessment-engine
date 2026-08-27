@@ -65,11 +65,30 @@ class AppConfig:
             data.get("amplitude", {}).get("history_weight", 0.40)
         )
         self.embedding_model: str = data["models"]["embedding_model"]
-        self.llm_model: str = data["models"]["llm_model"]
-        self.llm_grader_model: str = data["models"]["llm_grader_model"]
+        models_cfg = data.get("models") or {}
+        fallbacks = models_cfg.get("groq_fallbacks") or []
+        self.groq_fallbacks: list[str] = [
+            str(m).strip() for m in fallbacks if m and str(m).strip()
+        ]
+        if not self.groq_fallbacks:
+            primary = str(models_cfg.get("llm_model") or "llama-3.1-8b-instant").strip()
+            self.groq_fallbacks = [primary]
+        self.llm_model: str = str(
+            models_cfg.get("llm_model") or self.groq_fallbacks[0]
+        ).strip()
+        self.llm_grader_model: str = str(
+            models_cfg.get("llm_grader_model") or self.llm_model
+        ).strip()
+        self.groq_timeout_s: float = float(models_cfg.get("groq_timeout_s", 20))
+        self.groq_grader_timeout_s: float = float(
+            models_cfg.get("groq_grader_timeout_s", 8)
+        )
         self.questions_per_combo: int = int(data["bank"]["questions_per_combo"])
         self.generation_max_retries: int = int(data["bank"]["generation_max_retries"])
         self.retrieval_top_k: int = int(data["bank"]["retrieval_top_k"])
+        self.distinctness_jaccard_max: float = float(
+            data.get("bank", {}).get("distinctness_jaccard_max", 0.85)
+        )
 
 
 @lru_cache(maxsize=1)

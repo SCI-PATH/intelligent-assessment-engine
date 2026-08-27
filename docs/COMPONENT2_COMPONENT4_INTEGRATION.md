@@ -118,6 +118,8 @@ Every request body contains **all** keys. Non-applicable values are explicitly `
 
 **Pass mark:** Component 2 sets `is_correct = true` when `accuracy_score >= 0.8`.
 
+**MultiBlank matching (scoring only — payload keys unchanged):** Component 2 treats a blank as a hit when tokens match after case-folding (so `Energy` = `energy`) and when a longer word has a tiny spelling slip (`photosyntesis` ≈ `photosynthesis`). Different science words stay wrong (`water` ≠ `later`). C4 still receives `similarity_score`, `error_category` ∈ `{NO_ERROR, PARTIAL_MASTERY, FULL_MISCONCEPTION}`, and `missed_blanks` for conceptually wrong blanks only.
+
 ### Field matrix by question type
 
 | Field | MCQ | ShortAnswer | MultiBlank | TrueFalse |

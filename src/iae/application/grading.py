@@ -9,10 +9,6 @@ from __future__ import annotations
 import json
 import re
 
-from iae.application.analytics_payload import (
-    classify_mcq_distractor,
-    explain_mcq_distractor,
-)
 from iae.domain.models import (
     DistractorTag,
     GradeResult,
@@ -29,6 +25,61 @@ from iae.prompts import render
 
 _PASS_THRESHOLD = 0.8
 _SA_CATEGORIES = {item.value for item in ShortAnswerErrorCategory}
+_BLANK_PUNCT_RE = re.compile(r"[^\w\s]+", re.UNICODE)
+_BLANK_SPACE_RE = re.compile(r"[\s_\-/]+")
+
+
+def _normalize_blank(text: str) -> str:
+    """Case-fold, strip punctuation, collapse hyphens/underscores to spaces."""
+    folded = (text or "").casefold().strip()
+    folded = _BLANK_SPACE_RE.sub(" ", folded)
+    folded = _BLANK_PUNCT_RE.sub("", folded)
+    return " ".join(folded.split())
+
+
+def _levenshtein(a: str, b: str) -> int:
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(
+                min(
+                    cur[j - 1] + 1,
+                    prev[j] + 1,
+                    prev[j - 1] + (0 if ca == cb else 1),
+                )
+            )
+        prev = cur
+    return prev[-1]
+
+
+def blanks_match(student: str, expected: str) -> bool:
+    """True when a MultiBlank token is conceptually the same answer.
+
+    - Capitalisation is ignored (``Energy`` == ``energy``).
+    - Tiny spelling slips on longer words are accepted (``photosyntesis``).
+    - Different science words are not accepted (``water`` ≠ ``later``).
+    C4 MultiBlank ``error_category`` stays NO_ERROR | PARTIAL_MASTERY | FULL_MISCONCEPTION.
+    """
+    a = _normalize_blank(student)
+    b = _normalize_blank(expected)
+    if not b:
+        return not a
+    if a == b:
+        return True
+    # Short tokens: exact only after normalize (avoids iron/icon, sun/son).
+    if min(len(a), len(b)) < 5:
+        return False
+    if a[0] != b[0] or a[-1] != b[-1]:
+        return False
+    allowed = 1 if max(len(a), len(b)) <= 8 else 2
+    return _levenshtein(a, b) <= allowed
 
 
 def _debug_log(*, hypothesis_id: str, location: str, message: str, data: dict) -> None:
@@ -94,7 +145,7 @@ class GradingService:
         if is_correct:
             return result
 
-        # Prefer generation-time diagnostics stored on the bank payload.
+        # Prefer generation-time diagnostics stored on the bank payload (no LLM).
         payload = question.payload  # type: ignore[assignment]
         stored = getattr(payload, "option_diagnostics", None) or {}
         entry = stored.get(chosen) if isinstance(stored, dict) else None
@@ -107,29 +158,21 @@ class GradingService:
                 result.distractor_label = str(label_val).strip()
                 return result
 
-        # Fallback for older bank rows without option_diagnostics.
-        tag = DistractorTag.COMPLETE_MISS
-        if self._embedder is not None:
-            try:
-                tag, _ = classify_mcq_distractor(
-                    question=question,
-                    student_answer=student_answer,
-                    embedder=self._embedder,
-                )
-            except Exception:
-                tag = DistractorTag.COMPLETE_MISS
-        result.distractor_tag = tag.value
+        # Legacy rows without option_diagnostics: deterministic labels only on the
+        # quiz hot path (no embedder / Groq). Keeps MCQ grading a string match.
+        chosen_text = ""
+        correct_text = ""
         try:
-            result.distractor_label = explain_mcq_distractor(
-                question=question,
-                student_answer=student_answer,
-                tag=tag,
-                llm=self._llm,
-            )
+            chosen_text = str((payload.options or {}).get(chosen) or chosen).strip()
+            correct_text = str((payload.options or {}).get(correct) or correct).strip()
         except Exception:
-            result.distractor_label = (
-                f"The chosen option differs from {correct}, indicating a complete miss."
-            )
+            chosen_text = chosen
+            correct_text = correct
+        result.distractor_tag = DistractorTag.COMPLETE_MISS.value
+        result.distractor_label = (
+            f"The student selected '{chosen_text}' rather than '{correct_text}', "
+            f"indicating a complete miss of the target concept."
+        )
         return result
 
     def _grade_true_false(self, question: Question, student_answer: str) -> GradeResult:
@@ -162,13 +205,19 @@ class GradingService:
                 concept_explanation=explanation,
             )
 
-        tag, label, explanation = self._true_false_diagnostics(payload, student_answer=student_answer)
+        # Hot-path fallback: no Groq. ShortAnswer / offline regen still use LLM helpers.
+        chosen_display = student_answer.strip() or "blank"
+        correct_display = payload.correct_answer.strip()
+        explanation = f"The statement is {correct_display}."
         return GradeResult(
             accuracy_score=0.0,
             is_correct=False,
-            feedback=f"Incorrect. The statement is {correct.title()}.",
-            distractor_tag=tag.value,
-            distractor_label=label,
+            feedback=f"Incorrect. The statement is {correct_display}.",
+            distractor_tag=DistractorTag.MISCONCEPTION.value,
+            distractor_label=(
+                f"The student selected {chosen_display} instead of {correct_display} "
+                f"for the science claim being tested."
+            ),
             detailed_explanation=explanation,
             concept_explanation=explanation,
         )
@@ -216,15 +265,15 @@ class GradingService:
     def _grade_multi_blank(self, question: Question, student_answer: str) -> GradeResult:
         payload: MultiBlankPayload = question.payload  # type: ignore[assignment]
         student_blanks = self._parse_blanks(student_answer, expected=len(payload.answers))
-        ideal = [a.strip().lower() for a in payload.answers]
-        provided = [b.strip().lower() for b in student_blanks]
+        ideal = [a.strip() for a in payload.answers]
+        provided = [b.strip() for b in student_blanks]
         provided += [""] * (len(ideal) - len(provided))
-        hits = sum(1 for given, expected in zip(provided, ideal) if given == expected)
+        hits = sum(1 for given, expected in zip(provided, ideal) if blanks_match(given, expected))
         score = hits / len(ideal) if ideal else 0.0
         missed_blanks = {
             str(index): payload.answers[index]
             for index, (given, expected) in enumerate(zip(provided, ideal))
-            if given != expected
+            if not blanks_match(given, expected)
         }
         if score == 1.0:
             category = MultiBlankErrorCategory.NO_ERROR.value

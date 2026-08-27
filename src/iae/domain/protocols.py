@@ -86,6 +86,15 @@ class IQuestionRepository(Protocol):
         exclude_sub_concepts: list[str] | None = None,
     ) -> Question | None: ...
 
+    def list_approved_for_chapters(
+        self,
+        *,
+        chapter_names: list[str],
+        question_types: list[QuestionType] | None = None,
+        grade: int | None = None,
+        limit: int = 2000,
+    ) -> list[Question]: ...
+
     def count_matching(
         self,
         *,

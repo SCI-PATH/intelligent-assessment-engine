@@ -185,21 +185,18 @@ def build_analytics_payload(
                 stored_tag, stored_label = _lookup_mcq_diagnostics(question, student_answer)
                 distractor_tag = distractor_tag or stored_tag
                 distractor_label = distractor_label or stored_label
+            # Quiz hot path must not block on embedder/LLM; use deterministic fill-ins.
             if distractor_tag is None:
-                if embedder is None:
-                    tag = DistractorTag.COMPLETE_MISS
-                else:
-                    tag, _ = classify_mcq_distractor(
-                        question=question,
-                        student_answer=student_answer,
-                        embedder=embedder,
-                    )
-                distractor_tag = tag.value
-                distractor_label = distractor_label or explain_mcq_distractor(
-                    question=question,
-                    student_answer=student_answer,
-                    tag=tag,
-                    llm=llm,
+                distractor_tag = DistractorTag.COMPLETE_MISS.value
+            if distractor_label is None:
+                payload_mcq_fb: MCQPayload = question.payload  # type: ignore[assignment]
+                chosen_txt = _nonempty_str(_mcq_option_text(payload_mcq_fb, student_answer)) or student_answer
+                correct_txt = _nonempty_str(
+                    _mcq_option_text(payload_mcq_fb, payload_mcq_fb.correct_answer)
+                ) or payload_mcq_fb.correct_answer
+                distractor_label = (
+                    f"The student selected '{chosen_txt}' rather than '{correct_txt}', "
+                    f"indicating a complete miss of the target concept."
                 )
 
     elif qtype == QuestionType.SHORT_ANSWER:

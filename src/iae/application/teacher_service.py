@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass
 
 from iae.application.question_generation import generate_for_topic
+from iae.config.settings import get_config
 from iae.domain.models import (
     Question,
     QuestionOrigin,
@@ -67,6 +68,7 @@ class TeacherService:
                 max_retries=self.generation_max_retries,
                 status=QuestionStatus.PENDING,
                 origin=QuestionOrigin.AI,
+                jaccard_max=get_config().distinctness_jaccard_max,
             )
         except LookupError as exc:
             raise NoRagContextError(str(exc)) from exc
