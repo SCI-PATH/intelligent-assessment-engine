@@ -10,8 +10,8 @@ Local vs deployed (port map):
   Component 2 (this service)      → :8004  → http://43.204.6.115:8004
 
 Per-peer live flags: try the deployed host first, fall back to hardcoded mock
-on timeout / HTTP error. ``PEER_HTTP_LIVE`` is the default for C1 / C3.
-C4 (:8003) is live now; turn the others on the same way when they are reachable.
+on timeout / HTTP error. ``PEER_HTTP_LIVE`` gates C3; ``C1_HTTP_LIVE`` gates
+Lesson Engine (:8000); ``C4_HTTP_LIVE`` gates Learner Analytics (:8003).
 """
 
 from __future__ import annotations
@@ -27,15 +27,16 @@ COMPONENT_4_URL = "http://52.66.167.213:8003"
 # False → hardcoded mocks in peer clients.
 # True  → live httpx against the URLs above (falls back to mock on error).
 PEER_HTTP_LIVE = False
+C1_HTTP_LIVE = True  # Lesson Engine :8000; mock fallback (G6_C8) if C1 is down
 C4_HTTP_LIVE = True  # deployed :8003 first; mock fallback if C4 is down
 
 # Outbound path constants (peers own these routes; no host/port here)
 C4_BKT_SNAPSHOT_PATH = "/api/v1/quiz/bkt-snapshot"
 C4_ASSESSMENT_SUBMIT_PATH = "/api/v1/assessment-submit"
 C1_QUIZ_READY_PATH = "/api/v1/lessons/quiz-ready"
-# C1 returns the chapter just completed / active for post-lesson scoping.
-# Confirm path with Lesson Engine; mock shape is stable on this side.
-C1_ACTIVE_CHAPTER_PATH = "/api/v1/lessons/active-chapter"
+# C1 Lesson Engine: GET /progress?user_id= → current + completed_lesson_ids.
+# Map g6_sci_03 / grade+chapter_number → canonical G6_C3 on the C2 side.
+C1_ACTIVE_CHAPTER_PATH = "/progress"
 C3_SESSION_TERMINATED_PATH = "/api/v1/engagement/session-terminated"
 
 

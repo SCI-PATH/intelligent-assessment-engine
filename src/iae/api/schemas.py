@@ -218,7 +218,7 @@ class TriggerPostLessonRequest(BaseModel):
         examples=["G6_C8"],
         description=(
             "Canonical chapter_id (e.g. G6_C8). "
-            "Omit to resolve from Component 1 GET /api/v1/lessons/active-chapter."
+            "Omit to resolve from Component 1 GET /progress?user_id= (maps to G6_Cn; falls back to G6_C8)."
         ),
     )
     grade: int | None = Field(default=None, ge=6, le=9)
