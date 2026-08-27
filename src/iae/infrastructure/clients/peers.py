@@ -140,20 +140,43 @@ def _c1_active_chapter_mock(*, student_id: str) -> dict[str, Any]:
 def _map_c1_progress_to_chapter(data: dict[str, Any]) -> tuple[str, int, str | None] | None:
     """Map C1 ``GET /progress`` JSON → ``(canonical_chapter_id, grade, lesson_id)``.
 
-    Prefer the last completed lesson (just finished) so post-lesson quizzes
-    cover the chapter the student left, not the next current lesson.
+    Prefer the lesson *just finished* for post-lesson quizzes:
+    after a passing quiz C1 advances ``current_lesson_id``, so the finished
+    chapter is usually the previous one (and present in ``completed_lesson_ids``).
     """
-    completed = data.get("completed_lesson_ids") or []
-    lesson_id: str | None = None
-    if isinstance(completed, list) and completed:
-        last = completed[-1]
-        if isinstance(last, str) and last.strip():
-            lesson_id = last.strip()
+    completed_raw = data.get("completed_lesson_ids") or []
+    completed: list[str] = [
+        x.strip() for x in completed_raw if isinstance(x, str) and x.strip()
+    ]
 
-    if not lesson_id:
-        current = data.get("current_lesson_id")
-        if isinstance(current, str) and current.strip():
-            lesson_id = current.strip()
+    current_id: str | None = None
+    raw_current = data.get("current_lesson_id")
+    if isinstance(raw_current, str) and raw_current.strip():
+        current_id = raw_current.strip()
+
+    lesson_id: str | None = None
+
+    # 1) Just-finished = previous chapter vs current (typical post-lesson handoff).
+    current_parsed = parse_c1_lesson_id(current_id) if current_id else None
+    if current_parsed is not None:
+        grade_c, chapter_c = current_parsed
+        if chapter_c > 1:
+            want = (grade_c, chapter_c - 1)
+            for lid in reversed(completed):
+                if parse_c1_lesson_id(lid) == want:
+                    lesson_id = lid
+                    break
+            if lesson_id is None:
+                # C1 may not have appended yet; still target previous chapter id.
+                lesson_id = f"g{grade_c}_sci_{chapter_c - 1:02d}"
+
+    # 2) Last completed lesson (append order).
+    if not lesson_id and completed:
+        lesson_id = completed[-1]
+
+    # 3) Current lesson.
+    if not lesson_id and current_id:
+        lesson_id = current_id
 
     grade: int | None = None
     raw_grade = data.get("grade")
