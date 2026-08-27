@@ -1,7 +1,8 @@
 """Peer HTTP helpers with hardcoded mocks beside commented live httpx calls.
 
-Toggle live traffic via ``iae.config.peers.PEER_HTTP_LIVE`` (C1/C3) and
-``C4_HTTP_LIVE`` (C4 :8003). Live calls run first; mocks are the fallback.
+Toggle live traffic via ``iae.config.peers.PEER_HTTP_LIVE`` (C3),
+``C1_HTTP_LIVE`` (C1 :8000), and ``C4_HTTP_LIVE`` (C4 :8003).
+Live calls run first; mocks are the fallback.
 Mocks use real ``topic_id`` values from ``data/chapter_ids_g6_g9.csv``.
 """
 
@@ -14,6 +15,7 @@ import httpx
 
 from iae.config.peers import (
     C1_ACTIVE_CHAPTER_PATH,
+    C1_HTTP_LIVE,
     C1_QUIZ_READY_PATH,
     C3_SESSION_TERMINATED_PATH,
     C4_ASSESSMENT_SUBMIT_PATH,
@@ -25,10 +27,20 @@ from iae.config.peers import (
     component_4_base_url,
     join_url,
 )
-from iae.domain.chapter_catalog import get_chapter, load_chapters
+from iae.domain.chapter_catalog import (
+    chapter_id_from_c1_lesson_id,
+    chapter_id_from_grade_and_number,
+    get_chapter,
+    load_chapters,
+    normalize_chapter_id,
+    parse_c1_lesson_id,
+)
 from iae.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
+
+_FALLBACK_CHAPTER_ID = "G6_C8"
+_FALLBACK_GRADE = 6
 
 
 def _timeout() -> float:
@@ -114,6 +126,101 @@ def mock_assessment_submit(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _c1_active_chapter_mock(*, student_id: str) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "source": "hardcoded_mock",
+        "student_id": student_id,
+        "chapter_id": _FALLBACK_CHAPTER_ID,
+        "grade": _FALLBACK_GRADE,
+        "lesson_id": None,
+    }
+
+
+def _map_c1_progress_to_chapter(data: dict[str, Any]) -> tuple[str, int, str | None] | None:
+    """Map C1 ``GET /progress`` JSON → ``(canonical_chapter_id, grade, lesson_id)``.
+
+    Prefer the lesson *just finished* for post-lesson quizzes:
+    after a passing quiz C1 advances ``current_lesson_id``, so the finished
+    chapter is usually the previous one (and present in ``completed_lesson_ids``).
+    """
+    completed_raw = data.get("completed_lesson_ids") or []
+    completed: list[str] = [
+        x.strip() for x in completed_raw if isinstance(x, str) and x.strip()
+    ]
+
+    current_id: str | None = None
+    raw_current = data.get("current_lesson_id")
+    if isinstance(raw_current, str) and raw_current.strip():
+        current_id = raw_current.strip()
+
+    lesson_id: str | None = None
+
+    # 1) Just-finished = previous chapter vs current (typical post-lesson handoff).
+    current_parsed = parse_c1_lesson_id(current_id) if current_id else None
+    if current_parsed is not None:
+        grade_c, chapter_c = current_parsed
+        if chapter_c > 1:
+            want = (grade_c, chapter_c - 1)
+            for lid in reversed(completed):
+                if parse_c1_lesson_id(lid) == want:
+                    lesson_id = lid
+                    break
+            if lesson_id is None:
+                # C1 may not have appended yet; still target previous chapter id.
+                lesson_id = f"g{grade_c}_sci_{chapter_c - 1:02d}"
+
+    # 2) Last completed lesson (append order).
+    if not lesson_id and completed:
+        lesson_id = completed[-1]
+
+    # 3) Current lesson.
+    if not lesson_id and current_id:
+        lesson_id = current_id
+
+    grade: int | None = None
+    raw_grade = data.get("grade")
+    if raw_grade is not None:
+        try:
+            grade = int(raw_grade)
+        except (TypeError, ValueError):
+            grade = None
+
+    chapter_number: int | None = None
+    raw_chapter = data.get("chapter_number")
+    if raw_chapter is not None:
+        try:
+            chapter_number = int(raw_chapter)
+        except (TypeError, ValueError):
+            chapter_number = None
+
+    # Prefer grade/chapter derived from the chosen lesson_id.
+    parsed = parse_c1_lesson_id(lesson_id) if lesson_id else None
+    if parsed is not None:
+        grade = parsed[0]
+        chapter_number = parsed[1]
+
+    cid: str | None = None
+    if lesson_id:
+        cid = chapter_id_from_c1_lesson_id(lesson_id)
+    if not cid and grade is not None and chapter_number is not None:
+        cid = chapter_id_from_grade_and_number(grade, chapter_number)
+
+    if not cid:
+        return None
+
+    normalized = normalize_chapter_id(cid, grade=grade)
+    if not normalized:
+        return None
+
+    resolved_grade = grade if grade is not None else _FALLBACK_GRADE
+    record = get_chapter(normalized)
+    if record is not None:
+        resolved_grade = record.grade
+
+    return normalized, resolved_grade, lesson_id
+
+
 class Component4Client:
     """Learner Profile Analytics / BKT (Component 4)."""
 
@@ -164,55 +271,63 @@ class Component1Client:
     """Lesson Engine (Component 1)."""
 
     def fetch_active_chapter(self, *, student_id: str) -> dict[str, Any]:
-        """Return the chapter C1 says this student just finished / is on.
+        """Resolve the chapter for post-lesson quiz scoping.
 
-        Expected live response (adjust field names when C1 confirms):
-          {
-            "student_id": "...",
-            "chapter_id": "G6_C8",
-            "grade": 6,
-            "lesson_id": "optional"
-          }
+        Live: ``GET {COMPONENT_1_URL}/progress?user_id=`` then map C1 lesson
+        identity (``g6_sci_03`` / grade+chapter_number) → canonical ``G6_C3``.
+        Prefers the last ``completed_lesson_ids`` entry (just-finished lesson).
+
+        Always returns a usable dict; never raises. On live-off / timeout /
+        HTTP / parse failure → hardcoded ``G6_C8`` mock.
         """
-        mock = {
-            "ok": True,
-            "source": "hardcoded_mock",
-            "student_id": student_id,
-            "chapter_id": "G6_C8",
-            "grade": 6,
-            "lesson_id": None,
-        }
-        # --- HARDCODED MOCK (active while PEER_HTTP_LIVE is False) ---
-        if not PEER_HTTP_LIVE:
-            logger.info("C1 active-chapter mock for student=%s → %s", student_id, mock["chapter_id"])
+        mock = _c1_active_chapter_mock(student_id=student_id)
+        if not C1_HTTP_LIVE:
+            logger.info(
+                "C1 active-chapter mock for student=%s → %s",
+                student_id,
+                mock["chapter_id"],
+            )
             return mock
 
-        # --- LIVE INTEGRATION ---
         url = join_url(component_1_base_url(), C1_ACTIVE_CHAPTER_PATH)
         try:
             with httpx.Client(timeout=_timeout()) as client:
-                response = client.get(url, params={"student_id": student_id})
+                response = client.get(url, params={"user_id": student_id})
                 response.raise_for_status()
                 data = response.json()
-                if isinstance(data, dict) and (data.get("chapter_id") or "").strip():
-                    data.setdefault("source", "live")
-                    data.setdefault("student_id", student_id)
-                    return data
-                logger.warning("C1 active-chapter missing chapter_id — mock fallback")
+            if not isinstance(data, dict):
+                logger.warning("C1 /progress non-object body — mock fallback")
+                return mock
+
+            mapped = _map_c1_progress_to_chapter(data)
+            if mapped is None:
+                logger.warning(
+                    "C1 /progress could not map chapter for student=%s — mock fallback",
+                    student_id,
+                )
+                return mock
+
+            chapter_id, grade, lesson_id = mapped
+            logger.info(
+                "C1 active-chapter live student=%s → %s (lesson=%s)",
+                student_id,
+                chapter_id,
+                lesson_id,
+            )
+            return {
+                "ok": True,
+                "source": "live",
+                "student_id": student_id,
+                "chapter_id": chapter_id,
+                "grade": grade,
+                "lesson_id": lesson_id,
+            }
         except Exception as exc:
             logger.warning("C1 active-chapter failed (%s) — mock fallback", exc)
-        return mock
-
-        # Example live call:
-        # with httpx.Client(timeout=_timeout()) as client:
-        #     response = client.get(
-        #         join_url(component_1_base_url(), C1_ACTIVE_CHAPTER_PATH),
-        #         params={"student_id": student_id},
-        #     )
-        #     response.raise_for_status()
-        #     return response.json()
+            return mock
 
     def notify_quiz_ready(self, *, student_id: str, chapter_id: str, session_id: str) -> dict[str, Any]:
+        """Best-effort notify; C1 may not expose quiz-ready — never fail the quiz."""
         mock = {
             "ok": True,
             "source": "hardcoded_mock",
@@ -220,11 +335,9 @@ class Component1Client:
             "chapter_id": chapter_id,
             "session_id": session_id,
         }
-        # --- HARDCODED MOCK ---
-        if not PEER_HTTP_LIVE:
+        if not C1_HTTP_LIVE:
             return mock
 
-        # --- LIVE INTEGRATION ---
         url = join_url(component_1_base_url(), C1_QUIZ_READY_PATH)
         try:
             with httpx.Client(timeout=_timeout()) as client:
@@ -244,12 +357,6 @@ class Component1Client:
         except Exception as exc:
             logger.warning("C1 notify failed (%s) — mock fallback", exc)
         return mock
-
-        # with httpx.Client(timeout=_timeout()):
-        #     client.post(
-        #         join_url(component_1_base_url(), C1_QUIZ_READY_PATH),
-        #         json={"student_id": student_id, "chapter_id": chapter_id, "session_id": session_id},
-        #     )
 
 
 class Component3Client:
@@ -279,9 +386,3 @@ class Component3Client:
         except Exception as exc:
             logger.warning("C3 notify failed (%s) — mock fallback", exc)
         return mock
-
-        # with httpx.Client(timeout=_timeout()) as client:
-        #     client.post(
-        #         join_url(component_3_base_url(), C3_SESSION_TERMINATED_PATH),
-        #         json={"session_id": session_id, "reason": reason},
-        #     )

@@ -7,9 +7,16 @@ Format: ``G{grade}_C{chapter}`` e.g. ``G6_C8``.
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+
+# Component 1 lesson ids look like ``g6_sci_03`` (grade 6, chapter 3).
+_C1_LESSON_ID_RE = re.compile(
+    r"^g(?P<grade>\d+)_sci_?(?P<chapter>\d+)$",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -68,8 +75,41 @@ def chapter_count_for_grade(grade: int) -> int:
     return len(chapters_for_grade(grade))
 
 
+def chapter_id_from_grade_and_number(grade: int, chapter: int) -> str | None:
+    """Build ``G{grade}_C{chapter}`` and return it only if present in the catalog."""
+    try:
+        g = int(grade)
+        n = int(chapter)
+    except (TypeError, ValueError):
+        return None
+    if g < 1 or n < 1:
+        return None
+    candidate = f"G{g}_C{n}"
+    return candidate if candidate in load_chapters() else None
+
+
+def parse_c1_lesson_id(lesson_id: str | None) -> tuple[int, int] | None:
+    """Parse Component 1 lesson id ``g6_sci_03`` → ``(grade, chapter_number)``."""
+    text = (lesson_id or "").strip()
+    if not text:
+        return None
+    match = _C1_LESSON_ID_RE.match(text)
+    if not match:
+        return None
+    return int(match.group("grade")), int(match.group("chapter"))
+
+
+def chapter_id_from_c1_lesson_id(lesson_id: str | None) -> str | None:
+    """Map C1 ``g6_sci_03`` → canonical ``G6_C3`` when in catalog."""
+    parsed = parse_c1_lesson_id(lesson_id)
+    if parsed is None:
+        return None
+    grade, chapter = parsed
+    return chapter_id_from_grade_and_number(grade, chapter)
+
+
 def normalize_chapter_id(raw: str, *, grade: int | None = None) -> str | None:
-    """Accept ``G6_C8``, title ``Magnets``, or topic id ``G6_C8_ELE_CIRCUITS``."""
+    """Accept ``G6_C8``, title ``Magnets``, topic id, or C1 ``g6_sci_03``."""
     text = (raw or "").strip()
     if not text:
         return None
@@ -77,6 +117,10 @@ def normalize_chapter_id(raw: str, *, grade: int | None = None) -> str | None:
     upper = text.upper().replace("-", "_")
     if upper in catalog:
         return upper
+    # Component 1 lesson id → G#_C#
+    from_c1 = chapter_id_from_c1_lesson_id(text)
+    if from_c1:
+        return from_c1
     # Full topic id → chapter_id prefix G#_C#
     parts = upper.split("_")
     if len(parts) >= 2 and parts[0].startswith("G") and parts[1].startswith("C"):
