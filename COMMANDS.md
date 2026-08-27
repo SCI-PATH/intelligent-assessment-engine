@@ -79,10 +79,12 @@ python -m scripts.qa.test_amplitude_evaluate
 ## 5. Start API
 
 ```powershell
+$env:PYTHONPATH = "src"
 uvicorn iae.api.main:app --reload --port 8004
 ```
 
-Swagger: http://localhost:8004/docs
+Swagger: http://localhost:8004/docs  
+OpenAPI: http://localhost:8004/openapi.json
 
 ## 6. Smoke + validation (second terminal)
 
