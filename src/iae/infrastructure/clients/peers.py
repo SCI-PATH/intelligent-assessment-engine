@@ -156,9 +156,10 @@ def _c1_active_chapter_mock(
 def _map_c1_progress_to_chapter(data: dict[str, Any]) -> tuple[str, int, str | None] | None:
     """Map C1 ``GET /progress`` JSON → ``(canonical_chapter_id, grade, lesson_id)``.
 
-    Prefer the lesson *just finished* for post-lesson quizzes:
-    after a passing quiz C1 advances ``current_lesson_id``, so the finished
-    chapter is usually the previous one (and present in ``completed_lesson_ids``).
+    Prefer the lesson the student is **on now** (``current_lesson_id`` /
+    ``chapter_number``). Do **not** use ``completed_lesson_ids[-1]`` first —
+    C1 append order is unreliable (e.g. ``[g7_sci_01, g7_sci_03, g7_sci_02]``
+    while still on chapter 1) and incorrectly scoped quizzes to G7_C2.
     """
     completed_raw = data.get("completed_lesson_ids") or []
     completed: list[str] = [
@@ -169,30 +170,6 @@ def _map_c1_progress_to_chapter(data: dict[str, Any]) -> tuple[str, int, str | N
     raw_current = data.get("current_lesson_id")
     if isinstance(raw_current, str) and raw_current.strip():
         current_id = raw_current.strip()
-
-    lesson_id: str | None = None
-
-    # 1) Just-finished = previous chapter vs current (typical post-lesson handoff).
-    current_parsed = parse_c1_lesson_id(current_id) if current_id else None
-    if current_parsed is not None:
-        grade_c, chapter_c = current_parsed
-        if chapter_c > 1:
-            want = (grade_c, chapter_c - 1)
-            for lid in reversed(completed):
-                if parse_c1_lesson_id(lid) == want:
-                    lesson_id = lid
-                    break
-            if lesson_id is None:
-                # C1 may not have appended yet; still target previous chapter id.
-                lesson_id = f"g{grade_c}_sci_{chapter_c - 1:02d}"
-
-    # 2) Last completed lesson (append order).
-    if not lesson_id and completed:
-        lesson_id = completed[-1]
-
-    # 3) Current lesson.
-    if not lesson_id and current_id:
-        lesson_id = current_id
 
     grade: int | None = None
     raw_grade = data.get("grade")
@@ -210,7 +187,24 @@ def _map_c1_progress_to_chapter(data: dict[str, Any]) -> tuple[str, int, str | N
         except (TypeError, ValueError):
             chapter_number = None
 
-    # Prefer grade/chapter derived from the chosen lesson_id.
+    lesson_id: str | None = None
+
+    # 1) Current lesson (authoritative for "what chapter am I studying").
+    if current_id and parse_c1_lesson_id(current_id) is not None:
+        lesson_id = current_id
+
+    # 2) Explicit grade + chapter_number from C1 progress.
+    if not lesson_id and grade is not None and chapter_number is not None:
+        lesson_id = f"g{grade}_sci_{int(chapter_number):02d}"
+
+    # 3) Last resort only: last completed (unreliable order).
+    if not lesson_id and completed:
+        for lid in reversed(completed):
+            if parse_c1_lesson_id(lid) is not None:
+                lesson_id = lid
+                break
+
+    # Derive grade/chapter from the chosen lesson_id when present.
     parsed = parse_c1_lesson_id(lesson_id) if lesson_id else None
     if parsed is not None:
         grade = parsed[0]
@@ -296,7 +290,7 @@ class Component1Client:
 
         Live: ``GET {COMPONENT_1_URL}/progress?user_id=`` then map C1 lesson
         identity (``g6_sci_03`` / grade+chapter_number) → canonical ``G6_C3``.
-        Prefers the lesson just finished for post-lesson handoff.
+        Prefers ``current_lesson_id`` / ``chapter_number`` (not last completed).
 
         Always returns a usable dict; never raises. On live-off / timeout /
         HTTP / parse failure → grade-aware ``G{g}_C8`` fallback
