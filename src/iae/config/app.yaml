@@ -18,7 +18,8 @@ aptitude:
 models:
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
   # ONE-LINE SWITCH: openai for bulk bank generation; groq for live quiz/grading after bank is built.
-  llm_provider: openai
+  #llm_provider: openai
+  llm_provider: groq
   openai_model: gpt-4o-mini
   openai_timeout_s: 90
   # Groq chain (used when llm_provider: groq). Keys stay in .env only.
