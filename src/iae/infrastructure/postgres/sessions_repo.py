@@ -148,9 +148,6 @@ class PostgresSessionRepository:
             if state.status in (SessionStatus.COMPLETED, SessionStatus.TERMINATED, SessionStatus.FAILED):
                 if row.ended_at is None:
                     row.ended_at = now
-            elif state.questions_asked >= state.max_questions and row.ended_at is None:
-                row.ended_at = now
-                row.status = SessionStatus.COMPLETED.value
             session.commit()
 
     def list_for_user(self, user_id: str, *, limit: int = 50) -> list[SessionState]:

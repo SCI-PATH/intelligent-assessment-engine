@@ -608,7 +608,12 @@ class QuizService:
         if session is None:
             raise KeyError(session_id)
         if session.status != SessionStatus.ACTIVE:
-            raise RuntimeError(f"Session is {session.status.value}.")
+            already = {item.question_id for item in session.history}
+            # Last GET /next used to persist asked==max and a repo hook marked
+            # the row completed before this POST. Still grade that served item.
+            if question_id not in session.used_question_ids or question_id in already:
+                raise RuntimeError(f"Session is {session.status.value}.")
+            session.status = SessionStatus.ACTIVE
         question = self._questions.get(question_id)
         if question is None:
             raise KeyError(question_id)
