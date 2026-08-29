@@ -264,17 +264,17 @@ Triggered when a lesson finishes. FE or peer services call:
 
 `GET /api/v1/assessment-engine/quizzes/post-lesson/context?student_id=...`
 
-C2 calls C1 `GET /progress?user_id=` (mocked offline) and returns `{ chapter_id, grade, source, lesson_id }`.
+C2 calls C1 `GET /progress?user_id=` and returns `{ chapter_id, grade, source, lesson_id }`.
 
-**Chapter resolution rule** (same for context + `POST /post-lesson`):
+**Chapter always comes from C1** (same for context + `POST /post-lesson`):
 
-| Body `chapter_id` | Behavior | `source` |
-|-------------------|----------|----------|
-| omitted | Always ask C1 | `component_1` (live) or `fallback` |
-| `G{grade}_C8` (Game/FE stub) | Prefer live C1 over the stub | `component_1` or `fallback` |
-| other explicit (e.g. `G7_C2`) | Trust the request | `request` |
+| Body field | Used? |
+|------------|--------|
+| `student_id` | Yes — passed to C1 `/progress` |
+| `grade` | Hint only (C1 grade wins if present) |
+| `chapter_id` | **Ignored** (game stubs / farm topic ids must not scope the quiz) |
 
-`fallback` is grade-aware `G{g}_C8` and is used **only** when C1 HTTP/parse/map fails (or `C1_HTTP_LIVE=False`).
+Maps `g7_sci_01` → `G7_C1`, `g9_sci_06` → `G9_C6`. If C1 is down or unmappable → **502** (C2 will not invent `G7_C8`).
 
 Then:
 
@@ -282,16 +282,14 @@ Then:
 
 ```json
 {
-  "student_id": "mock-student-class-a",
-  "chapter_id": "G6_C8",
-  "grade": 6
+  "student_id": "<same uuid C1 knows>",
+  "grade": 7
 }
 ```
 
-`chapter_id` may be **omitted** — C2 will resolve it from C1 the same way as `/post-lesson/context`.
-If the Game sends stub `G7_C8`, C2 still prefers live C1 (so you get the real `G7_Cn`, not chapter 8).
+Response includes `scope_chapter`, `chapter_source` (`component_1`), `lesson_id`, and `bkt` (`source=live` means C4 snapshot worked).
 
-Returns a session with `max_questions` typically **15**. Then reuse the same `/next` + `/answer` loop as customizable.
+Returns a session with `max_questions` typically **15**. Then reuse the same `/next` + `/answer` loop as customizable. `/next` and `/answer` also include slim `bkt`.
 
 **UI:** usually no chapter picker (chapter comes from lesson / C1); show progress `questions_asked / max_questions`.
 

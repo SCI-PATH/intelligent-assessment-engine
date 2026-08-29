@@ -12,6 +12,8 @@ from iae.api.schemas import (
     AmplitudeCategoryResponse,
     ErrorDetail,
     QuizSessionResponse,
+    public_bkt_snapshot,
+    resolve_meta_from_snapshot,
 )
 
 router = APIRouter(
@@ -21,6 +23,7 @@ router = APIRouter(
 
 
 def _session_summary(session: SessionState) -> QuizSessionResponse:
+    chapter_source, lesson_id = resolve_meta_from_snapshot(session.bkt_snapshot)
     return QuizSessionResponse(
         session_id=session.session_id,
         user_id=session.user_id,
@@ -31,6 +34,9 @@ def _session_summary(session: SessionState) -> QuizSessionResponse:
         questions_asked=session.questions_asked,
         max_questions=session.max_questions,
         elo_rating=session.elo_rating,
+        chapter_source=chapter_source,
+        lesson_id=lesson_id,
+        bkt=public_bkt_snapshot(session.bkt_snapshot),
     )
 
 

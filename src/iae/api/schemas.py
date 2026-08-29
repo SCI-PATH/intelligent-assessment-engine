@@ -18,6 +18,31 @@ class ErrorDetail(BaseModel):
     detail: str = Field(examples=["Session not found."])
 
 
+def public_bkt_snapshot(snapshot: dict | None) -> dict | None:
+    """Slim BKT view for HTTP (strips internal ``_iae`` / ``_last_routing`` keys)."""
+    if not isinstance(snapshot, dict) or not snapshot:
+        return None
+    topic_bkt = snapshot.get("topic_bkt") if isinstance(snapshot.get("topic_bkt"), dict) else {}
+    return {
+        "source": snapshot.get("source"),
+        "success": snapshot.get("success"),
+        "chapter_ids": list(snapshot.get("chapter_ids") or []),
+        "unknown_chapter_ids": list(snapshot.get("unknown_chapter_ids") or []),
+        "topic_bkt": topic_bkt,
+    }
+
+
+def resolve_meta_from_snapshot(snapshot: dict | None) -> tuple[str | None, str | None]:
+    if not isinstance(snapshot, dict):
+        return None, None
+    meta = snapshot.get("_iae")
+    if not isinstance(meta, dict):
+        return None, None
+    source = str(meta.get("chapter_source") or "").strip() or None
+    lesson_id = str(meta.get("lesson_id") or "").strip() or None
+    return source, lesson_id
+
+
 # --- Aptitude / placement ---
 
 
@@ -217,11 +242,8 @@ class TriggerPostLessonRequest(BaseModel):
         default=None,
         examples=["G6_C8"],
         description=(
-            "Canonical chapter_id (e.g. G7_C2). "
-            "Omit to resolve from Component 1 GET /progress. "
-            "G{grade}_C8 is treated as a client stub and live C1 still wins; "
-            "other explicit chapters are trusted. "
-            "Fallback G{g}_C8 only when C1 is unreachable/unmappable."
+            "Ignored for post-lesson. Chapter always comes from Component 1 "
+            "GET /progress (g7_sci_01 → G7_C1). Send grade + student_id only."
         ),
     )
     grade: int | None = Field(default=None, ge=6, le=9)
@@ -263,6 +285,9 @@ class QuizSessionResponse(BaseModel):
     questions_asked: int
     max_questions: int
     elo_rating: float = 1000.0
+    chapter_source: str | None = None
+    lesson_id: str | None = None
+    bkt: dict | None = None
 
 
 class QuizNextResponse(BaseModel):
@@ -273,6 +298,7 @@ class QuizNextResponse(BaseModel):
     target_dok: int | None = None
     target_topic_id: str | None = None
     target_question_type: str | None = None
+    bkt: dict | None = None
 
 
 class QuizAnswerResponse(BaseModel):
@@ -282,6 +308,7 @@ class QuizAnswerResponse(BaseModel):
     elo_rating: float
     next_dok: int | None = None
     status: str
+    bkt: dict | None = None
 
 
 # --- Teacher ---

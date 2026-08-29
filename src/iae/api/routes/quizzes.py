@@ -17,7 +17,10 @@ from iae.api.schemas import (
     SubmitAnswerRequest,
     TerminateSessionRequest,
     TriggerPostLessonRequest,
+    public_bkt_snapshot,
+    resolve_meta_from_snapshot,
 )
+from iae.application.quiz_service import ChapterResolveError
 from iae.domain.exceptions import NoQuestionAvailable
 from iae.domain.models import SessionState
 
@@ -28,6 +31,7 @@ router = APIRouter(
 
 
 def _session_response(session: SessionState) -> QuizSessionResponse:
+    chapter_source, lesson_id = resolve_meta_from_snapshot(session.bkt_snapshot)
     return QuizSessionResponse(
         session_id=session.session_id,
         user_id=session.user_id,
@@ -38,6 +42,9 @@ def _session_response(session: SessionState) -> QuizSessionResponse:
         questions_asked=session.questions_asked,
         max_questions=session.max_questions,
         elo_rating=session.elo_rating,
+        chapter_source=chapter_source,
+        lesson_id=lesson_id,
+        bkt=public_bkt_snapshot(session.bkt_snapshot),
     )
 
 
@@ -90,18 +97,12 @@ def create_customizable(
     description=(
         "**Purpose:** Ask Component 1 which `chapter_id` to use before starting "
         "a post-lesson quiz (or preview what C2 would resolve).\n\n"
-        "**Resolution rule:**\n"
-        "- Omit `chapter_id` → always call Component 1 "
+        "**Resolution rule:** always call Component 1 "
         "`GET {COMPONENT_1_URL}/progress?user_id=` "
-        "(maps `g7_sci_02` → `G7_C2`).\n"
-        "- Body `G{grade}_C8` is treated as a **client stub** (Game fallback) — "
-        "C2 still prefers live C1 over that stub.\n"
-        "- Any other explicit chapter (e.g. `G7_C3`) is trusted as `source=request`.\n"
-        "- `source=fallback` / grade-aware `G{g}_C8` only when C1 is off, times out, "
-        "or cannot map (`C1_HTTP_LIVE`).\n\n"
-        "**Caller:** Frontend. Prefer this when the FE does not already know the lesson chapter.\n\n"
-        "Then call `POST /quizzes/post-lesson` with the returned `chapter_id` "
-        "(or omit `chapter_id` and let POST resolve C1 again)."
+        "(maps `g7_sci_01` → `G7_C1`). Body/query chapter ids are not used. "
+        "502 if C1 is off, times out, or cannot map.\n\n"
+        "**Caller:** Frontend. Then call `POST /quizzes/post-lesson` with the same "
+        "`student_id` + `grade` (omit `chapter_id`)."
     ),
     responses={400: {"model": ErrorDetail}},
 )
@@ -117,6 +118,8 @@ def post_lesson_context(
             chapter_id=None,
             grade=grade,
         )
+    except ChapterResolveError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return PostLessonContextResponse(**resolved)
@@ -129,23 +132,22 @@ def post_lesson_context(
     description=(
         "**Purpose:** Open a 15-question chapter quiz after a lesson completes.\n\n"
         "**Caller:** Frontend, Component 1, or Component 3.\n\n"
-        "**Chapter resolution:**\n"
-        "- Omit `chapter_id` → Component 1 `/progress` (live → `source=component_1`).\n"
-        "- `G{grade}_C8` in the body is a known Game/FE stub → still prefer live C1.\n"
-        "- Other explicit chapters (e.g. `G7_C2`) win as `source=request`.\n"
-        "- C1 down / unmappable → grade-aware `G{g}_C8` with `source=fallback` only.\n\n"
-        "**Outbound:** C4 BKT snapshot at start; C1 quiz-ready notify after session create "
+        "**Chapter resolution:** always Component 1 ``GET /progress`` "
+        "(maps ``g7_sci_01`` → ``G7_C1``, ``g9_sci_06`` → ``G9_C6``). "
+        "Body ``chapter_id`` is ignored. Game should send ``student_id`` + ``grade`` only. "
+        "If C1 is down or unmappable, this returns **502** (no silent ``G*_C8``).\n\n"
+        "**Outbound:** C4 BKT snapshot at start; slim ``bkt`` is on the response "
+        "(``source=live`` means C4 was used). C1 quiz-ready notify after session create "
         "(soft-fail if C1 has no quiz-ready route).\n\n"
         "**Request body:**\n"
         "```json\n"
         "{\n"
         '  "student_id": "mock-student-class-a",\n'
-        '  "chapter_id": "G6_C7",\n'
-        '  "grade": 6\n'
+        '  "grade": 7\n'
         "}\n"
         "```\n"
-        "`chapter_id` may be omitted to resolve from C1.\n\n"
-        "**How to Test:** Execute → use `session_id` with `/next` + `/answer`."
+        "**How to Test:** Execute → confirm ``scope_chapter`` + ``bkt.source`` → "
+        "use `session_id` with `/next` + `/answer`."
     ),
 )
 def trigger_post_lesson(
@@ -163,6 +165,8 @@ def trigger_post_lesson(
             chapter_id=payload.chapter_id,
             grade=grade if grade is not None else payload.grade,
         )
+    except ChapterResolveError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _session_response(session)
@@ -207,6 +211,7 @@ def next_question(
         target_dok=decision.dok_level,
         target_topic_id=decision.topic_id or None,
         target_question_type=decision.question_type.value,
+        bkt=public_bkt_snapshot(session.bkt_snapshot) if session else None,
     )
 
 
@@ -257,6 +262,7 @@ def submit_answer(
         elo_rating=elo.new_rating,
         next_dok=elo.next_dok,
         status=session.status.value,
+        bkt=public_bkt_snapshot(session.bkt_snapshot),
     )
 
 

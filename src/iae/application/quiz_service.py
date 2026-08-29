@@ -52,14 +52,12 @@ _CLIENT_FALLBACK_CHAPTER_RE = re.compile(r"^G([6-9])_C8$", re.IGNORECASE)
 _SESSION_BANK: dict[str, list[Question]] = {}
 
 
-def _is_client_fallback_chapter_id(chapter_id: str | None, *, grade: int | None = None) -> bool:
-    """True when ``chapter_id`` looks like the client stub ``G{grade}_C8``.
+class ChapterResolveError(ValueError):
+    """C1 did not return a live chapter for post-lesson (do not invent G*_C8)."""
 
-    Resolution rule (post-lesson):
-      - omit ``chapter_id`` → always ask Component 1
-      - ``G{g}_C8`` with no lesson proof → treat as untrusted stub; prefer live C1
-      - any other canonical chapter (e.g. ``G7_C2``) → trust the request body
-    """
+
+def _is_client_fallback_chapter_id(chapter_id: str | None, *, grade: int | None = None) -> bool:
+    """True when ``chapter_id`` looks like the client stub ``G{grade}_C8``."""
     raw = (chapter_id or "").strip()
     if not raw:
         return False
@@ -69,7 +67,6 @@ def _is_client_fallback_chapter_id(chapter_id: str | None, *, grade: int | None 
         return False
     stub_grade = int(match.group(1))
     if grade is not None and int(grade) != stub_grade:
-        # e.g. body grade=7 but chapter_id=G6_C8 — still treat as stub noise.
         return True
     return True
 
@@ -171,133 +168,89 @@ class QuizService:
         chapter_id: str | None = None,
         grade: int | None = None,
     ) -> dict:
-        """Resolve chapter for post-lesson quiz scoping.
+        """Resolve chapter for post-lesson from Component 1 only.
 
-        Priority:
-          1. Live Component 1 when ``chapter_id`` is omitted **or** looks like the
-             client stub ``G{grade}_C8`` (no lesson proof) — common Game/FE fallback.
-          2. Explicit non-stub ``chapter_id`` from the request body (trusted).
-          3. Grade-aware C1 mock (``G{g}_C8``) only when C1 HTTP/parse/map fails
-             or ``C1_HTTP_LIVE`` is off.
-
-        Returned ``source`` is one of: ``request`` | ``component_1`` | ``fallback``.
+        The game may send ``grade`` (used as a hint to C1) and a stub/topic
+        ``chapter_id``. Those body chapter ids are **ignored**. Live C1
+        ``GET /progress`` is required. C2 does not invent ``G{grade}_C8``.
         """
         raw_request = (chapter_id or "").strip()
-        resolved_grade = grade
-        lesson_id: str | None = None
-        source = "request"
-        raw = raw_request
-
-        consult_c1 = (not raw_request) or _is_client_fallback_chapter_id(
-            raw_request, grade=grade
-        )
-
-        if consult_c1:
-            try:
-                ctx = self._c1.fetch_active_chapter(
-                    student_id=student_id,
-                    grade=grade,
-                )
-            except Exception as exc:
-                # Client is documented never to raise; still guard.
-                logger.warning(
-                    "post-lesson C1 resolve raised student_id=%s err=%s",
-                    student_id,
-                    exc,
-                )
-                ctx = {
-                    "chapter_id": "",
-                    "grade": grade,
-                    "lesson_id": None,
-                    "source": "fallback",
-                    "error": str(exc),
-                }
-
-            c1_source = _normalize_c1_source(ctx.get("source"))
-            c1_raw = str(ctx.get("chapter_id") or "").strip()
-            lesson_id = ctx.get("lesson_id")
-            if lesson_id is not None:
-                lesson_id = str(lesson_id).strip() or None
-            c1_error = ctx.get("error")
-
-            if resolved_grade is None and ctx.get("grade") is not None:
-                try:
-                    resolved_grade = int(ctx["grade"])
-                except (TypeError, ValueError):
-                    resolved_grade = None
-
-            if c1_source == "component_1" and c1_raw:
-                # Live C1 wins over omitted / stub body chapter_id.
-                raw = c1_raw
-                source = "component_1"
-                if ctx.get("grade") is not None:
-                    try:
-                        resolved_grade = int(ctx["grade"])
-                    except (TypeError, ValueError):
-                        pass
-            elif c1_raw:
-                # C1 offline / unmappable → grade-aware fallback only.
-                raw = c1_raw
-                source = "fallback"
-                if resolved_grade is None and ctx.get("grade") is not None:
-                    try:
-                        resolved_grade = int(ctx["grade"])
-                    except (TypeError, ValueError):
-                        pass
-            elif raw_request and not _is_client_fallback_chapter_id(raw_request, grade=grade):
-                raw = raw_request
-                source = "request"
-            else:
-                logger.error(
-                    "post-lesson resolve failed student_id=%s request_chapter=%s "
-                    "c1_source=%s c1_error=%s",
-                    student_id,
-                    raw_request or None,
-                    c1_source,
-                    c1_error,
-                )
-                raise ValueError(
-                    "chapter_id is required (pass a real chapter_id or ensure C1 /progress returns one)."
-                )
-
+        if raw_request:
             logger.info(
-                "post-lesson chapter resolve student_id=%s request_chapter=%s "
-                "resolved=%s grade=%s source=%s lesson_id=%s c1_source=%s c1_error=%s",
+                "post-lesson ignoring body chapter_id=%s student_id=%s (C1 is the chapter source)",
+                raw_request,
+                student_id,
+            )
+
+        try:
+            ctx = self._c1.fetch_active_chapter(
+                student_id=student_id,
+                grade=grade,
+            )
+        except Exception as exc:
+            logger.warning(
+                "post-lesson C1 resolve raised student_id=%s err=%s",
+                student_id,
+                exc,
+            )
+            ctx = {
+                "chapter_id": "",
+                "grade": grade,
+                "lesson_id": None,
+                "source": "fallback",
+                "error": str(exc),
+            }
+
+        c1_source = _normalize_c1_source(ctx.get("source"))
+        c1_raw = str(ctx.get("chapter_id") or "").strip()
+        lesson_id = ctx.get("lesson_id")
+        if lesson_id is not None:
+            lesson_id = str(lesson_id).strip() or None
+        c1_error = ctx.get("error")
+
+        resolved_grade = grade
+        if ctx.get("grade") is not None:
+            try:
+                resolved_grade = int(ctx["grade"])
+            except (TypeError, ValueError):
+                pass
+
+        if c1_source != "component_1" or not c1_raw:
+            logger.error(
+                "post-lesson C1 required student_id=%s ignored_body_chapter=%s "
+                "c1_source=%s c1_error=%s",
                 student_id,
                 raw_request or None,
-                raw,
-                resolved_grade,
-                source,
-                lesson_id,
                 c1_source,
                 c1_error,
             )
-        else:
-            # Trusted explicit chapter from body (not the G*_C8 stub).
-            source = "request"
-            logger.info(
-                "post-lesson chapter resolve student_id=%s request_chapter=%s "
-                "resolved=%s grade=%s source=request lesson_id=None "
-                "(trusted body; skipped C1)",
-                student_id,
-                raw_request,
-                raw_request,
-                resolved_grade,
+            raise ChapterResolveError(
+                "Component 1 did not return a live chapter for this student. "
+                f"source={c1_source!r} error={c1_error!r}. "
+                "C2 does not take chapter_id from the game and will not fall back to G*_C8."
             )
 
-        if not raw:
-            raise ValueError(
-                "chapter_id is required (pass it in the body or ensure C1 active-chapter returns one)."
-            )
         g = resolved_grade if resolved_grade is not None else 6
-        cid = normalize_chapter_id(raw, grade=g) or raw
+        cid = normalize_chapter_id(c1_raw, grade=g) or c1_raw
         record = get_chapter(cid)
-        if record is not None:
-            g = record.grade
+        if record is None:
+            raise ChapterResolveError(
+                f"Component 1 chapter {c1_raw!r} is not in data/chapter_ids_g6_g9.csv."
+            )
+        g = record.grade
+        logger.info(
+            "post-lesson chapter resolve student_id=%s ignored_body_chapter=%s "
+            "resolved=%s grade=%s source=component_1 lesson_id=%s",
+            student_id,
+            raw_request or None,
+            cid,
+            g,
+            lesson_id,
+        )
         return {
             "chapter_id": cid,
             "grade": g,
-            "source": source,
+            "source": "component_1",
             "lesson_id": lesson_id,
             "student_id": student_id,
         }
@@ -326,6 +279,12 @@ class QuizService:
             resolved.get("lesson_id"),
         )
         bkt = self._c4.fetch_bkt_snapshot(user_id=student_id, chapter_ids=[cid])
+        if isinstance(bkt, dict):
+            bkt = dict(bkt)
+            bkt["_iae"] = {
+                "chapter_source": resolved.get("source"),
+                "lesson_id": resolved.get("lesson_id"),
+            }
         state = SessionState(
             session_id=str(uuid4()),
             user_id=student_id,
@@ -671,9 +630,16 @@ class QuizService:
                 pass
         c4_response = self._c4.submit_assessment(payload)
 
-        if isinstance(c4_response, dict) and c4_response.get("topic_bkt"):
+        live_submit = (
+            isinstance(c4_response, dict)
+            and c4_response.get("source") not in ("hardcoded_mock", "fallback")
+            and isinstance(c4_response.get("topic_bkt"), dict)
+            and c4_response.get("topic_bkt")
+        )
+        if live_submit:
             snapshot = dict(session.bkt_snapshot or {})
             snapshot["topic_bkt"] = c4_response["topic_bkt"]
+            snapshot["source"] = c4_response.get("source") or snapshot.get("source")
             for key in ("chapter_ids", "topic_ids", "topics_by_chapter", "unknown_chapter_ids"):
                 if key in c4_response:
                     snapshot[key] = c4_response[key]

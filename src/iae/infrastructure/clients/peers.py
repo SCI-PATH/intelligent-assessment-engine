@@ -153,66 +153,92 @@ def _c1_active_chapter_mock(
     return out
 
 
+def _c1_str(data: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        raw = data.get(key)
+        if isinstance(raw, str) and raw.strip():
+            return raw.strip()
+    return None
+
+
+def _c1_int(data: dict[str, Any], *keys: str) -> int | None:
+    for key in keys:
+        raw = data.get(key)
+        if raw is None or isinstance(raw, bool):
+            continue
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _is_live_bkt_snapshot(data: dict[str, Any]) -> bool:
+    """True when C4 returned a usable mastery snapshot (not empty / not failure)."""
+    topic_bkt = data.get("topic_bkt")
+    has_topics = isinstance(topic_bkt, dict) and bool(topic_bkt)
+    success = data.get("success")
+    if success is False:
+        return False
+    if success is True:
+        return has_topics
+    return has_topics
+
+
 def _map_c1_progress_to_chapter(data: dict[str, Any]) -> tuple[str, int, str | None] | None:
     """Map C1 ``GET /progress`` JSON → ``(canonical_chapter_id, grade, lesson_id)``.
 
     Prefer the lesson the student is **on now** (``current_lesson_id`` /
-    ``chapter_number``). Do **not** use ``completed_lesson_ids[-1]`` first —
-    C1 append order is unreliable (e.g. ``[g7_sci_01, g7_sci_03, g7_sci_02]``
-    while still on chapter 1) and incorrectly scoped quizzes to G7_C2.
+    ``chapter_number`` / canonical ``chapter_id``). Do **not** use
+    ``completed_lesson_ids[-1]`` first — C1 append order is unreliable
+    (e.g. ``[g7_sci_01, g7_sci_03, g7_sci_02]`` while still on chapter 1).
     """
     completed_raw = data.get("completed_lesson_ids") or []
     completed: list[str] = [
         x.strip() for x in completed_raw if isinstance(x, str) and x.strip()
     ]
 
-    current_id: str | None = None
-    raw_current = data.get("current_lesson_id")
-    if isinstance(raw_current, str) and raw_current.strip():
-        current_id = raw_current.strip()
-
-    grade: int | None = None
-    raw_grade = data.get("grade")
-    if raw_grade is not None:
-        try:
-            grade = int(raw_grade)
-        except (TypeError, ValueError):
-            grade = None
-
-    chapter_number: int | None = None
-    raw_chapter = data.get("chapter_number")
-    if raw_chapter is not None:
-        try:
-            chapter_number = int(raw_chapter)
-        except (TypeError, ValueError):
-            chapter_number = None
-
+    grade = _c1_int(data, "grade")
+    chapter_number = _c1_int(data, "chapter_number", "chapter")
     lesson_id: str | None = None
 
     # 1) Current lesson (authoritative for "what chapter am I studying").
-    if current_id and parse_c1_lesson_id(current_id) is not None:
-        lesson_id = current_id
+    for key in ("current_lesson_id", "lesson_id", "current_lesson", "active_lesson_id"):
+        raw = _c1_str(data, key)
+        if raw and parse_c1_lesson_id(raw) is not None:
+            lesson_id = raw
+            break
 
     # 2) Explicit grade + chapter_number from C1 progress.
     if not lesson_id and grade is not None and chapter_number is not None:
         lesson_id = f"g{grade}_sci_{int(chapter_number):02d}"
 
-    # 3) Last resort only: last completed (unreliable order).
-    if not lesson_id and completed:
+    # 3) C1 already sent a catalog chapter_id (G7_C1) or a topic id (G7_C1_PLA_DIVER).
+    cid: str | None = None
+    raw_chapter_id = _c1_str(data, "chapter_id", "canonical_chapter_id")
+    if raw_chapter_id:
+        cid = normalize_chapter_id(raw_chapter_id, grade=grade)
+
+    # 4) Last resort only: last completed (unreliable order).
+    if not lesson_id and not cid and completed:
         for lid in reversed(completed):
             if parse_c1_lesson_id(lid) is not None:
                 lesson_id = lid
+                logger.warning(
+                    "C1 /progress has no current_lesson_id; using completed %s",
+                    lid,
+                )
                 break
 
-    # Derive grade/chapter from the chosen lesson_id when present.
     parsed = parse_c1_lesson_id(lesson_id) if lesson_id else None
     if parsed is not None:
         grade = parsed[0]
         chapter_number = parsed[1]
 
-    cid: str | None = None
     if lesson_id:
-        cid = chapter_id_from_c1_lesson_id(lesson_id)
+        from_lesson = chapter_id_from_c1_lesson_id(lesson_id)
+        if from_lesson:
+            cid = from_lesson
     if not cid and grade is not None and chapter_number is not None:
         cid = chapter_id_from_grade_and_number(grade, chapter_number)
 
@@ -248,10 +274,22 @@ class Component4Client:
                 response = client.post(url, json=body)
                 response.raise_for_status()
                 data = response.json()
-                if isinstance(data, dict):
-                    data.setdefault("source", "live")
-                    logger.info("C4 bkt-snapshot live ok user=%s chapters=%s", user_id, chapter_ids)
+                if isinstance(data, dict) and _is_live_bkt_snapshot(data):
+                    data["source"] = "live"
+                    logger.info(
+                        "C4 bkt-snapshot live ok user=%s chapters=%s topics=%s",
+                        user_id,
+                        chapter_ids,
+                        len(data.get("topic_bkt") or {}),
+                    )
                     return data
+                logger.warning(
+                    "C4 bkt-snapshot unusable user=%s chapters=%s success=%s topics=%s — mock fallback",
+                    user_id,
+                    chapter_ids,
+                    data.get("success") if isinstance(data, dict) else None,
+                    len((data.get("topic_bkt") or {}) if isinstance(data, dict) else {}),
+                )
         except Exception as exc:
             logger.warning("C4 bkt-snapshot failed (%s) — mock fallback", exc)
         return mock
@@ -319,7 +357,13 @@ class Component1Client:
             mapped = _map_c1_progress_to_chapter(data)
             if mapped is None:
                 err = "C1 /progress could not map chapter"
-                logger.warning("%s student=%s — fallback %s", err, student_id, mock["chapter_id"])
+                logger.warning(
+                    "%s student=%s keys=%s — fallback %s",
+                    err,
+                    student_id,
+                    list(data.keys()),
+                    mock["chapter_id"],
+                )
                 return _c1_active_chapter_mock(student_id=student_id, grade=grade, error=err)
 
             chapter_id, resolved_grade, lesson_id = mapped
