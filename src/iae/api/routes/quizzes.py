@@ -241,12 +241,12 @@ def next_question(
 )
 def submit_answer(
     payload: SubmitAnswerRequest,
+    background_tasks: BackgroundTasks,
     session_id: str = Path(
         ...,
         description="Same session_id used for /next.",
         examples=["REPLACE_WITH_SESSION_ID"],
     ),
-    background_tasks: BackgroundTasks,
     container: Container = Depends(get_container),
 ) -> QuizAnswerResponse:
     try:
