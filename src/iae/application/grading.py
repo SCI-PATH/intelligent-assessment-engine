@@ -332,6 +332,7 @@ class GradingService:
 
         student_norm = " ".join(student_answer.lower().split())
         ideal_norm = " ".join(payload.ideal_answer.lower().split())
+        detected_missing = _keywords_missing(payload.keywords, student_norm)
         if student_norm and student_norm == ideal_norm:
             return GradeResult(
                 accuracy_score=1.0,
@@ -350,7 +351,6 @@ class GradingService:
             keywords=", ".join(payload.keywords),
             student_answer=student_answer.strip(),
         )
-        detected_missing = _keywords_missing(payload.keywords, student_norm)
         try:
             result = self._llm.generate_json(prompt, temperature=0.15)
         except Exception as exc:

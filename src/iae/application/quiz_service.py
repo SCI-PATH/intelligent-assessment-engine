@@ -559,6 +559,43 @@ class QuizService:
         self._sessions.update(session)
         return question, decision
 
+    def finalize_answer_analytics(self, session_id: str, payload: dict[str, Any]) -> None:
+        """Post-answer C4 + analytics (runs after HTTP response via background task)."""
+        session = self._sessions.get(session_id)
+        if session is None:
+            return
+        if self._analytics is not None:
+            try:
+                self._analytics.insert(payload, session_id=session_id)
+            except Exception:
+                pass
+        try:
+            c4_response = self._c4.submit_assessment(payload)
+        except Exception as exc:
+            logger.warning("C4 assessment-submit failed session=%s err=%s", session_id, exc)
+            return
+
+        live_submit = (
+            isinstance(c4_response, dict)
+            and c4_response.get("source") not in ("hardcoded_mock", "fallback")
+            and isinstance(c4_response.get("topic_bkt"), dict)
+            and c4_response.get("topic_bkt")
+        )
+        if not live_submit:
+            return
+
+        session = self._sessions.get(session_id)
+        if session is None:
+            return
+        snapshot = dict(session.bkt_snapshot or {})
+        snapshot["topic_bkt"] = c4_response["topic_bkt"]
+        snapshot["source"] = c4_response.get("source") or snapshot.get("source")
+        for key in ("chapter_ids", "topic_ids", "topics_by_chapter", "unknown_chapter_ids"):
+            if key in c4_response:
+                snapshot[key] = c4_response[key]
+        session.bkt_snapshot = snapshot
+        self._sessions.update(session)
+
     def submit_answer(
         self,
         *,
@@ -566,7 +603,7 @@ class QuizService:
         question_id: str,
         student_answer: str,
         time_taken_seconds: float,
-    ) -> tuple:
+    ) -> tuple[Any, SessionState, Any, dict[str, Any]]:
         session = self._sessions.get(session_id)
         if session is None:
             raise KeyError(session_id)
@@ -623,39 +660,15 @@ class QuizService:
             llm=self._analytics_llm,
             chapter_ids=chapter_ids or None,
         )
-        if self._analytics is not None:
-            try:
-                self._analytics.insert(payload, session_id=session.session_id)
-            except Exception:
-                pass
-        c4_response = self._c4.submit_assessment(payload)
-
-        live_submit = (
-            isinstance(c4_response, dict)
-            and c4_response.get("source") not in ("hardcoded_mock", "fallback")
-            and isinstance(c4_response.get("topic_bkt"), dict)
-            and c4_response.get("topic_bkt")
-        )
-        if live_submit:
-            snapshot = dict(session.bkt_snapshot or {})
-            snapshot["topic_bkt"] = c4_response["topic_bkt"]
-            snapshot["source"] = c4_response.get("source") or snapshot.get("source")
-            for key in ("chapter_ids", "topic_ids", "topics_by_chapter", "unknown_chapter_ids"):
-                if key in c4_response:
-                    snapshot[key] = c4_response[key]
-            session.bkt_snapshot = snapshot
-
         similarity = payload.get("similarity_score")
         similarity_f = float(similarity) if similarity is not None else None
-        # Permanently block only on correct or high-similarity pass.
-        if result.is_correct or (similarity_f is not None and similarity_f >= _PASS_THRESHOLD):
-            self._sessions.mark_served(
-                user_id=session.user_id,
-                question_id=question.id,
-                session_id=session.session_id,
-                topic_id=question.topic_id,
-            )
 
+        if session.questions_asked >= session.max_questions:
+            session.status = SessionStatus.COMPLETED
+            _SESSION_BANK.pop(session.session_id, None)
+
+        # Persist attempt + session state before any outbound C4 HTTP (fixes /results race).
+        self._sessions.update(session)
         self._sessions.record_attempt(
             attempt,
             user_id=session.user_id,
@@ -665,11 +678,15 @@ class QuizService:
             distractor_tag=payload.get("distractor_tag"),
             distractor_label=payload.get("distractor_label"),
         )
-        if session.questions_asked >= session.max_questions:
-            session.status = SessionStatus.COMPLETED
-            _SESSION_BANK.pop(session.session_id, None)
-        self._sessions.update(session)
-        return result, session, elo
+        if result.is_correct or (similarity_f is not None and similarity_f >= _PASS_THRESHOLD):
+            self._sessions.mark_served(
+                user_id=session.user_id,
+                question_id=question.id,
+                session_id=session.session_id,
+                topic_id=question.topic_id,
+            )
+
+        return result, session, elo, payload
 
     def get(self, session_id: str) -> SessionState | None:
         return self._sessions.get(session_id)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 
 from iae.api.bootstrap import Container
 from iae.api.deps import get_container
@@ -222,8 +222,12 @@ def next_question(
     description=(
         "**Purpose:** Grade one answer, update Elo, persist attempt, notify Component 4.\n\n"
         "**Caller:** Frontend.\n\n"
+        "Session history is written to the database **before** the HTTP response. "
+        "Component 4 `assessment-submit` runs in a **background task** after the "
+        "response returns (so MCQ/TF stay fast). When `is_complete=true`, "
+        "`GET /results` immediately after this call must already include that answer.\n\n"
         "**Outbound Component 4:** `POST {COMPONENT_4_URL}/api/v1/assessment-submit` "
-        "with the unified analytics payload (all keys; unused fields are `null`).\n\n"
+        "(async after response; unified analytics payload).\n\n"
         "**Request body:**\n"
         "```json\n"
         "{\n"
@@ -242,14 +246,20 @@ def submit_answer(
         description="Same session_id used for /next.",
         examples=["REPLACE_WITH_SESSION_ID"],
     ),
+    background_tasks: BackgroundTasks,
     container: Container = Depends(get_container),
 ) -> QuizAnswerResponse:
     try:
-        result, session, elo = container.quiz_service.submit_answer(
+        result, session, elo, analytics_payload = container.quiz_service.submit_answer(
             session_id=session_id,
             question_id=payload.question_id,
             student_answer=payload.student_answer,
             time_taken_seconds=payload.time_taken_seconds,
+        )
+        background_tasks.add_task(
+            container.quiz_service.finalize_answer_analytics,
+            session_id,
+            analytics_payload,
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from None
@@ -287,17 +297,18 @@ def quiz_results(
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     correct = sum(1 for item in session.history if item.is_correct)
-    asked = len(session.history)
+    total_answered = len(session.history)
     return {
         "session_id": session.session_id,
         "status": session.status.value,
         "session_kind": session.session_kind.value,
         "scope_chapter": session.scope_chapter,
         "questions_asked": session.questions_asked,
+        "total_answered": total_answered,
         "correct_count": correct,
-        "raw_accuracy": (correct / asked) if asked else 0.0,
+        "raw_accuracy": (correct / total_answered) if total_answered else 0.0,
         "elo_rating": session.elo_rating,
-        "history": session.history,
+        "history": [item.model_dump(mode="json") for item in session.history],
         "ai_analysis": session.ai_analysis,
     }
 
