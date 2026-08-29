@@ -453,9 +453,9 @@ class QuizService:
         if session.status != SessionStatus.ACTIVE:
             raise NoQuestionAvailable(f"Session is {session.status.value}.")
         if session.questions_asked >= session.max_questions:
-            session.status = SessionStatus.COMPLETED
-            self._sessions.update(session)
-            _SESSION_BANK.pop(session_id, None)
+            # Do not mark COMPLETED here — that would 409 the last POST /answer
+            # if anything (remount, double fetch) calls /next after the final
+            # item is already on screen. Completion happens in submit_answer.
             raise NoQuestionAvailable("Session already complete.")
 
         chapter_ids = session.scope_chapters or [session.scope_chapter]
