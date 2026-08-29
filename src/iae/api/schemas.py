@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from iae.domain.models import (
@@ -288,6 +290,7 @@ class QuizSessionResponse(BaseModel):
     chapter_source: str | None = None
     lesson_id: str | None = None
     bkt: dict | None = None
+    created_at: datetime | None = None
 
 
 class QuizNextResponse(BaseModel):

@@ -45,6 +45,7 @@ def _session_response(session: SessionState) -> QuizSessionResponse:
         chapter_source=chapter_source,
         lesson_id=lesson_id,
         bkt=public_bkt_snapshot(session.bkt_snapshot),
+        created_at=session.created_at,
     )
 
 
