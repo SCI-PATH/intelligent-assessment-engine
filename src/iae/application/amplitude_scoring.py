@@ -1,4 +1,4 @@
-"""Amplitude Test: weighted heuristic initial categorization (no BKT).
+"""Aptitude Test: weighted heuristic initial categorization (no BKT).
 
 Research algorithm
 ------------------

@@ -1,4 +1,4 @@
-"""Amplitude attempts + placement-question catalog persistence."""
+"""Aptitude attempts + placement-question catalog persistence."""
 
 from __future__ import annotations
 
@@ -195,7 +195,7 @@ class PostgresAmplitudeRepository:
             return [_amplitude_row_to_question(row) for row in rows]
 
     def replace_amplitude_questions(self, grade: int, items: list[tuple[int, int, Question]]) -> None:
-        """Replace all Amplitude items for a grade.
+        """Replace all Aptitude items for a grade.
 
         ``items`` is a list of ``(position, baseline_level, question)``.
         """

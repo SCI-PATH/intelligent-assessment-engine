@@ -9,26 +9,31 @@ assessment:
   target_accuracy_lower: 0.80
   target_accuracy_upper: 0.85
 
-amplitude:
+# Aptitude diagnostic (placement). Legacy key `amplitude` is still accepted.
+aptitude:
   quiz_size: 10
   quiz_weight: 0.60
   history_weight: 0.40
 
 models:
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
-  # Centralized Groq fallback chain (single GROQ_API_KEY). Primary → secondary → previous.
+  # ONE-LINE SWITCH: openai for bulk bank generation; groq for live quiz/grading after bank is built.
+  llm_provider: openai
+  openai_model: gpt-4o-mini
+  openai_timeout_s: 90
+  # Groq chain (used when llm_provider: groq). Keys stay in .env only.
   groq_fallbacks:
     - openai/gpt-oss-120b
     - qwen/qwen3.6-27b
-    - llama-3.1-8b-instant
-  # Aliases kept for older scripts; resolved to groq_fallbacks[0] when present.
   llm_model: openai/gpt-oss-120b
   llm_grader_model: openai/gpt-oss-120b
   groq_timeout_s: 20
   groq_grader_timeout_s: 8
 
 bank:
-  questions_per_combo: 3          # aim for 3 distinct per (topic_id, dok, question_type); accept 1–2 if clones
+  questions_per_combo: 3          # aim for 3 distinct per (topic_id, dok, question_type); accept fewer if clones
   generation_max_retries: 2
-  retrieval_top_k: 4
+  retrieval_top_k: 8              # max excerpts per prompt; smaller = faster/cheaper LLM calls
+  avoid_stems_max: 12             # cap prior stems in prompt (full list still used for cosine dedup)
+  flush_batch_size: 5             # commit to DB every N approved questions (do not wait for 25)
   distinctness_jaccard_max: 0.85  # reject paraphrase if token Jaccard vs prior stem >= this

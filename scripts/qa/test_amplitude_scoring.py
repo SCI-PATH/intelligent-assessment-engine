@@ -1,4 +1,4 @@
-"""Unit tests for Amplitude scoring and category cutoffs (no DB)."""
+"""Unit tests for Aptitude scoring and category cutoffs (no DB)."""
 
 from __future__ import annotations
 
@@ -109,7 +109,7 @@ def main() -> int:
     test_empty_chapter_ids()
     test_invalid_chapter_grade()
     test_legacy_count_only()
-    print("AMPLITUDE_SCORING_OK")
+    print("APTITUDE_SCORING_OK")
     return 0
 
 

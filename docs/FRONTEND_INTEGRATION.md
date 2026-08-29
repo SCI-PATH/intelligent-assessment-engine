@@ -26,7 +26,7 @@ Peer hosts live in backend `src/iae/config/peers.py` only.
 
 | Module | Screens / jobs |
 |--------|----------------|
-| `features/amplitude/` | Post-signup placement: survey → 10-item quiz → category result |
+| `features/aptitude/` | Post-signup placement: survey → 10-item quiz → category result |
 | `features/quiz/` | Customizable adaptive quiz + post-lesson loop |
 | `features/history/` | Past sessions, detail, optional AI analysis |
 | `features/teacher/` | Topic list, generate, review/approve/reject bank |
@@ -54,7 +54,7 @@ Mock users (seeded):
 
 Canonical form: `G{grade}_C{chapter}` e.g. `G6_C8`, `G7_C5`.
 
-- Source of truth for Amplitude multi-select:  
+- Source of truth for Aptitude multi-select:  
   `GET /api/v1/assessment-engine/amplitude/chapters?grade=7`  
 - Same catalog: repo file `data/chapter_ids_g6_g9.csv`  
 - **Never** send `"8"` or `"Chapter 8"` as a chapter id
@@ -68,14 +68,15 @@ Canonical form: `G{grade}_C{chapter}` e.g. `G6_C8`, `G7_C5`.
 | `ShortAnswer` | Stem + text input | free string |
 | `MultiBlank` | `prompt.paragraph` with blanks + inputs | backend-specific; prefer matching blank order |
 
-**Never show** to students: `correct_answer`, `ideal_answer`, `answers`, `keywords`, `option_diagnostics`, `distractor_tag`, `distractor_label`. Amplitude `/quiz` already strips these; adaptive `/next` may return full `Question` — strip secrets in the FE.
+**Never show** to students: `correct_answer`, `ideal_answer`, `answers`, `keywords`, `option_diagnostics`, `distractor_tag`, `distractor_label`. Aptitude `/quiz` already strips these; adaptive `/next` may return full `Question` — strip secrets in the FE.
 
 ---
 
-## Feature 1 — Amplitude placement (post-registration / pre-lessons)
+## Feature 1 — Aptitude placement (post-registration / pre-lessons)
 
 **Goal:** Classify student as `BASIC` | `INTERMEDIATE` | `ADVANCED` before lessons.  
-**Scoring:** 60% quiz + 40% survey composite (backend). No BKT.
+**Scoring:** 60% quiz + 40% survey composite (backend). No BKT.  
+**Name:** Aptitude Diagnostic Test. HTTP paths stay under `/amplitude/` so existing clients keep working.
 
 ### Screens / controls
 
@@ -166,7 +167,7 @@ Canonical form: `G{grade}_C{chapter}` e.g. `G6_C8`, `G7_C5`.
 }
 ```
 
-`dok_level` here is the **Amplitude Baseline Ladder** level (1–3), not adaptive-bank DOK 1–4.
+`dok_level` here is the **Aptitude Baseline Ladder** level (1–3), not adaptive-bank DOK 1–4.
 
 **409** if bank missing for that grade (ops must run `python -m scripts.generate_amplitude_bank`).
 
@@ -319,7 +320,7 @@ Idempotent if already ended. FE can show “session ended by engagement engine�
 | `GET` | `/api/v1/assessment-engine/students/{id}/sessions/{session_id}` | Detail / attempt trail |
 | `POST` | `/api/v1/assessment-engine/students/{id}/sessions/{session_id}/analyze` | Optional “AI analysis” button |
 
-Also: Amplitude category via `.../initial-category` (above).
+Also: Aptitude category via `.../initial-category` (above).
 
 ---
 
@@ -408,7 +409,7 @@ Exact request/response fields: prefer live Swagger at `/docs` (generated from th
 ## Recommended user journeys
 
 ```text
-Signup → Amplitude survey → Amplitude quiz → show category
+Signup → Aptitude survey → Aptitude quiz → show category
      → (optional) Customizable quiz for practice
      → Lesson (C1) → Post-lesson quiz → History
 Teacher → Topics → Generate → Review pending → Approve/Reject
@@ -432,4 +433,4 @@ uvicorn iae.api.main:app --reload --port 8004
 # Open http://localhost:8004/docs
 ```
 
-Use Try-it-out with `mock-student-class-a` / grade `7` for Amplitude after the placement bank exists for that grade.
+Use Try-it-out with `mock-student-class-a` / grade `7` for Aptitude after the placement bank exists for that grade.

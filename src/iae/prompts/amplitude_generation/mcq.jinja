@@ -1,37 +1,67 @@
-{# Amplitude placement MCQ — Amplitude Baseline Ladder (ABL), not Webb DOK.
+{# Aptitude placement MCQ — Aptitude Baseline Ladder (ABL), not Webb DOK.
    distractor_tag / distractor_label feed Component 4 enums when used on graded paths. #}
 CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt.
 
-You are an expert Sri Lankan science teacher writing ONE multiple-choice item for a **pre-instruction Amplitude placement test** (Grades 6–9 Science, NIE / MoE syllabus). Language must be clear for a Grade {{ grade }} learner who may be brand-new to this grade.
+You are an expert Sri Lankan science teacher writing ONE multiple-choice item for a **pre-instruction Aptitude placement test** (Grades 6–9 Science, NIE / MoE syllabus). This test measures readiness for the grade — it is NOT a quiz about the physics quantity "amplitude" unless this Topic ID is actually about waves or sound.
+
+Language must be clear for a Grade {{ grade }} learner who may be brand-new to this grade.
 
 Chapter: {{ chapter_name }}
 Topic ID: {{ topic_id }}
 Skill: {{ skill }}
-Amplitude Baseline Ladder level: ABL-{{ baseline_level }} — {{ abl_descriptor }}
+Aptitude Baseline Ladder level: ABL-{{ baseline_level }} — {{ abl_descriptor }}
+{% if avoid_stems %}
+DISTINCTNESS (mandatory)
+- Do NOT reword or paraphrase any of these stems already on this same 10-item Aptitude form:
+{% for stem in avoid_stems %}
+  - {{ stem }}
+{% endfor %}
+- Write a conceptually different question (different chapter idea / skill focus).
+{% endif %}
 
-ABL CALIBRATION (follow exactly):
-- ABL-1 Recall: Ask for a syllabus fact, definition, label, or simple recognition. One clear correct idea.
-- ABL-2 Apply: Put one familiar syllabus idea into a short classroom or everyday situation (still one step).
+ABL CALIBRATION (follow exactly for level {{ baseline_level }}):
+- ABL-1 Recall: Ask for one syllabus fact, definition, label, or simple recognition. One clear correct idea. No scenario required.
+- ABL-2 Apply: Put one familiar syllabus idea into a short classroom or everyday situation (still one step). Do not copy a sentence verbatim from the excerpts.
 - ABL-3 Connect: Link two grade-appropriate ideas from the excerpts OR force the student to reject a common misconception. Still answerable in under a minute; no multi-paragraph reasoning.
+
+SCIENTIFIC ACCURACY (mandatory — syllabus grounding)
+- Every fact in the stem, the correct option, and the distractor explanations must be 100% supported by EXCERPTS only.
+- The designated correct_answer must be indisputably true given the excerpts.
+- Every wrong option must be unambiguously incorrect (no ambiguous or partially-true distractors).
+- Do not invent numbers, species, laws, place names, lab results, or figure references absent from the excerpts.
+- If excerpts are thin, write a simpler ABL-appropriate MCQ still fully grounded — never invent content to force a higher ABL.
 
 CHAIN-OF-THOUGHT (internal only — do NOT print):
 1) Extract the single science idea that matches this Topic ID from the excerpts.
 2) Write a stem matching ABL-{{ baseline_level }} without inventing facts.
-3) Write one correct option grounded in the excerpts.
-4) Write three wrong options a Grade {{ grade }} learner might choose; for EACH wrong option choose distractor_tag then a contextual distractor_label.
-5) Verify no hallucinated numbers, species, or laws beyond the excerpts.
+3) Write one correct option grounded in the excerpts; verify it is indisputably true.
+4) Write three wrong options a Grade {{ grade }} learner might choose; verify each is unambiguously false.
+5) For EACH wrong option choose distractor_tag then write distractor_label that explains WHY that tag fits THIS stem and THIS option text.
+6) Self-critique (internal): Does this item truly require ABL-{{ baseline_level }} demand? Is it fully solvable from textbook principles in the excerpts? If either fails, rewrite before emitting JSON.
 
 HALLUCINATION GUARDRAILS
 - Use ONLY facts supported by EXCERPTS.
-- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", or "Activity".
+- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", "Activity", or any external reference.
 
-COMPONENT 4 DISTRACTOR CONTRACT (strict)
-- distractor_tag MUST be exactly one of: NEAR_MISS | MISCONCEPTION | COMPLETE_MISS
-- distractor_label MUST be 5–12 words naming the specific learner error for THAT option in THIS question.
+COMPONENT 4 DISTRACTOR CONTRACT (strict — C4 reads labels in isolation)
+- distractor_tag MUST be exactly one of these three strings (no synonyms, no lowercase):
+  NEAR_MISS | MISCONCEPTION | COMPLETE_MISS
+- NEAR_MISS: option is almost correct; shares most of the right idea but flips a detail.
+- MISCONCEPTION: option encodes a systematic wrong scientific belief about this topic.
+- COMPLETE_MISS: option is irrelevant or off-topic relative to the stem.
+- distractor_label MUST be a complete standalone pedagogical sentence that makes 100% sense even if the reader has NEVER seen the question, options, or stem.
+- The sentence MUST explicitly name (1) the science concept and (2) the exact error in reasoning.
+- BANNED phrasing: "this topic", "the question", "the chosen option", "the student has a misconception", "incorrect option", "wrong answer".
+- GOOD example: "The student incorrectly assumes that all metals are magnetic, rather than just iron, nickel, and cobalt."
+- BAD example: "Reverses attraction of like poles" (too short / not standalone).
+
+WRITING RULES
+- Exactly four options labelled A, B, C, D; exactly one correct.
+- For EACH wrong option only, supply distractor_tag and distractor_label inside option_diagnostics.
 - Never include option_diagnostics for the correct_answer letter.
 
 OUTPUT
-Return ONLY a valid JSON object (no markdown):
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text):
 {
   "question": "...",
   "options": {"A": "...", "B": "...", "C": "...", "D": "..."},

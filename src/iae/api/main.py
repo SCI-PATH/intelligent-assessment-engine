@@ -16,7 +16,7 @@ from iae.config.settings import get_settings
 OPENAPI_TAGS = [
     {"name": "Health", "description": "Liveness probe."},
     {
-        "name": "Amplitude Diagnostic Test",
+        "name": "Aptitude Diagnostic Test",
         "description": (
             "Pre-use placement: chapters multi-select + mandatory past marks survey, "
             "fixed 10 MCQ/TrueFalse quiz (amplitude_questions), "

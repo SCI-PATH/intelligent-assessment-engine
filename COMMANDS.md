@@ -57,7 +57,7 @@ foreach ($g in 7,8,9) {
 
 You should see lines like `generating dok=1 type=mcq ...` then `ok`. If it hangs with no progress for >90s, the OpenAI call times out and retries.
 
-## 4b. Generate Amplitude placement bank (exactly 10 MCQ/TF per grade)
+## 4b. Generate Aptitude placement bank (exactly 10 MCQ/TF per grade)
 
 Separate from the adaptive bank. Writes to `question_engine.amplitude_questions` with `status=approved`.
 
@@ -67,6 +67,8 @@ python -m scripts.generate_amplitude_bank
 python -m scripts.generate_amplitude_bank --grade 7
 # regenerate:
 python -m scripts.generate_amplitude_bank --grade 6 --force
+# all grades, replace existing:
+python -m scripts.generate_amplitude_bank --all-grades --force
 ```
 
 Verify scoring / evaluate:
@@ -98,7 +100,7 @@ python -m scripts.qa.smoke_v1
 python -m iae.evaluation.run_validation
 ```
 
-`smoke_all_endpoints` hits every Swagger inbound route (Amplitude, quizzes, history, teacher). Or exercise endpoints manually in Swagger under `/api/v1/assessment-engine` — request bodies are pre-filled with editable examples.
+`smoke_all_endpoints` hits every Swagger inbound route (Aptitude, quizzes, history, teacher). Or exercise endpoints manually in Swagger under `/api/v1/assessment-engine` — request bodies are pre-filled with editable examples.
 
 ## Streamlit (optional)
 

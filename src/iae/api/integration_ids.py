@@ -30,7 +30,7 @@ ALL_MOCK_USERS = MOCK_STUDENTS | MOCK_TEACHERS
 
 
 def resolve_student_id(incoming: str | None = None) -> str:
-    """Student id used for Amplitude / quizzes / history / post-lesson."""
+    """Student id used for Aptitude / quizzes / history / post-lesson."""
     # --- LIVE INTEGRATION (uncomment for tomorrow — accept real C1/FE/C3 user ids) ---
     # if incoming is not None and str(incoming).strip():
     #     return str(incoming).strip()
@@ -56,7 +56,7 @@ def resolve_teacher_id(incoming: str | None = None) -> str:
 
 
 def resolve_grade(incoming: int | None = None, *, profile_grade: int | None = None) -> int:
-    """Resolve grade for Amplitude / quizzes.
+    """Resolve grade for Aptitude / quizzes.
 
     Priority: request override → stored profile grade → 6.
     """

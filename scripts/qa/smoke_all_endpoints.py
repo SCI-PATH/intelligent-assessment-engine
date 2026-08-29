@@ -44,7 +44,7 @@ def main() -> int:
         r = client.get("/")
         _record("GET /", "GET", r.status_code)
 
-        # --- Amplitude ---
+        # --- Aptitude ---
         r = client.get(f"{PREFIX}/amplitude/chapters", params={"grade": 7})
         _record("amplitude/chapters", "GET", r.status_code, f"count={r.json().get('count')}")
 

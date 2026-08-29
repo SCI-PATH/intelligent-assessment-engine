@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_GROQ_FALLBACKS: tuple[str, ...] = (
     "openai/gpt-oss-120b",
     "qwen/qwen3.6-27b",
-    "llama-3.1-8b-instant",
 )
 
 

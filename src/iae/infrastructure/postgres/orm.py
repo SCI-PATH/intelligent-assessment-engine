@@ -199,7 +199,7 @@ class AmplitudeFixedItemRow(Base):
 
 
 class AmplitudeQuestionRow(Base):
-    """Dedicated Amplitude placement items (exactly 10 per grade)."""
+    """Dedicated Aptitude placement items (exactly 10 per grade)."""
 
     __tablename__ = "amplitude_questions"
     __table_args__ = {"schema": "question_engine"}

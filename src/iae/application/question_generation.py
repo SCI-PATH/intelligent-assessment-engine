@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import random
 import re
 import time
@@ -120,6 +121,38 @@ def _parse_distractor_tag(raw: object) -> DistractorTag:
         return DistractorTag.MISCONCEPTION
 
 
+_BANNED_DISTRACTOR_PHRASES = (
+    "this topic",
+    "the question",
+    "the chosen option",
+    "the statement",
+    "incorrect option",
+    "wrong answer",
+    "the student has a misconception",
+    "wrong polarity",
+)
+
+
+def _validate_c4_distractor_label(label: str, *, item_kind: str) -> str:
+    """Reject labels C4 cannot use standalone (same rules as MCQ option_diagnostics)."""
+    text = (label or "").strip()
+    if not text:
+        raise ValueError(f"{item_kind} requires a non-empty distractor_label for Component 4")
+    lowered = text.lower()
+    for banned in _BANNED_DISTRACTOR_PHRASES:
+        if banned in lowered:
+            raise ValueError(
+                f"{item_kind} distractor_label uses banned phrasing {banned!r} "
+                "(label must stand alone without referencing the item)"
+            )
+    if len(text) < 50 or len(text.split()) < 8:
+        raise ValueError(
+            f"{item_kind} distractor_label is too short to be a standalone pedagogical "
+            "sentence (name the science concept and the exact error)"
+        )
+    return text
+
+
 def _shuffle_mcq_options(raw: dict) -> dict:
     options = raw.get("options", {})
     correct_letter = str(raw.get("correct_answer", "")).strip().upper()
@@ -153,10 +186,19 @@ def _shuffle_mcq_options(raw: dict) -> dict:
             label = str(entry.get("distractor_label") or "").strip()
             if not label:
                 continue
+            label = _validate_c4_distractor_label(label, item_kind="MCQ")
             new_diag[new_letter] = {
                 "distractor_tag": _parse_distractor_tag(entry.get("distractor_tag")).value,
                 "distractor_label": label,
             }
+
+    wrong_letters = [letter for letter in letters if letter != new_correct]
+    missing = [letter for letter in wrong_letters if letter not in new_diag]
+    if missing:
+        raise ValueError(
+            "MCQ missing Component 4 option_diagnostics for wrong option(s): "
+            + ", ".join(missing)
+        )
 
     return {
         "question": str(raw.get("question", "")).strip(),
@@ -203,15 +245,16 @@ def _normalize_true_false(raw: dict) -> dict:
     else:
         raise ValueError("TrueFalse correct_answer must be True/False")
     tag = _parse_distractor_tag(raw.get("distractor_tag"))
-    label = str(raw.get("distractor_label") or "").strip()
-    result: dict = {
+    label = _validate_c4_distractor_label(
+        str(raw.get("distractor_label") or "").strip(),
+        item_kind="TrueFalse",
+    )
+    return {
         "question": str(raw.get("question", "")).strip(),
         "correct_answer": canonical,
+        "distractor_tag": tag,
+        "distractor_label": label,
     }
-    if label:
-        result["distractor_tag"] = tag
-        result["distractor_label"] = label
-    return result
 
 
 def build_payload(qtype: QuestionType, raw: dict):
@@ -238,6 +281,104 @@ def format_context(chunk_texts: Iterable[str]) -> str:
     return "\n\n---\n\n".join(t.strip() for t in chunk_texts)
 
 
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    return dot / (na * nb) if na and nb else 0.0
+
+
+def _build_retrieval_query(chapter: str, topic_ids: list[str | None]) -> str:
+    query_bits = [chapter]
+    for topic_id in topic_ids:
+        if topic_id:
+            topic = get_topic(topic_id)
+            if topic and topic.skill:
+                query_bits.append(topic.skill)
+    return " ".join(query_bits)
+
+
+def effective_retrieval_k(*, available: int, max_k: int) -> int:
+    """How many excerpts to put in one prompt: all stored chunks up to ``max_k``."""
+    if available <= 0:
+        return max(1, max_k)
+    return max(1, min(available, max_k))
+
+
+def count_topic_chunks(
+    store: IVectorStore,
+    *,
+    grade: int,
+    topic_id: str,
+) -> int:
+    if not topic_id:
+        return 0
+    return len(store.find(grade=grade, topic_id=topic_id))
+
+
+def rank_chunks_for_query(
+    chunks: list[Chunk],
+    embedder: IEmbedder,
+    query_text: str,
+) -> list[Chunk]:
+    if len(chunks) <= 1:
+        return list(chunks)
+    query_vec = embedder.embed([query_text])[0]
+    chunk_vecs = embedder.embed([c.text for c in chunks])
+    scored = [
+        (_cosine_similarity(query_vec, vec), chunk)
+        for chunk, vec in zip(chunks, chunk_vecs)
+    ]
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [chunk for _, chunk in scored]
+
+
+def retrieve_topic_chunk_pool(
+    *,
+    store: IVectorStore,
+    embedder: IEmbedder,
+    grade: int,
+    chapter: str,
+    topic_id: str,
+    max_k: int,
+) -> tuple[list[Chunk], int, int]:
+    """Return (ranked_pool, chunks_in_chroma, excerpts_per_prompt).
+
+    Thin topics use every stored chunk (e.g. 1–3). Larger topics cap at ``max_k``
+    ranked by relevance to the chapter + skill query.
+    """
+    all_chunks = store.find(grade=grade, topic_id=topic_id)
+    available = len(all_chunks)
+    if not all_chunks:
+        fallback = retrieve_chunks(
+            store=store,
+            embedder=embedder,
+            grade=grade,
+            chapter=chapter,
+            topic_ids=[topic_id],
+            top_k=max_k,
+        )
+        available = len(fallback)
+        prompt_k = effective_retrieval_k(available=available, max_k=max_k)
+        return fallback, available, prompt_k
+
+    query = _build_retrieval_query(chapter, [topic_id])
+    ranked = rank_chunks_for_query(all_chunks, embedder, query)
+    prompt_k = effective_retrieval_k(available=available, max_k=max_k)
+    return ranked, available, prompt_k
+
+
+def chunk_window(ranked_chunks: list[Chunk], window_size: int, offset: int) -> list[Chunk]:
+    """Rotate a sliding window so each (DOK × type) combo sees different excerpts."""
+    if not ranked_chunks or window_size <= 0:
+        return []
+    k = min(window_size, len(ranked_chunks))
+    if len(ranked_chunks) <= k:
+        return list(ranked_chunks)
+    start = offset % len(ranked_chunks)
+    return [ranked_chunks[(start + i) % len(ranked_chunks)] for i in range(k)]
+
+
 def majority_topic(chunks: list[Chunk]) -> tuple[str, str]:
     tagged = [(c.topic_id, c.skill) for c in chunks if c.topic_id]
     if not tagged:
@@ -258,13 +399,7 @@ def retrieve_chunks(
 ) -> list[Chunk]:
     collected: list[Chunk] = []
     seen: set[str] = set()
-    query_bits = [chapter]
-    for topic_id in topic_ids:
-        if topic_id:
-            topic = get_topic(topic_id)
-            if topic and topic.skill:
-                query_bits.append(topic.skill)
-    query_embedding = embedder.embed([" ".join(query_bits)])[0]
+    query_embedding = embedder.embed([_build_retrieval_query(chapter, topic_ids)])[0]
 
     for topic_id in topic_ids:
         hits = store.query(

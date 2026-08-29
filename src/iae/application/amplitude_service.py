@@ -1,4 +1,4 @@
-"""Amplitude Test use cases (initial diagnostic categorization)."""
+"""Aptitude Test use cases (initial diagnostic categorization)."""
 
 from __future__ import annotations
 
@@ -103,7 +103,7 @@ class AmplitudeService:
         questions = self._store.list_amplitude_questions(grade)
         if len(questions) != 10:
             raise AmplitudeQuizUnavailable(
-                f"Amplitude placement bank for grade {grade} needs exactly 10 approved "
+                f"Aptitude placement bank for grade {grade} needs exactly 10 approved "
                 f"items; found {len(questions)}. Run: python -m scripts.generate_amplitude_bank "
                 f"--grade {grade}"
             )
@@ -154,8 +154,8 @@ class AmplitudeService:
         weighted = weighted_amplitude_score(
             quiz_score=quiz_score,
             history_score=history_score,
-            quiz_weight=config.amplitude_quiz_weight,
-            history_weight=config.amplitude_history_weight,
+            quiz_weight=config.aptitude_quiz_weight,
+            history_weight=config.aptitude_history_weight,
         )
         category = categorize(weighted)
         evaluation = AmplitudeEvaluation(

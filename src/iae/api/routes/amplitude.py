@@ -1,4 +1,7 @@
-"""Amplitude Diagnostic Test routes under /api/v1/assessment-engine."""
+"""Aptitude Diagnostic Test routes under /api/v1/assessment-engine.
+
+URL path stays `/amplitude` so existing frontend/C1 clients keep working.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +24,7 @@ from iae.domain.models import AmplitudeEvaluation, Question, StudentProfile
 
 router = APIRouter(
     prefix="/api/v1/assessment-engine/amplitude",
-    tags=["Amplitude Diagnostic Test"],
+    tags=["Aptitude Diagnostic Test"],
 )
 
 
@@ -55,7 +58,7 @@ def _quiz_item(question: Question) -> PlacementQuizItem:
 
 @router.get(
     "/chapters",
-    summary="List all chapters for a grade (Amplitude survey multi-select)",
+    summary="List all chapters for a grade (Aptitude survey multi-select)",
     description=(
         "Returns every canonical chapter_id for the grade so the frontend can "
         "render the completed-chapters multi-select. Selecting none is valid."
@@ -84,7 +87,7 @@ def list_amplitude_chapters(
 @router.post(
     "/survey",
     response_model=StudentProfile,
-    summary="Submit Amplitude survey",
+    summary="Submit Aptitude survey",
     description=(
         "**Purpose:** Persist pre-use intake inputs (mandatory past marks + chapter multi-select).\n\n"
         "**Caller:** Frontend (post registration / before lessons).\n\n"
@@ -119,15 +122,15 @@ def submit_survey(
 @router.get(
     "/quiz",
     response_model=PlacementQuizResponse,
-    summary="Get fixed 10-item Amplitude quiz",
+    summary="Get fixed 10-item Aptitude quiz",
     description=(
-        "**Purpose:** Return the grade-stable fixed 10 Amplitude items (MCQ/TrueFalse only).\n\n"
+        "**Purpose:** Return the grade-stable fixed 10 Aptitude items (MCQ/TrueFalse only).\n\n"
         "**Caller:** Frontend. **No BKT.** Sourced from `amplitude_questions`, not the adaptive bank.\n\n"
         "**How to Test:** `grade=7` → expect `count=10` (409 if bank not generated)."
     ),
     responses={
         200: {"description": "Fixed quiz items."},
-        409: {"model": ErrorDetail, "description": "Amplitude bank missing for grade."},
+        409: {"model": ErrorDetail, "description": "Aptitude bank missing for grade."},
     },
 )
 def amplitude_quiz(
@@ -149,7 +152,7 @@ def amplitude_quiz(
 @router.post(
     "/evaluate",
     response_model=AmplitudeEvaluation,
-    summary="Evaluate Amplitude category",
+    summary="Evaluate Aptitude category",
     description=(
         "**Purpose:** Grade the fixed 10 answers; persist "
         "`BASIC` | `INTERMEDIATE` | `ADVANCED` "

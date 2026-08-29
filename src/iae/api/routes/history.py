@@ -37,15 +37,15 @@ def _session_summary(session: SessionState) -> QuizSessionResponse:
 @router.get(
     "/{student_id}/initial-category",
     response_model=AmplitudeCategoryResponse,
-    summary="Get student initial Amplitude category",
+    summary="Get student initial Aptitude category",
     description=(
-        "**Purpose:** Read persisted Amplitude category after evaluate.\n\n"
+        "**Purpose:** Read persisted Aptitude category after evaluate.\n\n"
         "**Caller:** Component 1 (Lesson Engine) and Frontend.\n\n"
         "**Path:** `student_id` — local testing: `mock-student-class-a`.\n\n"
-        "**How to Test:** Run Amplitude evaluate first → Execute with the same student id."
+        "**How to Test:** Run Aptitude evaluate first → Execute with the same student id."
     ),
     responses={404: {"model": ErrorDetail}},
-    tags=["Amplitude Diagnostic Test"],
+    tags=["Aptitude Diagnostic Test"],
 )
 def initial_category(
     student_id: str = Path(..., examples=["mock-student-class-a"]),

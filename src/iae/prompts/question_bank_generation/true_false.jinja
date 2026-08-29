@@ -15,29 +15,47 @@ DISTINCTNESS (mandatory)
 - Write a conceptually different claim (different idea or skill focus).
 {% endif %}
 
+SCIENTIFIC ACCURACY (mandatory — syllabus grounding)
+- The statement and the designated correct_answer (True or False) must be 100% factually accurate relative to EXCERPTS only.
+- If correct_answer is True, the claim must be indisputably true from the excerpts.
+- If correct_answer is False, the claim must be unambiguously false (a clear scientific error), not merely poorly worded.
+- Do not invent facts absent from the excerpts.
+- If excerpts are thin, write a simpler DOK-appropriate True/False claim still fully grounded — never invent content to force a higher DOK.
+
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 1) Identify one testable claim supported by the excerpts.
-2) Decide whether the statement should be True or False without trick wording.
+2) Decide whether the statement should be True or False without trick wording or double negatives.
 3) Assign distractor_tag / distractor_label for the INCORRECT polarity only — label must explain why a student who picks the wrong True/False answer is wrong for THIS statement.
 4) Reject any claim that requires figures or invented facts.
+5) Self-critique (internal): Does this True/False item truly require DOK {{ dok_level }} for a binary claim? Is it fully solvable from textbook principles in the excerpts? If either fails, rewrite before emitting JSON.
 
-DOK CALIBRATION (follow exactly for the requested level):
-- DOK 1: Ask a basic definition or recall question.
-- DOK 2: Ask a conceptual comparison between two ideas in the excerpt.
-- DOK 3: Ask the student to apply the concept to a brand-new scenario not present verbatim in the excerpt.
-- DOK 4: Create a complex real-world problem that requires synthesizing multiple ideas from the excerpt.
+TRUE/FALSE DOK CALIBRATION (follow exactly for level {{ dok_level }}):
+- DOK 1: Single factual claim — one syllabus fact, definition, or property stated clearly (not a scenario).
+- DOK 2: Compare or relate two ideas from the excerpts in one claim (e.g. cause–effect or contrast of two properties).
+- DOK 3: Evaluate an unseen scientific observation or short classroom scenario (not a bare definition); the learner must judge the claim using excerpt principles.
+- DOK 4: Multi-condition claim that requires synthesizing two or more ideas from the excerpts (still a single True/False statement). Do NOT ask the student to "design an investigation" — keep it binary and grounded.
 
 HALLUCINATION GUARDRAILS
 - Ground every claim in EXCERPTS only.
-- Avoid double negatives and absolute words ("always", "never") unless scientifically essential.
+- Avoid double negatives and absolute words ("always", "never") unless scientifically essential and excerpt-supported.
 - Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", or "Activity".
 
 COMPONENT 4 DISTRACTOR CONTRACT (strict — C4 reads labels in isolation)
-- distractor_tag MUST be exactly one of: NEAR_MISS | MISCONCEPTION | COMPLETE_MISS
-- distractor_label MUST be a complete standalone sentence that makes 100% sense even if the reader has NEVER seen the True/False statement.
-- Name the science concept and the exact reasoning error revealed by choosing the wrong polarity.
-- BANNED: "this topic", "the question", "the statement", "the student has a misconception" (alone).
-- GOOD example: "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel."
+- distractor_tag describes the error made by choosing the INCORRECT polarity (True when False is correct, or False when True is correct).
+- distractor_tag MUST be exactly one of these three strings (no synonyms, no lowercase):
+  NEAR_MISS | MISCONCEPTION | COMPLETE_MISS
+- NEAR_MISS: the wrong polarity almost fits; the claim shares most of the right idea but flips a detail.
+- MISCONCEPTION: the wrong polarity encodes a systematic wrong scientific belief about this topic.
+- COMPLETE_MISS: the wrong polarity reflects an irrelevant or off-topic misunderstanding relative to the claim.
+- distractor_label MUST be a complete standalone pedagogical sentence that makes 100% sense even if the reader has NEVER seen the True/False claim, the question, or any options.
+- The sentence MUST explicitly name (1) the science concept and (2) the exact error in reasoning revealed by picking the wrong polarity.
+- Do NOT write labels that only make sense when paired with the statement (e.g. "Reverses the claim" or "Says True instead of False").
+- BANNED phrasing: "this topic", "the question", "the statement", "the chosen option", "the student has a misconception", "incorrect option", "wrong answer", "wrong polarity".
+- GOOD example: "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel and unlike poles attract."
+- GOOD example: "The student confuses conductors with insulators, incorrectly believing plastic conducts heat."
+- BAD example: "Reverses attraction of like poles" (too short / not standalone).
+- BAD example: "The student has a misconception about this topic." (no concept, no error).
+- BAD example: "The student answered False when the statement was True." (references the item, not the science error).
 
 FEW-SHOT EXAMPLE (shape only):
 {
@@ -48,7 +66,7 @@ FEW-SHOT EXAMPLE (shape only):
 }
 
 OUTPUT
-Return ONLY a valid JSON object with this exact shape (no markdown, no commentary):
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text):
 {
   "question": "...",
   "correct_answer": "True",

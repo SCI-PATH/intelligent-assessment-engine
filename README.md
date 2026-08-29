@@ -1,10 +1,10 @@
 # Intelligent Assessment Engine (Component 2)
 
-Component 2 generates, banks, serves, and grades Sri Lankan science questions for grades 6-9. It runs Amplitude placement, Elo-based adaptive quizzes, teacher bank review, and talks to peer microservices:
+Component 2 generates, banks, serves, and grades Sri Lankan science questions for grades 6-9. It runs Aptitude placement, Elo-based adaptive quizzes, teacher bank review, and talks to peer microservices:
 
 | Peer | Role |
 |------|------|
-| **Component 1** (Lesson Engine) | Starts post-lesson quizzes; reads initial Amplitude category |
+| **Component 1** (Lesson Engine) | Starts post-lesson quizzes; reads initial Aptitude category |
 | **Component 3** (Engagement) | Kill-switch terminates an active quiz |
 | **Component 4** (BKT / Analytics) | Owns mastery; C2 calls BKT snapshot + assessment-submit |
 
@@ -18,7 +18,7 @@ Component 2 generates, banks, serves, and grades Sri Lankan science questions fo
 | Technology | Justification |
 |------------|---------------|
 | **FastAPI** | Typed request/response models, automatic OpenAPI for peer contracts, dependency injection for Clean Architecture wiring |
-| **PostgreSQL** (`question_engine` schema) | Durable quiz history, bank, and Amplitude results on shared Neon without colliding with peer schemas |
+| **PostgreSQL** (`question_engine` schema) | Durable quiz history, bank, and Aptitude results on shared Neon without colliding with peer schemas |
 | **ChromaDB** | Local vector store for textbook chunk RAG used during question generation |
 | **Time-Discounted Elo** | Transparent DDA research module (ability rating + DOK targeting) without inventing a second BKT store |
 
@@ -37,11 +37,11 @@ BKT P(L) values live only in Component 4. Component 2 keeps a **session-memory**
 
 ### Assessment types
 
-1. **Amplitude Diagnostic Test** — survey + fixed **10 questions per grade** → `BASIC` | `INTERMEDIATE` | `ADVANCED`. No BKT.
+1. **Aptitude Diagnostic Test** — survey + fixed **10 questions per grade** → `BASIC` | `INTERMEDIATE` | `ADVANCED`. No BKT.
 2. **Customizable Quiz** — pick `chapter_ids`, count, types. Elo DDA + C4 snapshot/submit.
 3. **Post-Lesson Quiz** — Component 1/3 passes `chapter_id`; length 15; same DDA loop.
 
-### Amplitude Test
+### Aptitude Test
 
 1. `POST .../amplitude/survey`
 2. `GET .../amplitude/quiz?grade=` — same 10 bank IDs per grade (`amplitude_fixed_items`)
@@ -81,15 +81,15 @@ python -m scripts.db.test_connection
 
 ### Tables (logical order)
 
-1. **users** — Stub FK parent; opaque `user_id`, optional `grade`, Amplitude fields, `initial_category`.
+1. **users** — Stub FK parent; opaque `user_id`, optional `grade`, Aptitude fields, `initial_category`.
 2. **questions** — Bank; payload JSONB includes MCQ/TF `distractor_tag` / `distractor_label`.
 3. **amplitude_fixed_items** — Exactly 10 `(grade, position)` → `question_id`; never reshuffled once set.
-4. **amplitude_attempts** — Amplitude evaluate history.
+4. **amplitude_attempts** — Aptitude evaluate history.
 5. **assessment_sessions** — Quiz run: chapters, Elo, session-memory `bkt_snapshot`, history, status.
 6. **attempts** — Graded answers.
 7. **served_questions** — Permanent block after success / high similarity.
 8. **analytics_events** — Local copy of C4 payload.
-9. **placement_evaluations** — Older placement rows (Amplitude is live).
+9. **placement_evaluations** — Older placement rows (Aptitude is live).
 10. **frustration_cues**, **bkt_mastery**, **past_paper_items** — Placeholders; do not write BKT here.
 
 Shared IDs: `user_id`, Excel `topic_id`, `chapter_id` (`G6_C8` from `data/chapter_ids_g6_g9.csv`).
@@ -157,7 +157,7 @@ Docs: `docs/COMPONENT2_COMPONENT4_INTEGRATION.md`, `docs/QuestionEngine-BKT-Snap
 src/iae/
   api/            FastAPI routes, schemas, bootstrap, deps
   domain/         Pydantic models, protocols, chapter/skill catalogs
-  application/    Quiz, Amplitude, Teacher, History services + grading
+  application/    Quiz, Aptitude, Teacher, History services + grading
   adaptive/       Time-Discounted Elo + multivariate next-item policy
   infrastructure/ Postgres, Chroma, LLM, peer HTTP clients + mocks
   evaluation/     Elo RMSE, grading confusion matrix, routing sanity

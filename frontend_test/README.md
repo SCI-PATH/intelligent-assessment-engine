@@ -14,4 +14,4 @@ streamlit run frontend_test/streamlit_app.py
 
 Seed users first: `python -m scripts.db.seed_mock_users`
 
-Pages: Amplitude, Customizable Quiz, Post-lesson, History, Teacher dashboard.
+Pages: Aptitude, Customizable Quiz, Post-lesson, History, Teacher dashboard.

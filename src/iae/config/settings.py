@@ -59,19 +59,25 @@ class AppConfig:
         self.post_lesson_max_questions: int = int(
             data.get("assessment", {}).get("post_lesson_max_questions", 15)
         )
-        self.amplitude_quiz_size: int = int(data.get("amplitude", {}).get("quiz_size", 10))
-        self.amplitude_quiz_weight: float = float(data.get("amplitude", {}).get("quiz_weight", 0.60))
-        self.amplitude_history_weight: float = float(
-            data.get("amplitude", {}).get("history_weight", 0.40)
+        aptitude_block = data.get("aptitude") or data.get("amplitude") or {}
+        self.aptitude_quiz_size: int = int(aptitude_block.get("quiz_size", 10))
+        self.aptitude_quiz_weight: float = float(aptitude_block.get("quiz_weight", 0.60))
+        self.aptitude_history_weight: float = float(
+            aptitude_block.get("history_weight", 0.40)
         )
         self.embedding_model: str = data["models"]["embedding_model"]
         models_cfg = data.get("models") or {}
+        self.llm_provider: str = str(models_cfg.get("llm_provider") or "groq").strip().lower()
+        self.openai_model: str = str(
+            models_cfg.get("openai_model") or "gpt-4o-mini"
+        ).strip()
+        self.openai_timeout_s: float = float(models_cfg.get("openai_timeout_s", 90))
         fallbacks = models_cfg.get("groq_fallbacks") or []
         self.groq_fallbacks: list[str] = [
             str(m).strip() for m in fallbacks if m and str(m).strip()
         ]
         if not self.groq_fallbacks:
-            primary = str(models_cfg.get("llm_model") or "llama-3.1-8b-instant").strip()
+            primary = str(models_cfg.get("llm_model") or "openai/gpt-oss-120b").strip()
             self.groq_fallbacks = [primary]
         self.llm_model: str = str(
             models_cfg.get("llm_model") or self.groq_fallbacks[0]
@@ -86,6 +92,8 @@ class AppConfig:
         self.questions_per_combo: int = int(data["bank"]["questions_per_combo"])
         self.generation_max_retries: int = int(data["bank"]["generation_max_retries"])
         self.retrieval_top_k: int = int(data["bank"]["retrieval_top_k"])
+        self.avoid_stems_max: int = int(data.get("bank", {}).get("avoid_stems_max", 12))
+        self.flush_batch_size: int = int(data.get("bank", {}).get("flush_batch_size", 5))
         self.distinctness_jaccard_max: float = float(
             data.get("bank", {}).get("distinctness_jaccard_max", 0.85)
         )

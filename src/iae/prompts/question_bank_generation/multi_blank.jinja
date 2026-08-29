@@ -14,17 +14,24 @@ DISTINCTNESS (mandatory)
 - Write a conceptually different cloze paragraph.
 {% endif %}
 
+SCIENTIFIC ACCURACY (mandatory — syllabus grounding)
+- Every blank answer must be 100% factually accurate and supported by EXCERPTS only.
+- Each answer must be the indisputably correct term for that blank given the excerpts.
+- Do not invent terms, processes, or numbers absent from the excerpts.
+- If excerpts are thin, write a simpler DOK-appropriate cloze still fully grounded — never invent content to force a higher DOK.
+
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
-1) Outline a short coherent paragraph from the excerpts.
+1) Outline a short coherent paragraph from the excerpts at the requested DOK.
 2) Choose 3–5 scientifically meaningful blanks (not articles/prepositions).
 3) Write each blank exactly as [_____].
-4) List answers lowercase, in blank order, supported by the excerpts.
+4) List answers lowercase, in blank order, supported by the excerpts; verify each is correct.
+5) Self-critique (internal): Does this cloze truly require DOK {{ dok_level }}? Is every blank solvable from textbook principles in the excerpts? If either fails, rewrite before emitting JSON.
 
-DOK CALIBRATION (follow exactly for the requested level):
-- DOK 1: Ask a basic definition or recall question.
-- DOK 2: Ask a conceptual comparison between two ideas in the excerpt.
-- DOK 3: Ask the student to apply the concept to a brand-new scenario not present verbatim in the excerpt.
-- DOK 4: Create a complex real-world problem that requires synthesizing multiple ideas from the excerpt.
+MULTI-BLANK DOK CALIBRATION (follow exactly for level {{ dok_level }}):
+- DOK 1: Cloze of key terms from one syllabus fact or definition (recall of labels/terms from the excerpts).
+- DOK 2: Cloze that tracks a process or compares two ideas (ordered steps or related properties from the excerpts).
+- DOK 3: Cloze set in a short applied classroom/everyday scenario not copied verbatim from the excerpts, with blanks still answerable from excerpt principles.
+- DOK 4: Cloze that requires linking two or more distinct ideas across the excerpts in one paragraph (synthesis of terms/relations); still 3–5 blanks, no invented investigation design.
 
 HALLUCINATION GUARDRAILS
 - Every blank must be answerable from EXCERPTS only.
@@ -37,7 +44,7 @@ FEW-SHOT EXAMPLE (shape only):
 }
 
 OUTPUT
-Return ONLY a valid JSON object with this exact shape (no markdown, no commentary):
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text):
 {
   "paragraph": "Plants make their own food using [_____] from sunlight and absorb [_____] through their roots while taking in [_____] from the air.",
   "answers": ["energy", "water", "carbon dioxide"]

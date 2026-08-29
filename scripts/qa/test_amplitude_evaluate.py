@@ -1,4 +1,4 @@
-"""Evaluate-path tests: seed 10 Amplitude items in-memory via repo replace + score paths.
+"""Evaluate-path tests: seed 10 Aptitude items in-memory via repo replace + score paths.
 
 Requires DATABASE_URL / Neon. Seeds a temporary grade-6 set if missing, then
 exercises survey (zero chapters) + evaluate category logic with a FakeGrader.
@@ -50,7 +50,7 @@ def _seed_ten(repo: PostgresAmplitudeRepository) -> list[Question]:
             q = Question(
                 id=str(uuid4()),
                 chapter_name="Wonders of the Living World",
-                sub_concept="AmplitudeSeed",
+                sub_concept="AptitudeSeed",
                 dok_level=abl,
                 question_type=QuestionType.TRUE_FALSE,
                 payload=TrueFalsePayload(
@@ -69,7 +69,7 @@ def _seed_ten(repo: PostgresAmplitudeRepository) -> list[Question]:
             q = Question(
                 id=str(uuid4()),
                 chapter_name="Wonders of the Living World",
-                sub_concept="AmplitudeSeed",
+                sub_concept="AptitudeSeed",
                 dok_level=abl,
                 question_type=QuestionType.MCQ,
                 payload=MCQPayload(
@@ -107,11 +107,11 @@ def main() -> int:
     repo = PostgresAmplitudeRepository(get_session_factory())
     existing = repo.list_amplitude_questions(GRADE)
     if len(existing) != 10:
-        print(f"Seeding 10 Amplitude items for grade {GRADE} (test fixture)…")
+        print(f"Seeding 10 Aptitude items for grade {GRADE} (test fixture)…")
         questions = _seed_ten(repo)
     else:
         questions = existing
-        print(f"Using existing {len(questions)} Amplitude items for grade {GRADE}")
+        print(f"Using existing {len(questions)} Aptitude items for grade {GRADE}")
 
     service = AmplitudeService(store=repo, grading=FakeGrader())  # type: ignore[arg-type]
     user = f"amp-test-{uuid4().hex[:8]}"
@@ -184,7 +184,7 @@ def main() -> int:
     assert profile.completed_chapter_ids == []
     print("survey zero-chapters ok")
 
-    print("AMPLITUDE_EVALUATE_OK")
+    print("APTITUDE_EVALUATE_OK")
     return 0
 
 

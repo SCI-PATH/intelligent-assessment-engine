@@ -77,9 +77,9 @@ def page_login() -> None:
         st.rerun()
 
 
-def page_amplitude(user_id: str, grade: int) -> None:
-    st.header("Amplitude Diagnostic Test")
-    with st.form("amplitude_survey"):
+def page_aptitude(user_id: str, grade: int) -> None:
+    st.header("Aptitude Diagnostic Test")
+    with st.form("aptitude_survey"):
         g = st.selectbox("Grade (local override)", [6, 7, 8, 9], index=[6, 7, 8, 9].index(grade))
         marks = st.selectbox("Past marks (required)", ["BELOW_50", "50_75", "ABOVE_75"], index=1)
         hours = st.number_input("Study hours / week", min_value=0.0, max_value=40.0, value=5.0)
@@ -146,7 +146,7 @@ def page_amplitude(user_id: str, grade: int) -> None:
             else:
                 answers[qid] = st.text_input(qid, key=f"amp_{qid}")
         st.session_state.amp_answers = answers
-        if st.button("Evaluate Amplitude", type="primary"):
+        if st.button("Evaluate Aptitude", type="primary"):
             try:
                 result = _post(
                     "/amplitude/evaluate",
@@ -374,10 +374,10 @@ def main() -> None:
     else:
         page = st.sidebar.radio(
             "Page",
-            ["Amplitude", "Customizable Quiz", "Post-lesson", "History"],
+            ["Aptitude", "Customizable Quiz", "Post-lesson", "History"],
         )
-        if page == "Amplitude":
-            page_amplitude(st.session_state.user_id, grade)
+        if page == "Aptitude":
+            page_aptitude(st.session_state.user_id, grade)
         elif page == "Customizable Quiz":
             page_customizable(st.session_state.user_id, grade)
         elif page == "Post-lesson":

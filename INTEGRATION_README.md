@@ -15,7 +15,7 @@ Peer microservice hosts are **hardcoded** in [`src/iae/config/peers.py`](src/iae
 
 ---
 
-## 1) Amplitude placement (pre-use / post-registration)
+## 1) Aptitude placement (pre-use / post-registration)
 
 Runs **before** lessons and adaptive quizzes. Categories: **`BASIC` | `INTERMEDIATE` | `ADVANCED`** (no BKT).
 
@@ -66,7 +66,7 @@ python -m scripts.generate_amplitude_bank --grade 7
 python -m scripts.generate_amplitude_bank --grade 6 --force
 ```
 
-Difficulty uses **Amplitude Baseline Ladder (ABL)**: ABL-1 Recall ×4, ABL-2 Apply ×4, ABL-3 Connect ×2.
+Difficulty uses **Aptitude Baseline Ladder (ABL)**: ABL-1 Recall ×4, ABL-2 Apply ×4, ABL-3 Connect ×2 (7 MCQ + 3 True/False). Ten chapters are **evenly spaced** through the grade ToC (one Topic ID each); stems that paraphrase an earlier slot (MiniLM cosine ≥ 0.82) are rejected.
 
 ### Evaluate
 

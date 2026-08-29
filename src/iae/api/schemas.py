@@ -18,7 +18,7 @@ class ErrorDetail(BaseModel):
     detail: str = Field(examples=["Session not found."])
 
 
-# --- Amplitude / placement ---
+# --- Aptitude / placement ---
 
 
 class PlacementQuizItem(BaseModel):
@@ -131,7 +131,7 @@ class AmplitudeEvaluateRequest(BaseModel):
     answers: dict[str, str] = Field(
         default_factory=dict,
         description="Map of question_id → student answer for the fixed 10 items. "
-        "Paste real ids from GET /amplitude/quiz.",
+        "Paste real ids from GET /amplitude/quiz (Aptitude placement).",
     )
 
 

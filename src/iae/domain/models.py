@@ -163,6 +163,7 @@ class PlacementCategory(str, Enum):
 
 
 class AmplitudeCategory(str, Enum):
+    """Aptitude placement band (BASIC / INTERMEDIATE / ADVANCED)."""
     BASIC = "BASIC"
     INTERMEDIATE = "INTERMEDIATE"
     ADVANCED = "ADVANCED"

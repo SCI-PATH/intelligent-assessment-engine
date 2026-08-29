@@ -15,18 +15,24 @@ DISTINCTNESS (mandatory)
 - Write a conceptually different question.
 {% endif %}
 
+SCIENTIFIC ACCURACY (mandatory — syllabus grounding)
+- The question stem, ideal_answer, and keywords must be 100% factually accurate and supported by EXCERPTS only.
+- The ideal_answer must be indisputably correct given the excerpts.
+- Do not invent facts, mechanisms, or examples absent from the excerpts.
+- If excerpts are thin, write a simpler DOK-appropriate short-answer still fully grounded — never invent content to force a higher DOK.
+
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 1) Select the assessable idea from the excerpts.
-2) Write a stem that invites explanation (not a yes/no).
-3) Draft an ideal_answer a strong Sri Lankan student would write.
+2) Write a stem that invites explanation (not a yes/no) at the requested DOK.
+3) Draft an ideal_answer a strong Sri Lankan student would write; verify every claim against EXCERPTS.
 4) List 3–6 concept keywords (not stop words) required for full credit.
-5) Ensure no hallucinated facts beyond the excerpts.
+5) Self-critique (internal): Does this short-answer truly require DOK {{ dok_level }}? Is it fully solvable from textbook principles in the excerpts? If either fails, rewrite before emitting JSON.
 
-DOK CALIBRATION (follow exactly for the requested level):
-- DOK 1: Ask a basic definition or recall question.
-- DOK 2: Ask a conceptual comparison between two ideas in the excerpt.
-- DOK 3: Ask the student to apply the concept to a brand-new scenario not present verbatim in the excerpt.
-- DOK 4: Create a complex real-world problem that requires synthesizing multiple ideas from the excerpt.
+SHORT-ANSWER DOK CALIBRATION (follow exactly for level {{ dok_level }}):
+- DOK 1: Define or name — ask for a definition, label, or short factual recall from the excerpts.
+- DOK 2: Explain mechanism or compare — ask the student to explain a process or compare two ideas using excerpt content.
+- DOK 3: Apply — ask the student to apply the concept to a short new classroom/everyday scenario not copied verbatim from the excerpts, but answerable from excerpt principles.
+- DOK 4: Synthesize — ask for a multi-step answer that links two or more distinct ideas from the excerpts into one coherent explanation (still grounded; no invented experiments).
 
 HALLUCINATION GUARDRAILS
 - Use ONLY EXCERPTS. Prefer a simpler stem over invented content.
@@ -40,7 +46,7 @@ FEW-SHOT EXAMPLE (shape only):
 }
 
 OUTPUT
-Return ONLY a valid JSON object with this exact shape (no markdown, no commentary):
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text):
 {
   "question": "...",
   "ideal_answer": "...",

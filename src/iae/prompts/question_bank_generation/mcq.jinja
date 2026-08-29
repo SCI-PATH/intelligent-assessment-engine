@@ -16,22 +16,29 @@ DISTINCTNESS (mandatory)
 - Write a conceptually different question (different idea, scenario, or skill focus).
 {% endif %}
 
-CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
-1) Extract the single science idea from the excerpts that matches this chapter.
-2) Choose a stem that matches the requested DOK without inventing facts absent from the excerpts.
-3) Write one correct option grounded in the excerpts.
-4) Write three wrong options a Sri Lankan learner might choose; for EACH wrong option choose distractor_tag then write distractor_label that explains WHY that tag fits THIS stem and THIS option text.
-5) Verify no hallucinated numbers, species, or laws beyond the excerpts.
+SCIENTIFIC ACCURACY (mandatory — syllabus grounding)
+- Every fact in the stem, the correct option, and the distractor explanations must be 100% supported by EXCERPTS only.
+- The designated correct_answer must be indisputably true given the excerpts.
+- Every wrong option must be unambiguously incorrect (no ambiguous or partially-true distractors).
+- Do not invent numbers, species, laws, place names, lab results, or figure references absent from the excerpts.
+- If excerpts are thin, write a simpler DOK-appropriate MCQ still fully grounded in what is present — never invent content to force a higher DOK.
 
-DOK CALIBRATION (follow exactly for the requested level):
-- DOK 1: Ask a basic definition or recall question.
-- DOK 2: Ask a conceptual comparison between two ideas in the excerpt.
-- DOK 3: Ask the student to apply the concept to a brand-new scenario not present verbatim in the excerpt.
-- DOK 4: Create a complex real-world problem that requires synthesizing multiple ideas from the excerpt.
+CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
+1) Extract the science idea(s) from the excerpts that match this chapter.
+2) Choose a stem that matches the requested MCQ DOK calibration below without inventing facts.
+3) Write one correct option grounded in the excerpts; verify it is indisputably true.
+4) Write three wrong options a Sri Lankan learner might choose; verify each is unambiguously false.
+5) For EACH wrong option choose distractor_tag then write distractor_label that explains WHY that tag fits THIS stem and THIS option text.
+6) Self-critique (internal): Does this item truly require DOK {{ dok_level }} cognitive demand for an MCQ? Is it fully solvable from textbook principles in the excerpts? If either fails, rewrite before emitting JSON.
+
+MCQ DOK CALIBRATION (follow exactly for level {{ dok_level }}):
+- DOK 1: Direct factual recall — one syllabus fact, definition, label, or recognition from the excerpts (one clear correct option).
+- DOK 2: Skill/concept — compare two ideas, explain a process step, or relate cause and effect using excerpt content (still one best answer).
+- DOK 3: Strategic thinking — apply the concept to a short unseen classroom/everyday scenario that is NOT copied verbatim from the excerpts, but is still fully answerable from excerpt principles.
+- DOK 4: Extended thinking — synthesize two or more distinct ideas from the excerpts into one multi-step stem (e.g. combine process + property, or condition + outcome). Still exactly one correct option; do not invent investigation designs beyond excerpt facts.
 
 HALLUCINATION GUARDRAILS
-- Use ONLY facts supported by EXCERPTS. If the excerpts are thin, ask a simpler DOK-appropriate question rather than inventing content.
-- Do not invent Sri Lankan place names, lab results, or textbook figure numbers.
+- Use ONLY facts supported by EXCERPTS.
 - Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", "Activity", or any external reference.
 
 COMPONENT 4 DISTRACTOR CONTRACT (strict — C4 reads labels in isolation)
@@ -40,10 +47,11 @@ COMPONENT 4 DISTRACTOR CONTRACT (strict — C4 reads labels in isolation)
 - NEAR_MISS: option is almost correct; shares most of the right idea but flips a detail.
 - MISCONCEPTION: option encodes a systematic wrong scientific belief about this topic.
 - COMPLETE_MISS: option is irrelevant or off-topic relative to the stem.
-- distractor_label MUST be a complete standalone sentence that makes 100% sense even if the reader has NEVER seen the question, options, or stem.
+- distractor_label MUST be a complete standalone pedagogical sentence that makes 100% sense even if the reader has NEVER seen the question, options, or stem.
 - The sentence MUST explicitly name (1) the science concept and (2) the exact error in reasoning.
 - BANNED phrasing: "this topic", "the question", "the chosen option", "the student has a misconception", "incorrect option", "wrong answer".
 - GOOD example: "The student incorrectly assumes that all metals are magnetic, rather than just iron, nickel, and cobalt."
+- GOOD example: "The student confuses conductors with insulators, incorrectly believing plastic conducts heat."
 - BAD example: "Reverses attraction of like poles" (too short / not standalone).
 - BAD example: "The student has a misconception about this topic." (no concept, no error).
 
@@ -65,7 +73,7 @@ FEW-SHOT EXAMPLE (shape only; do not copy content):
 }
 
 OUTPUT
-Return ONLY a valid JSON object with this exact shape (no markdown, no commentary):
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text):
 {
   "question": "...",
   "options": {"A": "...", "B": "...", "C": "...", "D": "..."},
