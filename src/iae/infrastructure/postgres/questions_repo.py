@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Iterable
 from uuid import UUID
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, Text, cast, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from iae.domain.models import Question, QuestionOrigin, QuestionStatus, QuestionType, RejectionReason
@@ -219,23 +219,110 @@ class PostgresQuestionRepository:
         dok_level: int | None = None,
         question_type: QuestionType | None = None,
         limit: int = 100,
+        offset: int = 0,
+        origin: QuestionOrigin | None = None,
+        q: str | None = None,
+        topic_id_prefix: str | None = None,
     ) -> list[Question]:
-        stmt = select(QuestionRow).order_by(QuestionRow.created_at.desc()).limit(max(1, limit))
-        if status is not None:
-            stmt = stmt.where(QuestionRow.status == status.value)
-        if topic_id is not None:
-            stmt = stmt.where(QuestionRow.topic_id == topic_id)
-        if grade is not None:
-            stmt = stmt.where(QuestionRow.grade == grade)
-        if grades:
-            stmt = stmt.where(QuestionRow.grade.in_(grades))
-        if dok_level is not None:
-            stmt = stmt.where(QuestionRow.dok_level == dok_level)
-        if question_type is not None:
-            stmt = stmt.where(QuestionRow.question_type == question_type.value)
+        questions, _total = self.list_page(
+            status=status,
+            topic_id=topic_id,
+            grade=grade,
+            grades=grades,
+            dok_level=dok_level,
+            question_type=question_type,
+            limit=limit,
+            offset=offset,
+            origin=origin,
+            q=q,
+            topic_id_prefix=topic_id_prefix,
+        )
+        return questions
+
+    def list_page(
+        self,
+        *,
+        status: QuestionStatus | None = None,
+        topic_id: str | None = None,
+        grade: int | None = None,
+        grades: list[int] | None = None,
+        dok_level: int | None = None,
+        question_type: QuestionType | None = None,
+        limit: int = 100,
+        offset: int = 0,
+        origin: QuestionOrigin | None = None,
+        q: str | None = None,
+        topic_id_prefix: str | None = None,
+    ) -> tuple[list[Question], int]:
+        cap = max(1, min(int(limit), 500))
+        skip = max(0, int(offset))
+        filters = self._list_filters(
+            status=status,
+            topic_id=topic_id,
+            grade=grade,
+            grades=grades,
+            dok_level=dok_level,
+            question_type=question_type,
+            origin=origin,
+            q=q,
+            topic_id_prefix=topic_id_prefix,
+        )
+        count_stmt = select(func.count()).select_from(QuestionRow)
+        list_stmt = select(QuestionRow).order_by(QuestionRow.created_at.desc())
+        for clause in filters:
+            count_stmt = count_stmt.where(clause)
+            list_stmt = list_stmt.where(clause)
+        list_stmt = list_stmt.offset(skip).limit(cap)
         with self._session_factory() as session:
-            rows = session.execute(stmt).scalars().all()
-            return [_to_domain(row) for row in rows]
+            total = int(session.execute(count_stmt).scalar_one())
+            rows = session.execute(list_stmt).scalars().all()
+            return [_to_domain(row) for row in rows], total
+
+    @staticmethod
+    def _list_filters(
+        *,
+        status: QuestionStatus | None,
+        topic_id: str | None,
+        grade: int | None,
+        grades: list[int] | None,
+        dok_level: int | None,
+        question_type: QuestionType | None,
+        origin: QuestionOrigin | None,
+        q: str | None,
+        topic_id_prefix: str | None,
+    ) -> list:
+        clauses = []
+        if status is not None:
+            clauses.append(QuestionRow.status == status.value)
+        if topic_id is not None:
+            clauses.append(QuestionRow.topic_id == topic_id)
+        if grade is not None:
+            clauses.append(QuestionRow.grade == grade)
+        if grades:
+            clauses.append(QuestionRow.grade.in_(grades))
+        if dok_level is not None:
+            clauses.append(QuestionRow.dok_level == dok_level)
+        if question_type is not None:
+            clauses.append(QuestionRow.question_type == question_type.value)
+        if origin == QuestionOrigin.TEACHER:
+            clauses.append(QuestionRow.origin == QuestionOrigin.TEACHER.value)
+        elif origin is not None:
+            clauses.append(QuestionRow.origin != QuestionOrigin.TEACHER.value)
+        prefix = (topic_id_prefix or "").strip().upper()
+        if prefix:
+            clauses.append(QuestionRow.topic_id.ilike(f"{prefix}_%"))
+        needle = (q or "").strip()
+        if needle:
+            like = f"%{needle}%"
+            clauses.append(
+                or_(
+                    QuestionRow.chapter_name.ilike(like),
+                    QuestionRow.topic_id.ilike(like),
+                    QuestionRow.skill.ilike(like),
+                    cast(QuestionRow.payload, Text).ilike(like),
+                )
+            )
+        return clauses
 
     def set_status(self, question_id: str, status: QuestionStatus) -> Question | None:
         try:

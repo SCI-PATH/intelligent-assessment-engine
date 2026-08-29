@@ -361,6 +361,9 @@ class GenerateQuestionsResponse(BaseModel):
 
 class TeacherQuestionListResponse(BaseModel):
     questions: list[Question]
+    total: int = 0
+    offset: int = 0
+    limit: int = 20
 
 
 class CreateTeacherQuestionRequest(BaseModel):
@@ -411,3 +414,29 @@ class RejectQuestionRequest(BaseModel):
 
     reason: RejectionReason = RejectionReason.POOR_PHRASING
     notes: str | None = "Stem is ambiguous for Grade 6."
+
+
+class AnswerTally(BaseModel):
+    answer: str
+    count: int = 0
+
+
+class MostMissedQuestionItem(BaseModel):
+    question_id: str
+    prompt: str = ""
+    topic_id: str = ""
+    chapter_name: str = ""
+    grade: int | None = None
+    status: str | None = None
+    question_type: str | None = None
+    options: dict[str, str] = {}
+    correct_answer: str = ""
+    most_selected: AnswerTally | None = None
+    common_wrong: list[AnswerTally] = []
+    incorrect_count: int
+    attempt_count: int
+    miss_rate: float = 0.0
+
+
+class MostMissedQuestionsResponse(BaseModel):
+    questions: list[MostMissedQuestionItem]

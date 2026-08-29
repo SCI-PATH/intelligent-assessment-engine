@@ -12,7 +12,7 @@ from iae.application.teacher_service import TeacherService
 from iae.config.settings import get_config, get_settings
 from iae.domain.protocols import IGradingService, IQuestionRepository, ISessionRepository
 from iae.infrastructure.clients import Component1Client, Component3Client, Component4Client
-from iae.infrastructure.llm.factory import build_json_llm
+from iae.infrastructure.llm.factory import build_json_llm, build_teacher_generator_llm
 from iae.infrastructure.postgres.amplitude_repo import PostgresAmplitudeRepository
 from iae.infrastructure.postgres.analytics_repo import PostgresAnalyticsRepository
 from iae.infrastructure.postgres.engine import get_session_factory
@@ -50,7 +50,7 @@ def build_container() -> Container:
     amplitude_repo = PostgresAmplitudeRepository(session_factory)
 
     llm = build_json_llm(timeout_s=config.groq_grader_timeout_s)
-    generator_llm = build_json_llm(timeout_s=config.groq_timeout_s)
+    generator_llm = build_teacher_generator_llm()
     embedder = HuggingFaceEmbedder(config.embedding_model)
     grading = GradingService(llm=llm, embedder=embedder)
     c1 = Component1Client()
@@ -65,6 +65,7 @@ def build_container() -> Container:
         retrieval_top_k=config.retrieval_top_k,
         generation_max_retries=config.generation_max_retries,
         users=amplitude_repo,
+        analytics=analytics_repo,
     )
     amplitude_service = AmplitudeService(
         store=amplitude_repo,

@@ -6,9 +6,10 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from sqlalchemy import case, desc, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from iae.infrastructure.postgres.orm import AnalyticsEventRow
+from iae.infrastructure.postgres.orm import AnalyticsEventRow, AttemptRow
 
 
 class PostgresAnalyticsRepository:
@@ -50,3 +51,73 @@ class PostgresAnalyticsRepository:
             session.add(row)
             session.commit()
         return str(event_id)
+
+    def most_missed(
+        self,
+        *,
+        user_ids: list[str] | None = None,
+        limit: int = 8,
+    ) -> list[tuple[str, int, int]]:
+        """Return (question_id, attempt_count, incorrect_count) ordered by misses."""
+        incorrect = func.sum(
+            case((AnalyticsEventRow.is_correct.is_(False), 1), else_=0)
+        )
+        attempts = func.count()
+        cap = max(1, min(int(limit), 100))
+        stmt = (
+            select(
+                AnalyticsEventRow.question_id,
+                attempts.label("attempt_count"),
+                incorrect.label("incorrect_count"),
+            )
+            .where(AnalyticsEventRow.question_id != "")
+            .group_by(AnalyticsEventRow.question_id)
+            .having(incorrect > 0)
+            .order_by(desc(incorrect), desc(attempts))
+            .limit(cap)
+        )
+        if user_ids:
+            stmt = stmt.where(AnalyticsEventRow.user_id.in_(user_ids))
+        with self._session_factory() as session:
+            rows = session.execute(stmt).all()
+            return [
+                (
+                    str(row.question_id),
+                    int(row.attempt_count),
+                    int(row.incorrect_count),
+                )
+                for row in rows
+            ]
+
+    def answer_counts(
+        self, question_id: str
+    ) -> list[tuple[str, int, int]]:
+        """Return (student_answer, total_count, incorrect_count) for one item."""
+        if not question_id:
+            return []
+        total = func.count()
+        incorrect = func.sum(
+            case((AttemptRow.is_correct.is_(False), 1), else_=0)
+        )
+        stmt = (
+            select(
+                AttemptRow.student_answer,
+                total.label("total_count"),
+                incorrect.label("incorrect_count"),
+            )
+            .where(AttemptRow.question_id == question_id)
+            .where(AttemptRow.student_answer != "")
+            .group_by(AttemptRow.student_answer)
+            .order_by(desc(total))
+        )
+        with self._session_factory() as session:
+            rows = session.execute(stmt).all()
+            return [
+                (
+                    str(row.student_answer).strip(),
+                    int(row.total_count),
+                    int(row.incorrect_count or 0),
+                )
+                for row in rows
+                if str(row.student_answer).strip()
+            ]

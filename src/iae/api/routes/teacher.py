@@ -12,6 +12,7 @@ from iae.api.schemas import (
     ErrorDetail,
     GenerateQuestionsRequest,
     GenerateQuestionsResponse,
+    MostMissedQuestionsResponse,
     RejectQuestionRequest,
     TeacherQuestionListResponse,
     TeacherTopicItem,
@@ -20,7 +21,7 @@ from iae.api.schemas import (
 from iae.application.question_generation import RateLimitExceeded
 from iae.application.teacher_service import NoRagContextError, UnknownTopicError
 from iae.domain.curriculum import DEFAULT_GRADE
-from iae.domain.models import Question, QuestionStatus, QuestionType
+from iae.domain.models import Question, QuestionOrigin, QuestionStatus, QuestionType
 
 router = APIRouter(
     prefix="/api/v1/assessment-engine/teacher",
@@ -99,7 +100,8 @@ def generate_questions(
     description=(
         "**Purpose:** Review queue for the question bank.\n\n"
         "**Caller:** Frontend (teacher).\n\n"
-        "**Query filters:** `status`, `grade`, `class_code`, `dok_level`, `question_type`, `topic_id`, `limit`."
+        "**Query filters:** `status`, `grade`, `dok_level`, `question_type`, "
+        "`topic_id`, `topic_id_prefix`, `origin`, `q`, `offset`, `limit`, `all_statuses`."
     ),
 )
 def list_questions(
@@ -108,28 +110,43 @@ def list_questions(
     grade: int | None = Query(default=6, ge=6, le=9),
     class_code: str | None = Query(
         default=None,
-        description="Filter to grades of students in this class (standalone: CLASS-A).",
+        description="Ignored. The bank is shared by every student on the system.",
     ),
     dok_level: int | None = Query(default=None, ge=1, le=4),
     question_type: QuestionType | None = Query(default=None),
+    origin: QuestionOrigin | None = Query(
+        default=None,
+        description="teacher = authored/drafted by teachers. ai = shared bank (not teacher).",
+    ),
+    q: str | None = Query(default=None, max_length=200),
+    topic_id_prefix: str | None = Query(
+        default=None,
+        description="Chapter id prefix such as G6_C7.",
+    ),
+    all_statuses: bool = Query(default=False),
+    offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=500),
     container: Container = Depends(get_container),
 ) -> TeacherQuestionListResponse:
     _ = resolve_teacher_id(MOCK_TEACHER_1)
-    # --- LIVE INTEGRATION (uncomment tomorrow): scope by authenticated teacher class ---
-    # teacher_id = resolve_teacher_id(<auth_header_user_id>)
-    # class_code = class_code or lookup_class_for_teacher(teacher_id)
-
+    questions, total = container.teacher_service.list_questions(
+        status=None if all_statuses else status,
+        topic_id=topic_id,
+        grade=grade,
+        class_code=class_code,
+        dok_level=dok_level,
+        question_type=question_type,
+        origin=origin,
+        q=q,
+        topic_id_prefix=topic_id_prefix,
+        offset=offset,
+        limit=limit,
+    )
     return TeacherQuestionListResponse(
-        questions=container.teacher_service.list_questions(
-            status=status,
-            topic_id=topic_id,
-            grade=grade,
-            class_code=class_code,
-            dok_level=dok_level,
-            question_type=question_type,
-            limit=limit,
-        )
+        questions=questions,
+        total=total,
+        offset=offset,
+        limit=limit,
     )
 
 
@@ -158,11 +175,37 @@ def approve_question(
 
 
 @router.post(
+    "/questions/{question_id}/pending",
+    response_model=Question,
+    summary="Hold a question (status=pending)",
+    description=(
+        "**Purpose:** Set status=`pending` so students stop receiving it. "
+        "The row is kept — questions are never deleted.\n\n"
+        "**Caller:** Frontend (teacher)."
+    ),
+)
+def hold_question(
+    question_id: str = Path(
+        ...,
+        description="Paste id from GET /teacher/questions.",
+        examples=["REPLACE_WITH_QUESTION_ID"],
+    ),
+    container: Container = Depends(get_container),
+) -> Question:
+    _ = resolve_teacher_id(MOCK_TEACHER_1)
+    try:
+        return container.teacher_service.set_status(question_id, QuestionStatus.PENDING)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Question not found.") from None
+
+
+@router.post(
     "/questions/{question_id}/reject",
     response_model=Question,
     summary="Reject with reason",
     description=(
-        "**Purpose:** Reject a bank item with a structured reason.\n\n"
+        "**Purpose:** Set status=`rejected` with a reason. The question stays in "
+        "the bank — it is never deleted.\n\n"
         "**Caller:** Frontend (teacher).\n\n"
         "**Request:** `{ \"reason\": \"FACTUAL_ERROR\", \"notes\": \"...\" }`.\n"
         "Reasons: `FACTUAL_ERROR` | `OUT_OF_SCOPE` | `POOR_PHRASING` | "
@@ -219,3 +262,29 @@ def add_custom_question(
         raise HTTPException(status_code=400, detail=f"Unknown Topic ID: {payload.topic_id}") from None
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from None
+
+
+@router.get(
+    "/insights/most-missed",
+    response_model=MostMissedQuestionsResponse,
+    summary="Most wrongly answered bank questions",
+    description=(
+        "**Purpose:** Rank bank items by incorrect `analytics_events` so teachers "
+        "can reject a flawed stem or reteach a gap.\n\n"
+        "**Caller:** Frontend (teacher).\n\n"
+        "**Query:** `grade`, `limit`. Ranked across every student on the system."
+    ),
+)
+def most_missed_questions(
+    grade: int | None = Query(default=None, ge=6, le=9),
+    class_code: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=50),
+    container: Container = Depends(get_container),
+) -> MostMissedQuestionsResponse:
+    _ = resolve_teacher_id(MOCK_TEACHER_1)
+    rows = container.teacher_service.most_missed_questions(
+        grade=grade,
+        class_code=class_code,
+        limit=limit,
+    )
+    return MostMissedQuestionsResponse(questions=rows)
