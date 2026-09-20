@@ -1,12 +1,28 @@
-{# Contract note: distractor_tag / distractor_label feed Component 4 assessment-submit.
-   Unused C4 payload fields are set to JSON null by the application analytics builder —
-   never invent similarity_score here (derived at grade time from accuracy_score). #}
+{# Design note (template comment — omitted from the rendered LLM prompt).
+
+   Contract: distractor_tag / distractor_label feed Component 4 assessment-submit.
+   Do not invent similarity_score in this template.
+
+   DOK × Bloom mapping:
+   - Persistence and adaptive selection use dok_level ∈ {1,2,3,4} (Webb DOK).
+     The UI may surface this as "Difficulty Level".
+   - Bloom's six process levels are collapsed onto those four bands for generation:
+       DOK 1 = Remember + Understand
+       DOK 2 = Apply + light Analyze
+       DOK 3 = deeper Analyze + Evaluate
+       DOK 4 = Evaluate + Create (constrained to excerpt-grounded synthesis;
+               MCQ must not invent free-form investigation designs)
+   - Generation receives dok_level and bloom_focus; runtime DDA uses dok_level only.
+   - Grade (6–9) controls language and syllabus scope; it does not add Elo or DOK tiers.
+#}
 CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt.
 
-You are an expert Sri Lankan science teacher writing ONE multiple-choice item for the national Grades 6–9 Science curriculum (Ministry of Education / NIE textbooks). Use clear English appropriate for Sri Lankan classroom learners.
+You are an expert Sri Lankan science teacher writing ONE multiple-choice item for Grade {{ grade }} Science (Ministry of Education / NIE textbooks). Use clear English appropriate for a Grade {{ grade }} Sri Lankan classroom learner.
 
 Chapter: {{ chapter_name }}
 Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
+Bloom's cognitive focus for this DOK (verbs to require): {{ bloom_focus }}
+Difficulty Level for UI = DOK {{ dok_level }} (backend field: dok_level).
 {% if avoid_stems %}
 DISTINCTNESS (mandatory)
 - Do NOT reword or paraphrase any of these prior stems for this same topic/DOK/type:
@@ -29,13 +45,13 @@ CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 3) Write one correct option grounded in the excerpts; verify it is indisputably true.
 4) Write three wrong options a Sri Lankan learner might choose; verify each is unambiguously false.
 5) For EACH wrong option choose distractor_tag then write distractor_label that explains WHY that tag fits THIS stem and THIS option text.
-6) Self-critique (internal): Does this item truly require DOK {{ dok_level }} cognitive demand for an MCQ? Is it fully solvable from textbook principles in the excerpts? If either fails, rewrite before emitting JSON.
+6) Self-critique (internal): Does this item truly require DOK {{ dok_level }} cognitive demand (Bloom: {{ bloom_focus }}) for an MCQ? Is it fully solvable from textbook principles in the excerpts? Is the language Grade {{ grade }}-appropriate? If any fails, rewrite before emitting JSON.
 
-MCQ DOK CALIBRATION (follow exactly for level {{ dok_level }}):
-- DOK 1: Direct factual recall — one syllabus fact, definition, label, or recognition from the excerpts (one clear correct option).
-- DOK 2: Skill/concept — compare two ideas, explain a process step, or relate cause and effect using excerpt content (still one best answer).
-- DOK 3: Strategic thinking — apply the concept to a short unseen classroom/everyday scenario that is NOT copied verbatim from the excerpts, but is still fully answerable from excerpt principles.
-- DOK 4: Extended thinking — synthesize two or more distinct ideas from the excerpts into one multi-step stem (e.g. combine process + property, or condition + outcome). Still exactly one correct option; do not invent investigation designs beyond excerpt facts.
+MCQ DOK × BLOOM CALIBRATION (follow exactly for level {{ dok_level }}):
+- DOK 1 (Remember/Understand): Direct factual recall — one syllabus fact, definition, label, or recognition from the excerpts (one clear correct option).
+- DOK 2 (Apply/Analyze simple): Skill/concept — compare two ideas, explain a process step, or relate cause and effect using excerpt content (still one best answer).
+- DOK 3 (Analyze/Evaluate): Strategic thinking — apply the concept to a short unseen classroom/everyday scenario that is NOT copied verbatim from the excerpts, but is still fully answerable from excerpt principles.
+- DOK 4 (Evaluate/Create constrained): Extended thinking — synthesize two or more distinct ideas from the excerpts into one multi-step stem (e.g. combine process + property, or condition + outcome). Still exactly one correct option; do not invent investigation designs beyond excerpt facts.
 
 HALLUCINATION GUARDRAILS
 - Use ONLY facts supported by EXCERPTS.

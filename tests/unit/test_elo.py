@@ -67,6 +67,38 @@ def test_update_elo_slow_answer_damps_delta() -> None:
     assert abs(fast.delta) > abs(slow.delta)
 
 
+def test_update_elo_fast_correct_boosts_more_than_slow_correct() -> None:
+    fast = update_elo(
+        rating=1000.0,
+        item_dok=2,
+        is_correct=True,
+        response_time_s=10.0,
+    )
+    slow = update_elo(
+        rating=1000.0,
+        item_dok=2,
+        is_correct=True,
+        response_time_s=90.0,
+    )
+    assert fast.delta > slow.delta > 0
+
+
+def test_update_elo_fast_wrong_penalizes_more_than_slow_wrong() -> None:
+    fast = update_elo(
+        rating=1000.0,
+        item_dok=2,
+        is_correct=False,
+        response_time_s=8.0,
+    )
+    slow = update_elo(
+        rating=1000.0,
+        item_dok=2,
+        is_correct=False,
+        response_time_s=90.0,
+    )
+    assert fast.delta < slow.delta < 0
+
+
 def test_update_elo_dok_step_at_most_one() -> None:
     # Very high rating after easy correct should still only step +1 DOK.
     result = update_elo(

@@ -37,6 +37,15 @@ DOK_DESCRIPTORS: dict[int, str] = {
     4: "Extended Thinking: synthesize across paragraphs or design a small investigation.",
 }
 
+# Bloom's six cognitive process verbs collapsed onto Webb DOK 1–4 (prompt-only;
+# DB/API field remains dok_level). UI may label this "Difficulty Level".
+BLOOM_FOR_DOK: dict[int, str] = {
+    1: "Remember / Understand",
+    2: "Apply / Analyze (simple)",
+    3: "Analyze / Evaluate",
+    4: "Evaluate / Create (constrained to excerpt facts)",
+}
+
 PROMPT_FOR_TYPE: dict[QuestionType, str] = {
     QuestionType.MCQ: "question_bank_generation/mcq.jinja",
     QuestionType.SHORT_ANSWER: "question_bank_generation/short_answer.jinja",
@@ -448,6 +457,8 @@ def generate_one(
         sub_concept=sub_concept,
         dok_level=dok,
         dok_descriptor=DOK_DESCRIPTORS[dok],
+        bloom_focus=BLOOM_FOR_DOK.get(dok, BLOOM_FOR_DOK[2]),
+        grade=grade,
         context=context,
         avoid_stems=list(avoid_stems or []),
     )

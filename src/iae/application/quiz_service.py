@@ -82,7 +82,18 @@ def _normalize_c1_source(raw: Any) -> str:
 
 
 def _elo_from_bkt_snapshot(bkt: dict[str, Any]) -> float:
-    """Seed Elo from average topic mastery_probability when present."""
+    """Seed session Elo R from Component 4's BKT snapshot at quiz start.
+
+    Process: C4 returns per-topic mastery_probability P(L). We map the mean
+    onto the same 800–1400 scale used for DOK bands::
+
+        R0 = 800 + 600 * mean(P(L))
+
+    So we do **not** always start at 1000 when C4 data is present.
+    ``1000`` is only the neutral fallback when topic_bkt has no usable
+    mastery rows (cold start / C4 unavailable). R stays internal to C2 —
+    never included in the assessment-submit payload to C4.
+    """
     topic_bkt = bkt.get("topic_bkt") if isinstance(bkt, dict) else None
     if isinstance(topic_bkt, dict) and topic_bkt:
         probs: list[float] = []
@@ -473,7 +484,23 @@ class QuizService:
         hist_ok = [a.is_correct for a in session.history]
         hist_types = [a.question_type for a in session.history]
         last = session.history[-1] if session.history else None
+        # Last served topic (for DOK-floor stall → mastery-gap reallocation).
+        last_topic_id: str | None = None
+        if last is not None:
+            crumb = (last.adaptive_decision or "").strip()
+            if "topic=" in crumb:
+                last_topic_id = crumb.split("topic=", 1)[1].split()[0]
+            routing = (session.bkt_snapshot or {}).get("_last_routing") if isinstance(
+                session.bkt_snapshot, dict
+            ) else None
+            if isinstance(routing, dict):
+                last_topic_id = (
+                    str(routing.get("served_topic_id") or routing.get("topic_id") or last_topic_id or "")
+                    .strip()
+                    or last_topic_id
+                )
 
+        # Multivariate policy owns topic + DOK + type (Elo update only adjusts R).
         decision: MultivariateDecision = select_next_item(
             elo_rating=session.elo_rating,
             chapter_ids=chapter_ids,
@@ -486,6 +513,7 @@ class QuizService:
             recently_used_topics=recent_topics,
             history_correct=hist_ok,
             history_types=hist_types,
+            last_topic_id=last_topic_id,
         )
 
         # Never repeat question_id in this session (hard). Soft prefer different
