@@ -2,6 +2,8 @@
 
 from iae.adaptive.multivariate_policy import (
     MultivariateDecision,
+    is_dok_floor_stall,
+    scaffold_triggered,
     select_next_item,
 )
 from iae.adaptive.time_discounted_elo import (
@@ -16,6 +18,8 @@ __all__ = [
     "MultivariateDecision",
     "dok_to_elo",
     "elo_to_target_dok",
+    "is_dok_floor_stall",
+    "scaffold_triggered",
     "select_next_item",
     "update_elo",
 ]

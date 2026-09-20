@@ -1,10 +1,26 @@
-{# Contract note: MultiBlank grading derives similarity_score / error_category in app code. #}
+{# Design note (template comment — omitted from the rendered LLM prompt).
+
+   Contract: MultiBlank similarity_score / error_category are assigned in grading code.
+
+   DOK × Bloom mapping:
+   - Persistence and adaptive selection use dok_level ∈ {1,2,3,4} (Webb DOK).
+     The UI may surface this as "Difficulty Level".
+   - Bloom's six process levels are collapsed onto those four bands for generation:
+       DOK 1 = Remember + Understand
+       DOK 2 = Apply + light Analyze
+       DOK 3 = deeper Analyze + Evaluate
+       DOK 4 = Evaluate + Create (constrained to excerpt-grounded synthesis)
+   - Generation receives dok_level and bloom_focus; runtime DDA uses dok_level only.
+   - Grade (6–9) controls language and syllabus scope; it does not add Elo or DOK tiers.
+#}
 CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt.
 
-You are an expert Sri Lankan science teacher writing ONE cloze (fill-in-the-blanks) paragraph for Grades 6–9 Science.
+You are an expert Sri Lankan science teacher writing ONE cloze (fill-in-the-blanks) paragraph for Grade {{ grade }} Science. Use language appropriate for a Grade {{ grade }} learner.
 
 Chapter: {{ chapter_name }}
 Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
+Bloom's cognitive focus for this DOK (verbs to require): {{ bloom_focus }}
+Difficulty Level for UI = DOK {{ dok_level }} (backend field: dok_level).
 {% if avoid_stems %}
 DISTINCTNESS (mandatory)
 - Do NOT reword or paraphrase any of these prior paragraphs for this same topic/DOK/type:
@@ -25,13 +41,13 @@ CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 2) Choose 3–5 scientifically meaningful blanks (not articles/prepositions).
 3) Write each blank exactly as [_____].
 4) List answers lowercase, in blank order, supported by the excerpts; verify each is correct.
-5) Self-critique (internal): Does this cloze truly require DOK {{ dok_level }}? Is every blank solvable from textbook principles in the excerpts? If either fails, rewrite before emitting JSON.
+5) Self-critique (internal): Does this cloze truly require DOK {{ dok_level }} (Bloom: {{ bloom_focus }})? Is every blank solvable from textbook principles in the excerpts? Is the language Grade {{ grade }}-appropriate? If any fails, rewrite before emitting JSON.
 
-MULTI-BLANK DOK CALIBRATION (follow exactly for level {{ dok_level }}):
-- DOK 1: Cloze of key terms from one syllabus fact or definition (recall of labels/terms from the excerpts).
-- DOK 2: Cloze that tracks a process or compares two ideas (ordered steps or related properties from the excerpts).
-- DOK 3: Cloze set in a short applied classroom/everyday scenario not copied verbatim from the excerpts, with blanks still answerable from excerpt principles.
-- DOK 4: Cloze that requires linking two or more distinct ideas across the excerpts in one paragraph (synthesis of terms/relations); still 3–5 blanks, no invented investigation design.
+MULTI-BLANK DOK × BLOOM CALIBRATION (follow exactly for level {{ dok_level }}):
+- DOK 1 (Remember/Understand): Cloze of key terms from one syllabus fact or definition (recall of labels/terms from the excerpts).
+- DOK 2 (Apply/Analyze simple): Cloze that tracks a process or compares two ideas (ordered steps or related properties from the excerpts).
+- DOK 3 (Analyze/Evaluate): Cloze set in a short applied classroom/everyday scenario not copied verbatim from the excerpts, with blanks still answerable from excerpt principles.
+- DOK 4 (Evaluate/Create constrained): Cloze that requires linking two or more distinct ideas across the excerpts in one paragraph (synthesis of terms/relations); still 3–5 blanks, no invented investigation design.
 
 HALLUCINATION GUARDRAILS
 - Every blank must be answerable from EXCERPTS only.

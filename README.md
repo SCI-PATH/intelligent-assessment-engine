@@ -50,19 +50,39 @@ BKT P(L) values live only in Component 4. Component 2 keeps a **session-memory**
 
 Local testing: inject `grade` and `user_id` before live profile wiring.
 
-### Dynamic Difficulty Adjustment (Time-Discounted Elo)
+### Dynamic Difficulty Adjustment (Time-Discounted Elo + multivariate policy)
 
-Student ability rating `R` (seeded from C4 mastery when available, else ~1000).
+**Session ability `R` (Elo)** is internal to Component 2 — used to pick the next item’s hardness. It is **never** sent to Component 4.
+
+**Seed at quiz start (not always 1000):** C4’s BKT snapshot supplies per-topic `mastery_probability` P(L). We set:
 
 ```text
-b = 800 + (dok - 1) * 200
+R0 = 800 + 600 * mean(P(L))
+```
+
+`1000` is only the **fallback** when no usable mastery rows exist (cold start / C4 down).
+
+**Project calibration** (maps DOK 1–4 onto an Elo-like scale — not a universal Elo law):
+
+```text
+b = 800 + (dok - 1) * 200          # DOK1≈800 … DOK4≈1400
 expected = 1 / (1 + 10 ** ((b - R) / 400))
 time_factor = clip(T / max(t, 1), 0.5, 1.5)
 delta = K * time_factor * (s - expected)
 R <- R + delta
 ```
 
-Next DOK near the new rating, stepped by at most ±1. Types rotate MCQ → TrueFalse → MultiBlank → ShortAnswer.
+Fast correct boosts `R` more than slow correct; fast wrong drops `R` more than slow wrong.
+
+**Three next-item axes** (`multivariate_policy`):
+
+1. **DOK** — blend session `R` with the chosen topic’s P(L) (`R_eff`), then ±1 steps.
+2. **Type (cognitive scaffolding)** — after a wrong Short Answer / MultiBlank, **hold DOK** and serve MCQ/TrueFalse before lowering content difficulty.
+3. **Topic** — mastery gap (prefer low P(L)). **DOK-floor stall:** consecutive wrongs at DOK 1 on recognition formats → **mastery-gap topic reallocation** to a different skill. Do not call this “frustration” (another component owns that term).
+
+**Grade scaling:** same Elo/DOK math for grades 6–9. Linguistic/conceptual complexity comes from **grade-filtered question banks** and **grade + Bloom×DOK wording in generation prompts** — not extra Elo tiers. UI may label DOK as “Difficulty Level”; DB/API field stays `dok_level`.
+
+**Viva (browser Network tab):** Create quiz → `GET .../next` → `POST .../answer` with different `time_taken_seconds` and watch `elo_rating`; next `/next` for `target_dok` / `target_question_type` / `target_topic_id` shifts (scaffold = same DOK, easier type; floor-stall = new topic).
 
 **Served questions:** permanently blocked only after a **correct** answer or **similarity ≥ 0.8**. Exhaustion rotates previously mastered items instead of failing empty.
 
