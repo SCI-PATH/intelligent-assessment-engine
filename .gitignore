@@ -1,0 +1,33 @@
+venv/
+.venv/
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+data/chroma_db/
+data/cache/
+
+frontend/
+
+.qodo/
+.idea/
+.vscode/
+*.log
+
+# Microsoft Office lock / temp files (created while a workbook is open)
+**/~$*.xlsx
+**/~$*.xls
+**/~$*.docx
+
+# Cursor IDE local plans (not part of the product)
+.cursor/plans/
+
+# Local Postgres DDL (keep on disk; do not publish)
+src/iae/infrastructure/postgres/schema.sql
