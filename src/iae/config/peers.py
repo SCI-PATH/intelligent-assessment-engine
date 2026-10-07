@@ -3,11 +3,11 @@
 Hardcoded hosts — edit THIS FILE for deployment (do not use .env for peer URLs).
 
 Local vs deployed (port map):
-  Component 1 (Lesson Engine)     → :8000  → http://3.6.20.31:8000
-  User Management (not called here) → :8001 → http://3.6.20.31:8001
-  Component 3 (Engagement / Gaming) → :8002 → http://3.6.20.31:8002
-  Component 4 (Learner Analytics) → :8003  → http://52.66.167.213:8003
-  Component 2 (this service)      → :8004  → http://43.204.6.115:8004
+  Component 1 (Lesson Engine)     → :8000  → http://54.253.38.67:8000
+  User Management (not called here) → :8001 → http://54.253.38.67:8001
+  Component 3 (Engagement / Gaming) → :8002 → http://54.253.38.67:8002
+  Component 4 (Learner Analytics) → :8003  → http://54.253.36.7:8003
+  Component 2 (this service)      → :8004  → http://3.104.28.68:8004
 
 Per-peer live flags: try the deployed host first, fall back to hardcoded mock
 on timeout / HTTP error. ``PEER_HTTP_LIVE`` gates C3; ``C1_HTTP_LIVE`` gates
@@ -20,9 +20,9 @@ from __future__ import annotations
 # Deploy: production / EC2 base URLs (port identifies the service).
 # For pure local peers, swap back to http://localhost:PORT.
 # ---------------------------------------------------------------------------
-COMPONENT_1_URL = "http://3.6.20.31:8000"
-COMPONENT_3_URL = "http://3.6.20.31:8002"
-COMPONENT_4_URL = "http://52.66.167.213:8003"
+COMPONENT_1_URL = "http://54.253.38.67:8000"
+COMPONENT_3_URL = "http://54.253.38.67:8002"
+COMPONENT_4_URL = "http://54.253.36.7:8003"
 
 # False → hardcoded mocks in peer clients.
 # True  → live httpx against the URLs above (falls back to mock on error).
