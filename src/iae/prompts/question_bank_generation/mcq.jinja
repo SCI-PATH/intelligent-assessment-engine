@@ -1,28 +1,55 @@
 {# Design note (template comment — omitted from the rendered LLM prompt).
 
    Contract: distractor_tag / distractor_label feed Component 4 assessment-submit.
-   Do not invent similarity_score in this template.
+   Do not invent similarity_score, and do not add cognitive_metadata to the JSON.
+   Bloom × DOK is an authoring contract only. The stored field remains dok_level.
 
-   DOK × Bloom mapping:
-   - Persistence and adaptive selection use dok_level ∈ {1,2,3,4} (Webb DOK).
-     The UI may surface this as "Difficulty Level".
-   - Bloom's six process levels are collapsed onto those four bands for generation:
-       DOK 1 = Remember + Understand
-       DOK 2 = Apply + light Analyze
-       DOK 3 = deeper Analyze + Evaluate
-       DOK 4 = Evaluate + Create (constrained to excerpt-grounded synthesis;
-               MCQ must not invent free-form investigation designs)
-   - Generation receives dok_level and bloom_focus; runtime DDA uses dok_level only.
-   - Grade (6–9) controls language and syllabus scope; it does not add Elo or DOK tiers.
+   Dual target (Anderson & Krathwohl, 2001 × Webb, 2002):
+   - DOK 1 = Remember or Understand, 1 step, factual
+   - DOK 2 = Apply or Analyze, 2 steps, conceptual
+   - DOK 3 = Analyze or Evaluate, 3 steps, strategic
+   - DOK 4 = Evaluate or Create, constrained to excerpt facts, 4 steps
 #}
-CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt.
+CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt. Do NOT write the words "Bloom" or "DOK" in the student-facing stem or options.
 
 You are an expert Sri Lankan science teacher writing ONE multiple-choice item for Grade {{ grade }} Science (Ministry of Education / NIE textbooks). Use clear English appropriate for a Grade {{ grade }} Sri Lankan classroom learner.
 
 Chapter: {{ chapter_name }}
-Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
-Bloom's cognitive focus for this DOK (verbs to require): {{ bloom_focus }}
-Difficulty Level for UI = DOK {{ dok_level }} (backend field: dok_level).
+
+================================================================================
+RESEARCH CONTRACT — DUAL COGNITIVE TARGET
+Bloom's Revised Taxonomy (Anderson & Krathwohl, 2001) × Webb's Depth of Knowledge (Webb, 2002)
+================================================================================
+This is a joint target, not a label pasted onto a normal question.
+- BLOOM names the mental OPERATION the student must perform to reach the keyed option (the action verb).
+- WEBB'S DOK names the DEPTH CEILING: how many independent reasoning steps are required, and how unfamiliar the situation may be.
+- The same Bloom verb at two depths is two different items. "Analyze" on a copied definition is still DOK 1. "Analyze" on an unseen classroom observation is DOK 3. If the verb and the depth disagree, REJECT the item and rewrite it.
+- Difficulty Level shown in the UI is this DOK level. Bloom is not a hidden tag. The stem itself must force the verb below.
+
+REQUESTED PAIR FOR THIS ITEM (use this pair only):
+- Webb DOK: Level {{ dok_level }} — {{ dok_descriptor }}
+- Bloom process the stem MUST force: {{ bloom_focus }}
+{% if dok_level == 1 %}
+- Active contract: DOK 1 × Bloom Remember or Understand. Knowledge dimension: Factual. Reasoning steps: exactly 1. The student recognises or restates one excerpt fact. No scenario, no comparison, no "what would happen".
+{% elif dok_level == 2 %}
+- Active contract: DOK 2 × Bloom Apply or Analyze (simple). Knowledge dimension: Conceptual. Reasoning steps: exactly 2. The student must relate two ideas or apply one known relationship to a familiar case. A one-line definition recall is a FAIL.
+{% elif dok_level == 3 %}
+- Active contract: DOK 3 × Bloom Analyze or Evaluate. Knowledge dimension: Conceptual. Reasoning steps: at least 3. The student must judge an unseen classroom or everyday observation using an excerpt principle. Copying a textbook sentence into the stem is a FAIL.
+{% else %}
+- Active contract: DOK 4 × Bloom Evaluate or Create (constrained to excerpt facts). Knowledge dimension: Conceptual synthesis. Reasoning steps: at least 4. The student must combine two distinct excerpt ideas in one multi-step stem. Do not invent an investigation the excerpts do not support.
+{% endif %}
+
+COGNITIVE DEMAND MATRIX (the full research design — follow the row for DOK {{ dok_level }}):
+- DOK 1 × Remember/Understand: one syllabus fact, unit, label, or definition. One step.
+- DOK 2 × Apply/Analyze: cause and effect, a comparison, or one law applied to a familiar case. Two steps.
+- DOK 3 × Analyze/Evaluate: an unseen observation, anomaly, or result. The learner decides which principle explains it. Three or more steps.
+- DOK 4 × Evaluate/Create (constrained): two excerpt principles combined into one scenario (process + property, or condition + outcome). Four or more steps. Still exactly one correct option.
+
+INTERNAL VERIFICATION (do this before you emit JSON; do not print it):
+1. Can the keyed option be reached ONLY by performing "{{ bloom_focus }}"?
+2. Count the reasoning steps. DOK 1 needs 1. DOK 2 needs 2. DOK 3 needs at least 3. DOK 4 needs at least 4.
+3. If dok_level is 2, 3, or 4 and the item collapses to "remember the definition", rewrite it.
+4. If the stem names Bloom, DOK, the excerpt, a figure, or an activity, rewrite it.
 {% if avoid_stems %}
 DISTINCTNESS (mandatory)
 - Do NOT reword or paraphrase any of these prior stems for this same topic/DOK/type:
@@ -37,25 +64,19 @@ SCIENTIFIC ACCURACY (mandatory — syllabus grounding)
 - The designated correct_answer must be indisputably true given the excerpts.
 - Every wrong option must be unambiguously incorrect (no ambiguous or partially-true distractors).
 - Do not invent numbers, species, laws, place names, lab results, or figure references absent from the excerpts.
-- If excerpts are thin, write a simpler DOK-appropriate MCQ still fully grounded in what is present — never invent content to force a higher DOK.
+- If excerpts are thin, write a simpler item that still meets DOK {{ dok_level }} using only what is present — never invent content to force a higher DOK, and never drop below the requested pair.
 
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 1) Extract the science idea(s) from the excerpts that match this chapter.
-2) Choose a stem that matches the requested MCQ DOK calibration below without inventing facts.
+2) Write a stem that forces Bloom "{{ bloom_focus }}" at DOK {{ dok_level }}, not a neighbouring cell of the matrix.
 3) Write one correct option grounded in the excerpts; verify it is indisputably true.
 4) Write three wrong options a Sri Lankan learner might choose; verify each is unambiguously false.
 5) For EACH wrong option choose distractor_tag then write distractor_label that explains WHY that tag fits THIS stem and THIS option text.
-6) Self-critique (internal): Does this item truly require DOK {{ dok_level }} cognitive demand (Bloom: {{ bloom_focus }}) for an MCQ? Is it fully solvable from textbook principles in the excerpts? Is the language Grade {{ grade }}-appropriate? If any fails, rewrite before emitting JSON.
-
-MCQ DOK × BLOOM CALIBRATION (follow exactly for level {{ dok_level }}):
-- DOK 1 (Remember/Understand): Direct factual recall — one syllabus fact, definition, label, or recognition from the excerpts (one clear correct option).
-- DOK 2 (Apply/Analyze simple): Skill/concept — compare two ideas, explain a process step, or relate cause and effect using excerpt content (still one best answer).
-- DOK 3 (Analyze/Evaluate): Strategic thinking — apply the concept to a short unseen classroom/everyday scenario that is NOT copied verbatim from the excerpts, but is still fully answerable from excerpt principles.
-- DOK 4 (Evaluate/Create constrained): Extended thinking — synthesize two or more distinct ideas from the excerpts into one multi-step stem (e.g. combine process + property, or condition + outcome). Still exactly one correct option; do not invent investigation designs beyond excerpt facts.
+6) Run the internal verification above. If any check fails, rewrite before emitting JSON.
 
 HALLUCINATION GUARDRAILS
 - Use ONLY facts supported by EXCERPTS.
-- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", "Activity", or any external reference.
+- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", "Activity", "Bloom", or "DOK".
 
 COMPONENT 4 DISTRACTOR CONTRACT (strict — C4 reads labels in isolation)
 - distractor_tag MUST be exactly one of these three strings (no synonyms, no lowercase):
@@ -75,21 +96,80 @@ WRITING RULES
 - Exactly four options labelled A, B, C, D; exactly one correct.
 - For EACH wrong option only, supply distractor_tag and distractor_label inside option_diagnostics.
 - Never include option_diagnostics for the correct_answer letter.
+- Do NOT add cognitive_metadata, dok_level, or bloom_verb fields. Those belong in the headings above the examples, not in the JSON.
 
-FEW-SHOT EXAMPLE (shape only; do not copy content):
+FEW-SHOT EXEMPLARS (cognitive pattern + required JSON shape).
+Do NOT copy these facts or stems. Rebuild every fact from EXCERPTS at DOK {{ dok_level }}.
+
+--- EXEMPLAR 1: DOK 1 × Bloom Remember (Factual, 1 step) ---
+The student only has to recognise one stated instrument. No scenario.
 {
-  "question": "Which statement about magnets is correct?",
-  "options": {"A": "Like poles attract", "B": "Unlike poles attract", "C": "Magnets only work in water", "D": "All metals are magnets"},
+  "question": "Which instrument is used in the laboratory to measure the magnitude of a force?",
+  "options": {"A": "Beam balance", "B": "Spring balance", "C": "Measuring cylinder", "D": "Thermometer"},
   "correct_answer": "B",
   "option_diagnostics": {
-    "A": {"distractor_tag": "MISCONCEPTION", "distractor_label": "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel and unlike poles attract."},
-    "C": {"distractor_tag": "COMPLETE_MISS", "distractor_label": "The student incorrectly assumes magnets only function in water, adding an unrelated environmental constraint that is not part of magnetic pole behaviour."},
-    "D": {"distractor_tag": "NEAR_MISS", "distractor_label": "The student incorrectly assumes that all metals are magnetic, rather than just iron, nickel, and cobalt."}
+    "A": {"distractor_tag": "NEAR_MISS", "distractor_label": "The student confuses a beam balance, which compares masses, with a spring balance, which measures the magnitude of a force."},
+    "C": {"distractor_tag": "COMPLETE_MISS", "distractor_label": "The student selects a measuring cylinder, an instrument for liquid volume, when the required quantity is force."},
+    "D": {"distractor_tag": "COMPLETE_MISS", "distractor_label": "The student selects a thermometer, an instrument for temperature, when the required quantity is force."}
+  }
+}
+
+--- EXEMPLAR 2: DOK 2 × Bloom Apply (Conceptual, 2 steps) ---
+Step 1: metals expand when heated. Step 2: the lid expands more than the glass, so it loosens. A definition of expansion alone is not enough.
+{
+  "question": "A tight metal lid on a glass jar can be opened more easily after the lid is held in warm water for a minute. Which scientific principle explains this?",
+  "options": {
+    "A": "The glass jar contracts while the metal lid stays the same size.",
+    "B": "The metal lid expands more than the glass jar.",
+    "C": "The warm water melts an adhesive between the lid and the jar.",
+    "D": "Water pressure forces the metal lid to loosen."
+  },
+  "correct_answer": "B",
+  "option_diagnostics": {
+    "A": {"distractor_tag": "MISCONCEPTION", "distractor_label": "The student believes heating makes glass contract, reversing thermal expansion, which increases the size of both the metal and the glass."},
+    "C": {"distractor_tag": "COMPLETE_MISS", "distractor_label": "The student invents a melting adhesive as the cause, instead of the greater expansion of the metal lid."},
+    "D": {"distractor_tag": "COMPLETE_MISS", "distractor_label": "The student attributes the loose lid to water pressure, which is not the reason a warmed metal lid opens more easily."}
+  }
+}
+
+--- EXEMPLAR 3: DOK 3 × Bloom Analyze (Strategic, 3 steps) ---
+The student must compare four conditions, recall that rusting needs both oxygen and water, then judge that salt water plus air is fastest.
+{
+  "question": "Four identical clean iron nails were left for four days: Tube 1 in dry air with silica gel, Tube 2 in boiled water covered with oil, Tube 3 in tap water open to air, and Tube 4 in salt water open to air. In which tube does rusting occur fastest, and why?",
+  "options": {
+    "A": "Tube 2, because boiled water contains minerals that speed corrosion.",
+    "B": "Tube 1, because dry oxygen reacts with iron without liquid interference.",
+    "C": "Tube 4, because dissolved salt speeds the reaction when both water and oxygen are present.",
+    "D": "Tube 3, because tap water has no oil barrier and is therefore the most reactive."
+  },
+  "correct_answer": "C",
+  "option_diagnostics": {
+    "A": {"distractor_tag": "MISCONCEPTION", "distractor_label": "The student treats boiled water under oil as corrosive, missing that rusting of iron requires both oxygen and water together."},
+    "B": {"distractor_tag": "MISCONCEPTION", "distractor_label": "The student believes dry oxygen alone rusts iron, omitting the requirement for water as well as oxygen."},
+    "D": {"distractor_tag": "NEAR_MISS", "distractor_label": "The student correctly rejects the oil-covered tube but stops at open tap water, missing that dissolved salt makes rusting faster when air is also present."}
+  }
+}
+
+--- EXEMPLAR 4: DOK 4 × Bloom Evaluate (constrained synthesis, 4 steps) ---
+The student must combine expansion on heating with the idea that different metals expand differently, then judge a two-metal strip. Do not copy this bimetal strip unless the excerpts support it.
+{
+  "question": "A straight strip is made by fastening a brass layer to a steel layer along their length. Brass expands more than steel for the same temperature rise. The strip is heated evenly. Which description of the strip is correct?",
+  "options": {
+    "A": "It stays straight because both metals are heated by the same amount.",
+    "B": "It bends so the brass layer is on the outside of the curve, because brass lengthens more than steel.",
+    "C": "It bends so the steel layer is on the outside of the curve, because steel is the stronger metal.",
+    "D": "It shortens, because heating always makes metals contract."
+  },
+  "correct_answer": "B",
+  "option_diagnostics": {
+    "A": {"distractor_tag": "MISCONCEPTION", "distractor_label": "The student assumes equal heating produces equal expansion, ignoring that brass and steel lengthen by different amounts."},
+    "C": {"distractor_tag": "NEAR_MISS", "distractor_label": "The student expects the strip to bend but places steel on the outside, reversing which metal expands more."},
+    "D": {"distractor_tag": "MISCONCEPTION", "distractor_label": "The student claims metals contract when heated, which reverses thermal expansion."}
   }
 }
 
 OUTPUT
-Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text):
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text, no taxonomy fields):
 {
   "question": "...",
   "options": {"A": "...", "B": "...", "C": "...", "D": "..."},

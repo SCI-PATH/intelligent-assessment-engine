@@ -31,3 +31,6 @@ frontend/
 
 # Local Postgres DDL (keep on disk; do not publish)
 src/iae/infrastructure/postgres/schema.sql
+
+# Local improvement notes / blueprints (do not commit)
+improvements/

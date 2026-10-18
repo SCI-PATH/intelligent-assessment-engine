@@ -1,27 +1,50 @@
 {# Design note (template comment — omitted from the rendered LLM prompt).
 
-   Contract: no distractor fields in this template; similarity_score / error_category
-   are derived at grading time.
-
-   DOK × Bloom mapping:
-   - Persistence and adaptive selection use dok_level ∈ {1,2,3,4} (Webb DOK).
-     The UI may surface this as "Difficulty Level".
-   - Bloom's six process levels are collapsed onto those four bands for generation:
-       DOK 1 = Remember + Understand
-       DOK 2 = Apply + light Analyze
-       DOK 3 = deeper Analyze + Evaluate
-       DOK 4 = Evaluate + Create (constrained to excerpt-grounded synthesis)
-   - Generation receives dok_level and bloom_focus; runtime DDA uses dok_level only.
-   - Grade (6–9) controls language and syllabus scope; it does not add Elo or DOK tiers.
+   Contract: no distractor fields. similarity_score / error_category are graded later.
+   Do not add cognitive_metadata to the JSON.
+   Bloom × DOK is an authoring contract only. The stored field remains dok_level.
 #}
-CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt.
+CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt. Do NOT write the words "Bloom" or "DOK" in the student-facing question.
 
 You are an expert Sri Lankan science teacher writing ONE short-answer item for Grade {{ grade }} Science. Expect a 2–4 sentence student response in clear English for a Grade {{ grade }} learner.
 
 Chapter: {{ chapter_name }}
-Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
-Bloom's cognitive focus for this DOK (verbs to require): {{ bloom_focus }}
-Difficulty Level for UI = DOK {{ dok_level }} (backend field: dok_level).
+
+================================================================================
+RESEARCH CONTRACT — DUAL COGNITIVE TARGET
+Bloom's Revised Taxonomy (Anderson & Krathwohl, 2001) × Webb's Depth of Knowledge (Webb, 2002)
+================================================================================
+This is a joint target, not a label pasted onto a normal question.
+- BLOOM names the mental OPERATION the student must perform in the written answer (the action verb).
+- WEBB'S DOK names the DEPTH CEILING: how many independent reasoning steps the ideal answer must contain, and how unfamiliar the situation may be.
+- "Explain" at DOK 1 is a definition. "Explain" at DOK 3 applies a principle to an unseen case. If the verb and the depth disagree, REJECT the item and rewrite it.
+- The question must invite an explanation, not a yes/no.
+- Difficulty Level shown in the UI is this DOK level. The stem itself must force the verb below.
+
+REQUESTED PAIR FOR THIS ITEM (use this pair only):
+- Webb DOK: Level {{ dok_level }} — {{ dok_descriptor }}
+- Bloom process the answer MUST perform: {{ bloom_focus }}
+{% if dok_level == 1 %}
+- Active contract: DOK 1 × Bloom Remember or Understand. Knowledge dimension: Factual. Reasoning steps in the ideal answer: exactly 1. Ask for a definition, label, or one stated fact. Do not ask "what would happen".
+{% elif dok_level == 2 %}
+- Active contract: DOK 2 × Bloom Apply or Analyze (simple). Knowledge dimension: Conceptual. Reasoning steps in the ideal answer: exactly 2. Ask the student to explain a process or compare two excerpt ideas. A definition-only stem is a FAIL.
+{% elif dok_level == 3 %}
+- Active contract: DOK 3 × Bloom Analyze or Evaluate. Knowledge dimension: Conceptual. Reasoning steps in the ideal answer: at least 3. Ask the student to judge a short unseen classroom or everyday case. The case must still be answerable from excerpt principles.
+{% else %}
+- Active contract: DOK 4 × Bloom Evaluate or Create (constrained to excerpt facts). Knowledge dimension: Conceptual synthesis. Reasoning steps in the ideal answer: at least 4. The ideal answer must link two distinct excerpt ideas. Do not ask the student to invent an experiment the excerpts do not support.
+{% endif %}
+
+COGNITIVE DEMAND MATRIX (the full research design — follow the row for DOK {{ dok_level }}):
+- DOK 1 × Remember/Understand: define or name one fact. One step in the ideal answer.
+- DOK 2 × Apply/Analyze: explain a mechanism or compare two ideas. Two steps.
+- DOK 3 × Analyze/Evaluate: apply a principle to an unseen case and justify the outcome. Three or more steps.
+- DOK 4 × Evaluate/Create (constrained): connect two excerpt ideas into one explanation. Four or more steps.
+
+INTERNAL VERIFICATION (do this before you emit JSON; do not print it):
+1. Does the stem force "{{ bloom_focus }}", rather than a lower verb?
+2. Count the steps a strong answer must take. DOK 1 needs 1. DOK 2 needs 2. DOK 3 needs at least 3. DOK 4 needs at least 4.
+3. If dok_level is 2, 3, or 4 and the ideal answer is only a definition, rewrite the stem.
+4. Keywords must be the science terms required for full credit, not the words Bloom or DOK.
 {% if avoid_stems %}
 DISTINCTNESS (mandatory)
 - Do NOT reword or paraphrase any of these prior stems for this same topic/DOK/type:
@@ -35,34 +58,56 @@ SCIENTIFIC ACCURACY (mandatory — syllabus grounding)
 - The question stem, ideal_answer, and keywords must be 100% factually accurate and supported by EXCERPTS only.
 - The ideal_answer must be indisputably correct given the excerpts.
 - Do not invent facts, mechanisms, or examples absent from the excerpts.
-- If excerpts are thin, write a simpler DOK-appropriate short-answer still fully grounded — never invent content to force a higher DOK.
+- If excerpts are thin, write a simpler item that still meets DOK {{ dok_level }} using only what is present.
 
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
 1) Select the assessable idea from the excerpts.
-2) Write a stem that invites explanation (not a yes/no) at the requested DOK.
-3) Draft an ideal_answer a strong Sri Lankan student would write; verify every claim against EXCERPTS.
+2) Write a stem at Bloom "{{ bloom_focus }}" and DOK {{ dok_level }} that invites explanation.
+3) Draft an ideal_answer a strong Sri Lankan student would write, with the step count required above. Verify every claim against EXCERPTS.
 4) List 3–6 concept keywords (not stop words) required for full credit.
-5) Self-critique (internal): Does this short-answer truly require DOK {{ dok_level }} (Bloom: {{ bloom_focus }})? Is it fully solvable from textbook principles in the excerpts? Is the language Grade {{ grade }}-appropriate? If any fails, rewrite before emitting JSON.
-
-SHORT-ANSWER DOK × BLOOM CALIBRATION (follow exactly for level {{ dok_level }}):
-- DOK 1 (Remember/Understand): Define or name — ask for a definition, label, or short factual recall from the excerpts.
-- DOK 2 (Apply/Analyze simple): Explain mechanism or compare — ask the student to explain a process or compare two ideas using excerpt content.
-- DOK 3 (Analyze/Evaluate): Apply — ask the student to apply the concept to a short new classroom/everyday scenario not copied verbatim from the excerpts, but answerable from excerpt principles.
-- DOK 4 (Evaluate/Create constrained): Synthesize — ask for a multi-step answer that links two or more distinct ideas from the excerpts into one coherent explanation (still grounded; no invented experiments).
+5) Run the internal verification above. If any check fails, rewrite before emitting JSON.
 
 HALLUCINATION GUARDRAILS
 - Use ONLY EXCERPTS. Prefer a simpler stem over invented content.
-- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", or "Activity".
+- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", "Activity", "Bloom", or "DOK".
 
-FEW-SHOT EXAMPLE (shape only):
+FEW-SHOT EXEMPLARS (cognitive pattern + required JSON shape).
+Do NOT copy these facts. Rebuild every answer from EXCERPTS at DOK {{ dok_level }}.
+Do NOT add cognitive_metadata to the JSON.
+
+--- EXEMPLAR 1: DOK 1 × Bloom Remember (Factual, 1 step) ---
 {
-  "question": "Explain why plants need sunlight.",
-  "ideal_answer": "Plants use sunlight as energy to make food during photosynthesis.",
-  "keywords": ["sunlight", "photosynthesis", "energy", "food"]
+  "question": "Name the SI unit used to measure force.",
+  "ideal_answer": "Force is measured in newtons.",
+  "keywords": ["force", "newton", "unit"]
+}
+
+--- EXEMPLAR 2: DOK 2 × Bloom Apply (Conceptual, 2 steps) ---
+The ideal answer must state the expansion and then apply it to the lid. One definition sentence is not enough.
+{
+  "question": "A metal lid on a glass jar is tight. Explain why holding the lid in warm water helps open the jar.",
+  "ideal_answer": "Metals expand when heated. The metal lid expands more than the glass, so the lid loosens.",
+  "keywords": ["expand", "metal", "heat", "lid"]
+}
+
+--- EXEMPLAR 3: DOK 3 × Bloom Analyze (Strategic, 3 steps) ---
+The ideal answer must use the rusting conditions, compare the tubes, and justify the fastest case.
+{
+  "question": "An iron nail in dry air with silica gel is compared with an iron nail in salt water open to the air. Explain in which setup rusting is faster, and why.",
+  "ideal_answer": "Rusting of iron needs both oxygen and water. The dry-air nail lacks water, so it does not rust. The nail in salt water open to the air has water, oxygen, and dissolved salt, so it rusts faster.",
+  "keywords": ["rusting", "oxygen", "water", "salt"]
+}
+
+--- EXEMPLAR 4: DOK 4 × Bloom Evaluate (constrained synthesis, 4 steps) ---
+The ideal answer must combine two principles: metals expand on heating, and brass expands more than steel.
+{
+  "question": "A strip has a brass layer fastened to a steel layer. Brass expands more than steel for the same temperature rise. Explain what the strip does when it is heated evenly, and why.",
+  "ideal_answer": "Both metals expand when heated, but brass lengthens more than steel. The brass side becomes longer, so the strip bends with brass on the outside of the curve. Equal heating does not keep it straight, because the expansions are unequal.",
+  "keywords": ["brass", "steel", "expand", "bend"]
 }
 
 OUTPUT
-Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text):
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text, no taxonomy fields):
 {
   "question": "...",
   "ideal_answer": "...",

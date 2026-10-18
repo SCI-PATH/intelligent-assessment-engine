@@ -1,28 +1,50 @@
 {# Design note (template comment — omitted from the rendered LLM prompt).
 
    Contract: distractor_tag / distractor_label feed Component 4 for incorrect polarity.
-   Do not invent similarity_score in this template.
-
-   DOK × Bloom mapping:
-   - Persistence and adaptive selection use dok_level ∈ {1,2,3,4} (Webb DOK).
-     The UI may surface this as "Difficulty Level".
-   - Bloom's six process levels are collapsed onto those four bands for generation:
-       DOK 1 = Remember + Understand
-       DOK 2 = Apply + light Analyze
-       DOK 3 = deeper Analyze + Evaluate
-       DOK 4 = Evaluate + Create (constrained; keep a single True/False claim —
-               do not require designing an investigation)
-   - Generation receives dok_level and bloom_focus; runtime DDA uses dok_level only.
-   - Grade (6–9) controls language and syllabus scope; it does not add Elo or DOK tiers.
+   Do not invent similarity_score, and do not add cognitive_metadata to the JSON.
+   Bloom × DOK is an authoring contract only. The stored field remains dok_level.
 #}
-CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt.
+CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt. Do NOT write the words "Bloom" or "DOK" in the student-facing statement.
 
 You are an expert Sri Lankan science teacher writing ONE True/False statement for Grade {{ grade }} Science (NIE / MoE curriculum). Use clear classroom English for a Grade {{ grade }} learner.
 
 Chapter: {{ chapter_name }}
-Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
-Bloom's cognitive focus for this DOK (verbs to require): {{ bloom_focus }}
-Difficulty Level for UI = DOK {{ dok_level }} (backend field: dok_level).
+
+================================================================================
+RESEARCH CONTRACT — DUAL COGNITIVE TARGET
+Bloom's Revised Taxonomy (Anderson & Krathwohl, 2001) × Webb's Depth of Knowledge (Webb, 2002)
+================================================================================
+This is a joint target, not a label pasted onto a normal true/false line.
+- BLOOM names the mental OPERATION required to judge the claim (the action verb).
+- WEBB'S DOK names the DEPTH CEILING: how many independent reasoning steps the claim demands, and whether the situation is familiar or unseen.
+- A true/false item is still a failed item if the verb and the depth disagree. "Evaluate" on a copied definition is DOK 1. "Evaluate" on an unseen observation is DOK 3.
+- Keep ONE binary claim. Do not ask the student to design an investigation.
+- Difficulty Level shown in the UI is this DOK level. The claim itself must force the verb below.
+
+REQUESTED PAIR FOR THIS ITEM (use this pair only):
+- Webb DOK: Level {{ dok_level }} — {{ dok_descriptor }}
+- Bloom process the claim MUST force: {{ bloom_focus }}
+{% if dok_level == 1 %}
+- Active contract: DOK 1 × Bloom Remember or Understand. Knowledge dimension: Factual. Reasoning steps: exactly 1. One syllabus fact, stated plainly. No scenario and no comparison.
+{% elif dok_level == 2 %}
+- Active contract: DOK 2 × Bloom Apply or Analyze (simple). Knowledge dimension: Conceptual. Reasoning steps: exactly 2. The claim must relate two ideas (cause and effect, or a contrast). A bare definition is a FAIL.
+{% elif dok_level == 3 %}
+- Active contract: DOK 3 × Bloom Analyze or Evaluate. Knowledge dimension: Conceptual. Reasoning steps: at least 3. The claim judges an unseen classroom or everyday observation. A sentence copied from a definition is a FAIL.
+{% else %}
+- Active contract: DOK 4 × Bloom Evaluate or Create (constrained to excerpt facts). Knowledge dimension: Conceptual synthesis. Reasoning steps: at least 4. The claim combines two distinct excerpt ideas. Still one True/False sentence. Do not ask for an investigation design.
+{% endif %}
+
+COGNITIVE DEMAND MATRIX (the full research design — follow the row for DOK {{ dok_level }}):
+- DOK 1 × Remember/Understand: one fact, unit, or property. One step.
+- DOK 2 × Apply/Analyze: one claim that links two ideas. Two steps.
+- DOK 3 × Analyze/Evaluate: judge an unseen observation with an excerpt principle. Three or more steps.
+- DOK 4 × Evaluate/Create (constrained): one claim that needs two excerpt principles together. Four or more steps. Still binary.
+
+INTERNAL VERIFICATION (do this before you emit JSON; do not print it):
+1. Can a student judge this claim ONLY by performing "{{ bloom_focus }}"?
+2. Count the reasoning steps. DOK 1 needs 1. DOK 2 needs 2. DOK 3 needs at least 3. DOK 4 needs at least 4.
+3. If dok_level is 2, 3, or 4 and the claim is only "remember this definition", rewrite it.
+4. Reject double negatives, trick wording, and any stem that says Bloom, DOK, excerpt, figure, or activity.
 {% if avoid_stems %}
 DISTINCTNESS (mandatory)
 - Do NOT reword or paraphrase any of these prior statements for this same topic/DOK/type:
@@ -37,25 +59,18 @@ SCIENTIFIC ACCURACY (mandatory — syllabus grounding)
 - If correct_answer is True, the claim must be indisputably true from the excerpts.
 - If correct_answer is False, the claim must be unambiguously false (a clear scientific error), not merely poorly worded.
 - Do not invent facts absent from the excerpts.
-- If excerpts are thin, write a simpler DOK-appropriate True/False claim still fully grounded — never invent content to force a higher DOK.
+- If excerpts are thin, write a simpler claim that still meets DOK {{ dok_level }} using only what is present.
 
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
-1) Identify one testable claim supported by the excerpts.
-2) Decide whether the statement should be True or False without trick wording or double negatives.
-3) Assign distractor_tag / distractor_label for the INCORRECT polarity only — label must explain why a student who picks the wrong True/False answer is wrong for THIS statement.
-4) Reject any claim that requires figures or invented facts.
-5) Self-critique (internal): Does this True/False item truly require DOK {{ dok_level }} (Bloom: {{ bloom_focus }}) for a binary claim? Is it fully solvable from textbook principles in the excerpts? Is the language Grade {{ grade }}-appropriate? If any fails, rewrite before emitting JSON.
-
-TRUE/FALSE DOK × BLOOM CALIBRATION (follow exactly for level {{ dok_level }}):
-- DOK 1 (Remember/Understand): Single factual claim — one syllabus fact, definition, or property stated clearly (not a scenario).
-- DOK 2 (Apply/Analyze simple): Compare or relate two ideas from the excerpts in one claim (e.g. cause–effect or contrast of two properties).
-- DOK 3 (Analyze/Evaluate): Evaluate an unseen scientific observation or short classroom scenario (not a bare definition); the learner must judge the claim using excerpt principles.
-- DOK 4 (Evaluate/Create constrained): Multi-condition claim that requires synthesizing two or more ideas from the excerpts (still a single True/False statement). Do NOT ask the student to "design an investigation" — keep it binary and grounded.
+1) Build one testable claim at Bloom "{{ bloom_focus }}" and DOK {{ dok_level }}.
+2) Decide whether the statement should be True or False without trick wording.
+3) Assign distractor_tag / distractor_label for the INCORRECT polarity only. The label must explain the science error a student makes by picking the wrong polarity, and it must stand alone.
+4) Run the internal verification above. If any check fails, rewrite before emitting JSON.
 
 HALLUCINATION GUARDRAILS
 - Ground every claim in EXCERPTS only.
 - Avoid double negatives and absolute words ("always", "never") unless scientifically essential and excerpt-supported.
-- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", or "Activity".
+- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", "Activity", "Bloom", or "DOK".
 
 COMPONENT 4 DISTRACTOR CONTRACT (strict — C4 reads labels in isolation)
 - distractor_tag describes the error made by choosing the INCORRECT polarity (True when False is correct, or False when True is correct).
@@ -64,31 +79,59 @@ COMPONENT 4 DISTRACTOR CONTRACT (strict — C4 reads labels in isolation)
 - NEAR_MISS: the wrong polarity almost fits; the claim shares most of the right idea but flips a detail.
 - MISCONCEPTION: the wrong polarity encodes a systematic wrong scientific belief about this topic.
 - COMPLETE_MISS: the wrong polarity reflects an irrelevant or off-topic misunderstanding relative to the claim.
-- distractor_label MUST be a complete standalone pedagogical sentence that makes 100% sense even if the reader has NEVER seen the True/False claim, the question, or any options.
+- distractor_label MUST be a complete standalone pedagogical sentence that makes 100% sense even if the reader has NEVER seen the True/False claim.
 - The sentence MUST explicitly name (1) the science concept and (2) the exact error in reasoning revealed by picking the wrong polarity.
-- Do NOT write labels that only make sense when paired with the statement (e.g. "Reverses the claim" or "Says True instead of False").
 - BANNED phrasing: "this topic", "the question", "the statement", "the chosen option", "the student has a misconception", "incorrect option", "wrong answer", "wrong polarity".
 - GOOD example: "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel and unlike poles attract."
-- GOOD example: "The student confuses conductors with insulators, incorrectly believing plastic conducts heat."
 - BAD example: "Reverses attraction of like poles" (too short / not standalone).
-- BAD example: "The student has a misconception about this topic." (no concept, no error).
 - BAD example: "The student answered False when the statement was True." (references the item, not the science error).
 
-FEW-SHOT EXAMPLE (shape only):
+FEW-SHOT EXEMPLARS (cognitive pattern + required JSON shape).
+Do NOT copy these facts. Rebuild every claim from EXCERPTS at DOK {{ dok_level }}.
+Do NOT add cognitive_metadata to the JSON.
+
+--- EXEMPLAR 1: DOK 1 × Bloom Remember (Factual, 1 step) ---
 {
-  "question": "Unlike poles of a magnet attract each other.",
+  "question": "The SI unit of force is the newton.",
+  "correct_answer": "True",
+  "distractor_tag": "NEAR_MISS",
+  "distractor_label": "The student confuses the newton, the SI unit of force, with the kilogram, which is the SI unit of mass."
+}
+
+--- EXEMPLAR 2: DOK 2 × Bloom Apply (Conceptual, 2 steps) ---
+The claim links heating to unequal expansion. Judging it takes two steps, not a definition recall.
+{
+  "question": "A metal lid on a glass jar loosens in warm water because the metal expands more than the glass.",
   "correct_answer": "True",
   "distractor_tag": "MISCONCEPTION",
-  "distractor_label": "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel and unlike poles attract."
+  "distractor_label": "The student believes heating makes the glass contract around the lid, reversing thermal expansion of the glass."
+}
+
+--- EXEMPLAR 3: DOK 3 × Bloom Analyze (Strategic, 3 steps) ---
+The student must use the rusting rule on an unseen setup, not recite the rule alone.
+{
+  "question": "An iron nail left in dry air with silica gel rusts faster than an iron nail left in salt water that is open to the air.",
+  "correct_answer": "False",
+  "distractor_tag": "MISCONCEPTION",
+  "distractor_label": "The student believes dry oxygen alone rusts iron faster than salt water open to air, omitting that rusting needs both water and oxygen and is faster when salt is dissolved."
+}
+
+--- EXEMPLAR 4: DOK 4 × Bloom Evaluate (constrained synthesis, 4 steps) ---
+Two principles in one claim: different metals expand differently, and the strip must bend. Use this pattern only when the excerpts support both ideas.
+{
+  "question": "A brass-steel strip fastened along its length stays straight when heated evenly, because both metals receive the same heat even though brass expands more than steel.",
+  "correct_answer": "False",
+  "distractor_tag": "MISCONCEPTION",
+  "distractor_label": "The student assumes equal heating keeps a brass-steel strip straight, ignoring that the greater expansion of brass forces the strip to bend."
 }
 
 OUTPUT
-Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text):
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text, no taxonomy fields):
 {
   "question": "...",
   "correct_answer": "True",
   "distractor_tag": "MISCONCEPTION",
-  "distractor_label": "The student incorrectly believes that like magnetic poles attract each other, reversing the rule that like poles repel and unlike poles attract."
+  "distractor_label": "..."
 }
 
 EXCERPTS

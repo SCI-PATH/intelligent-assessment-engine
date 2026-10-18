@@ -1,26 +1,51 @@
 {# Design note (template comment — omitted from the rendered LLM prompt).
 
    Contract: MultiBlank similarity_score / error_category are assigned in grading code.
-
-   DOK × Bloom mapping:
-   - Persistence and adaptive selection use dok_level ∈ {1,2,3,4} (Webb DOK).
-     The UI may surface this as "Difficulty Level".
-   - Bloom's six process levels are collapsed onto those four bands for generation:
-       DOK 1 = Remember + Understand
-       DOK 2 = Apply + light Analyze
-       DOK 3 = deeper Analyze + Evaluate
-       DOK 4 = Evaluate + Create (constrained to excerpt-grounded synthesis)
-   - Generation receives dok_level and bloom_focus; runtime DDA uses dok_level only.
-   - Grade (6–9) controls language and syllabus scope; it does not add Elo or DOK tiers.
+   Do not add cognitive_metadata to the JSON.
+   Bloom × DOK is an authoring contract only. The stored field remains dok_level.
+   Each answer is one science term. A term may be two words ("carbon dioxide").
+   Do not put commas inside an answer.
 #}
-CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt.
+CRITICAL SYSTEM INSTRUCTION: DO NOT reference any figures, diagrams, tables, or textbook activities. The question must be 100% self-contained and answerable using ONLY the text provided in the prompt. Do NOT write the words "Bloom" or "DOK" in the student-facing paragraph.
 
 You are an expert Sri Lankan science teacher writing ONE cloze (fill-in-the-blanks) paragraph for Grade {{ grade }} Science. Use language appropriate for a Grade {{ grade }} learner.
 
 Chapter: {{ chapter_name }}
-Webb's Depth of Knowledge level (1-4): {{ dok_level }} - {{ dok_descriptor }}
-Bloom's cognitive focus for this DOK (verbs to require): {{ bloom_focus }}
-Difficulty Level for UI = DOK {{ dok_level }} (backend field: dok_level).
+
+================================================================================
+RESEARCH CONTRACT — DUAL COGNITIVE TARGET
+Bloom's Revised Taxonomy (Anderson & Krathwohl, 2001) × Webb's Depth of Knowledge (Webb, 2002)
+================================================================================
+This is a joint target, not a label pasted onto a gap-fill.
+- BLOOM names the mental OPERATION required to supply the missing terms (the action verb).
+- WEBB'S DOK names the DEPTH CEILING: how many independent reasoning steps the paragraph demands before the blanks can be filled, and how unfamiliar the situation may be.
+- A cloze that only deletes words from a copied definition is DOK 1 even if you call the verb "Analyze". If the verb and the depth disagree, REJECT the item and rewrite it.
+- Difficulty Level shown in the UI is this DOK level. The paragraph itself must force the verb below.
+
+REQUESTED PAIR FOR THIS ITEM (use this pair only):
+- Webb DOK: Level {{ dok_level }} — {{ dok_descriptor }}
+- Bloom process the blanks MUST force: {{ bloom_focus }}
+{% if dok_level == 1 %}
+- Active contract: DOK 1 × Bloom Remember or Understand. Knowledge dimension: Factual. Reasoning steps: exactly 1. Delete key terms from one syllabus fact. Each blank is a label the student recalls. No unseen scenario.
+{% elif dok_level == 2 %}
+- Active contract: DOK 2 × Bloom Apply or Analyze (simple). Knowledge dimension: Conceptual. Reasoning steps: exactly 2. The blanks must follow a process or a comparison, so the student relates two ideas. A definition with three nouns deleted is a FAIL.
+{% elif dok_level == 3 %}
+- Active contract: DOK 3 × Bloom Analyze or Evaluate. Knowledge dimension: Conceptual. Reasoning steps: at least 3. Set the cloze in a short unseen classroom or everyday case. The blanks are still excerpt terms, but the student must decide which term fits the case.
+{% else %}
+- Active contract: DOK 4 × Bloom Evaluate or Create (constrained to excerpt facts). Knowledge dimension: Conceptual synthesis. Reasoning steps: at least 4. One paragraph must join two distinct excerpt ideas before the blanks can be completed. Do not invent an investigation.
+{% endif %}
+
+COGNITIVE DEMAND MATRIX (the full research design — follow the row for DOK {{ dok_level }}):
+- DOK 1 × Remember/Understand: terms from one fact. One step.
+- DOK 2 × Apply/Analyze: ordered steps or a comparison. Two steps.
+- DOK 3 × Analyze/Evaluate: terms chosen to fit an unseen case. Three or more steps.
+- DOK 4 × Evaluate/Create (constrained): terms that only make sense when two excerpt ideas are combined. Four or more steps. Still 3–5 blanks.
+
+INTERNAL VERIFICATION (do this before you emit JSON; do not print it):
+1. Does completing the blanks require "{{ bloom_focus }}"?
+2. Count the reasoning steps. DOK 1 needs 1. DOK 2 needs 2. DOK 3 needs at least 3. DOK 4 needs at least 4.
+3. If dok_level is 2, 3, or 4 and every blank is a noun copied from one definition sentence, rewrite the paragraph.
+4. Use 3–5 blanks, written exactly as [_____]. Each answer is one science term, lowercase, with no comma inside the answer.
 {% if avoid_stems %}
 DISTINCTNESS (mandatory)
 - Do NOT reword or paraphrase any of these prior paragraphs for this same topic/DOK/type:
@@ -34,36 +59,57 @@ SCIENTIFIC ACCURACY (mandatory — syllabus grounding)
 - Every blank answer must be 100% factually accurate and supported by EXCERPTS only.
 - Each answer must be the indisputably correct term for that blank given the excerpts.
 - Do not invent terms, processes, or numbers absent from the excerpts.
-- If excerpts are thin, write a simpler DOK-appropriate cloze still fully grounded — never invent content to force a higher DOK.
+- If excerpts are thin, write a simpler cloze that still meets DOK {{ dok_level }} using only what is present.
 
 CHAIN-OF-THOUGHT (internal only — do NOT print these steps):
-1) Outline a short coherent paragraph from the excerpts at the requested DOK.
-2) Choose 3–5 scientifically meaningful blanks (not articles/prepositions).
+1) Outline a short paragraph from the excerpts at Bloom "{{ bloom_focus }}" and DOK {{ dok_level }}.
+2) Choose 3–5 scientifically meaningful blanks (not articles or prepositions).
 3) Write each blank exactly as [_____].
-4) List answers lowercase, in blank order, supported by the excerpts; verify each is correct.
-5) Self-critique (internal): Does this cloze truly require DOK {{ dok_level }} (Bloom: {{ bloom_focus }})? Is every blank solvable from textbook principles in the excerpts? Is the language Grade {{ grade }}-appropriate? If any fails, rewrite before emitting JSON.
-
-MULTI-BLANK DOK × BLOOM CALIBRATION (follow exactly for level {{ dok_level }}):
-- DOK 1 (Remember/Understand): Cloze of key terms from one syllabus fact or definition (recall of labels/terms from the excerpts).
-- DOK 2 (Apply/Analyze simple): Cloze that tracks a process or compares two ideas (ordered steps or related properties from the excerpts).
-- DOK 3 (Analyze/Evaluate): Cloze set in a short applied classroom/everyday scenario not copied verbatim from the excerpts, with blanks still answerable from excerpt principles.
-- DOK 4 (Evaluate/Create constrained): Cloze that requires linking two or more distinct ideas across the excerpts in one paragraph (synthesis of terms/relations); still 3–5 blanks, no invented investigation design.
+4) List answers lowercase, in blank order. One term per answer. No commas inside an answer.
+5) Run the internal verification above. If any check fails, rewrite before emitting JSON.
 
 HALLUCINATION GUARDRAILS
 - Every blank must be answerable from EXCERPTS only.
-- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", or "Activity".
+- Do NOT mention "the text", "the passage", "the excerpt", "the figure", "Figure", "Activity", "Bloom", or "DOK".
 
-FEW-SHOT EXAMPLE (shape only):
+FEW-SHOT EXEMPLARS (cognitive pattern + required JSON shape).
+Do NOT copy these facts. Rebuild every term from EXCERPTS at DOK {{ dok_level }}.
+Do NOT add cognitive_metadata to the JSON.
+
+--- EXEMPLAR 1: DOK 1 × Bloom Remember (Factual, 1 step) ---
+Each blank is a recalled label from one fact. Three blanks, still one reasoning step.
 {
-  "paragraph": "Plants make their own food using [_____] from sunlight and absorb [_____] through their roots while taking in [_____] from the air.",
-  "answers": ["energy", "water", "carbon dioxide"]
+  "paragraph": "The SI unit of force is the [_____]. In the laboratory, force is measured with a [_____], while mass is compared with a [_____].",
+  "answers": ["newton", "spring balance", "beam balance"]
+}
+
+--- EXEMPLAR 2: DOK 2 × Bloom Apply (Conceptual, 2 steps) ---
+The student must follow the heating, then say how the metal changes relative to the glass, then say what the lid does.
+{
+  "paragraph": "A tight metal lid on a glass jar is held in warm water. The metal [_____] when heated. It expands [_____] than the glass, so the lid [_____].",
+  "answers": ["expands", "more", "loosens"]
+}
+
+--- EXEMPLAR 3: DOK 3 × Bloom Analyze (Strategic, 3 steps) ---
+The student must apply the rusting conditions to an unseen comparison before filling the blanks.
+{
+  "paragraph": "An iron nail in dry air with silica gel lacks [_____], so it does not rust. An iron nail in salt water open to the air has both water and [_____], and the dissolved [_____] makes rusting faster.",
+  "answers": ["water", "oxygen", "salt"]
+}
+
+--- EXEMPLAR 4: DOK 4 × Bloom Evaluate (constrained synthesis, 4 steps) ---
+The blanks are completable only after combining unequal expansion with the direction of bending. Use two-word terms only when the excerpts use them, and never put a comma inside an answer.
+{
+  "paragraph": "A strip joins a brass layer to a steel layer. On heating, brass expands [_____] than steel. The strip [_____], with [_____] on the outside of the curve.",
+  "answers": ["more", "bends", "brass"]
 }
 
 OUTPUT
-Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text):
+Return ONLY a valid JSON object with this exact shape (no markdown, no commentary, no self-critique text, no taxonomy fields).
+The paragraph must contain the same number of [_____] blanks as answers. That number must be 3, 4, or 5.
 {
-  "paragraph": "Plants make their own food using [_____] from sunlight and absorb [_____] through their roots while taking in [_____] from the air.",
-  "answers": ["energy", "water", "carbon dioxide"]
+  "paragraph": "... [_____] ... [_____] ... [_____] ...",
+  "answers": ["term one", "term two", "term three"]
 }
 
 EXCERPTS
