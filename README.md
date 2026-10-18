@@ -39,7 +39,7 @@ BKT P(L) values live only in Component 4. Component 2 keeps a **session-memory**
 
 1. **Aptitude Diagnostic Test** — survey + fixed **10 questions per grade** → `BASIC` | `INTERMEDIATE` | `ADVANCED`. No BKT.
 2. **Customizable Quiz** — pick `chapter_ids`, count, types. Elo DDA + C4 snapshot/submit.
-3. **Post-Lesson Quiz** — Component 1/3 passes `chapter_id`; length 15; same DDA loop.
+3. **Post-Lesson Quiz** — Component 1/3 passes `chapter_id`; length 10; same DDA loop.
 
 ### Aptitude Test
 

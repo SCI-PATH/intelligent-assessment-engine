@@ -132,7 +132,7 @@ Answer body:
 }
 ```
 
-Then the same `/next` + `/answer` loop (`max_questions` = 15).
+Then the same `/next` + `/answer` loop (`max_questions` = 10).
 
 ### Kill switch (Component 3)
 

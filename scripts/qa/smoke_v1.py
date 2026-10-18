@@ -137,7 +137,7 @@ def _run(client: TestClient) -> int:
             "max=",
             body.get("max_questions"),
         )
-        assert body["max_questions"] == 15
+        assert body["max_questions"] == 10
 
     print("SMOKE_OK")
     return 0

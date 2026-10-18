@@ -289,7 +289,7 @@ Then:
 
 Response includes `scope_chapter`, `chapter_source` (`component_1`), `lesson_id`, and `bkt` (`source=live` means C4 snapshot worked).
 
-Returns a session with `max_questions` typically **15**. Then reuse the same `/next` + `/answer` loop as customizable. `/next` and `/answer` also include slim `bkt`.
+Returns a session with `max_questions` typically **10**. Then reuse the same `/next` + `/answer` loop as customizable. `/next` and `/answer` also include slim `bkt`.
 
 **UI:** usually no chapter picker (chapter comes from lesson / C1); show progress `questions_asked / max_questions`.
 

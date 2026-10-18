@@ -57,7 +57,7 @@ class AppConfig:
             data["assessment"].get("response_time_target_seconds", 45)
         )
         self.post_lesson_max_questions: int = int(
-            data.get("assessment", {}).get("post_lesson_max_questions", 15)
+            data.get("assessment", {}).get("post_lesson_max_questions", 10)
         )
         aptitude_block = data.get("aptitude") or data.get("amplitude") or {}
         self.aptitude_quiz_size: int = int(aptitude_block.get("quiz_size", 10))

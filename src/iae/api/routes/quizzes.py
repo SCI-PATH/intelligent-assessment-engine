@@ -131,7 +131,7 @@ def post_lesson_context(
     response_model=QuizSessionResponse,
     summary="Start post-lesson quiz (Component 1 / Component 3)",
     description=(
-        "**Purpose:** Open a 15-question chapter quiz after a lesson completes.\n\n"
+        "**Purpose:** Open a 10-question chapter quiz after a lesson completes.\n\n"
         "**Caller:** Frontend, Component 1, or Component 3.\n\n"
         "**Chapter resolution:** always Component 1 ``GET /progress`` "
         "(maps ``g7_sci_01`` → ``G7_C1``, ``g9_sci_06`` → ``G9_C6``). "
