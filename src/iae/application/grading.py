@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 from iae.domain.models import (
     DistractorTag,
@@ -25,6 +26,10 @@ from iae.prompts import render
 
 _PASS_THRESHOLD = 0.8
 _SA_CATEGORIES = {item.value for item in ShortAnswerErrorCategory}
+_SEMANTIC_GRADE_TIMEOUT_S = 14.0
+_MCQ_LETTER = re.compile(r"^[A-D]$")
+_MCQ_LETTER_PREFIX = re.compile(r"^([A-D])\s*[:.)\-—–]\s+", re.IGNORECASE)
+_PLAIN_NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
 _BLANK_PUNCT_RE = re.compile(r"[^\w\s]+", re.UNICODE)
 _BLANK_SPACE_RE = re.compile(r"[\s_\-/]+")
 
@@ -82,6 +87,104 @@ def blanks_match(student: str, expected: str) -> bool:
     return _levenshtein(a, b) <= allowed
 
 
+def collapse_answer_text(value: object) -> str:
+    """Case-fold and collapse whitespace. Punctuation inside the answer stays."""
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def text_answer_key(value: object) -> str:
+    """Exact-match key: collapsed text, surrounding quotes removed, one trailing period."""
+    text = collapse_answer_text(value).strip("\"'`")
+    if text.endswith(".") and not _PLAIN_NUMBER.fullmatch(text[:-1] or ""):
+        text = text[:-1].rstrip()
+    return text
+
+
+def answers_match_text(student: object, expected: object) -> bool:
+    """True for the same text, or the same plain number (6 and 6.0). Not a fuzzy match."""
+    left = text_answer_key(student)
+    right = text_answer_key(expected)
+    if left and left == right:
+        return True
+    if _PLAIN_NUMBER.fullmatch(left or "") and _PLAIN_NUMBER.fullmatch(right or ""):
+        return abs(float(left) - float(right)) < 1e-9
+    return False
+
+
+def mcq_choice_letter(raw: object, options: dict | None = None) -> str:
+    """Resolve a stored key or a submitted choice to A–D. Option text maps to its letter."""
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    upper = text.upper()
+    if _MCQ_LETTER.fullmatch(upper):
+        return upper
+    prefixed = _MCQ_LETTER_PREFIX.match(text)
+    if prefixed:
+        return prefixed.group(1).upper()
+    folded = collapse_answer_text(text)
+    for letter, option_text in (options or {}).items():
+        key = str(letter).strip().upper()
+        if _MCQ_LETTER.fullmatch(key) and collapse_answer_text(option_text) == folded:
+            return key
+    return ""
+
+
+def true_false_token(raw: object) -> str:
+    text = text_answer_key(raw)
+    if text in {"t", "true"}:
+        return "true"
+    if text in {"f", "false"}:
+        return "false"
+    return ""
+
+
+def _keyword_fallback_grade(
+    payload: ShortAnswerPayload,
+    student_norm: str,
+    detected_missing: list[str],
+    *,
+    reason: str,
+) -> GradeResult:
+    keyword_hits = sum(
+        1 for kw in payload.keywords if kw and kw.lower() in student_norm
+    )
+    score = 0.0
+    if payload.keywords:
+        keyword_ratio = keyword_hits / len(payload.keywords)
+        if keyword_ratio >= 1.0:
+            score = 0.9
+        elif keyword_ratio >= 0.75:
+            score = 0.75
+        elif keyword_ratio >= 0.5:
+            score = 0.55
+    is_correct = score >= _PASS_THRESHOLD
+    return GradeResult(
+        accuracy_score=score,
+        is_correct=is_correct,
+        feedback=(
+            "Correct. The response meets the expected understanding."
+            if is_correct
+            else (
+                "We could not fully score this answer right now. "
+                "Try again in a moment, or check the lesson key idea."
+            )
+        ),
+        error_category=(
+            ShortAnswerErrorCategory.NO_ERROR.value
+            if is_correct
+            else (
+                ShortAnswerErrorCategory.MISSING_KEYWORDS.value
+                if detected_missing
+                else ShortAnswerErrorCategory.COMPLETELY_IRRELEVANT.value
+            )
+        ),
+        missing_keywords=[] if is_correct else detected_missing,
+        detailed_explanation="" if is_correct else reason,
+        ideal_answer=payload.ideal_answer,
+    )
+
+
 def _debug_log(*, hypothesis_id: str, location: str, message: str, data: dict) -> None:
     return
 
@@ -100,6 +203,48 @@ def _keywords_missing(keywords: list[str], student_norm: str) -> list[str]:
         if token and token.lower() not in student_norm:
             missing.append(token)
     return missing
+
+
+def engine_correct_answer(question: Question) -> str:
+    """Exact bank key for this question. Never inferred from the student response."""
+    payload = question.payload
+    if question.question_type == QuestionType.MCQ:
+        letter = str(payload.correct_answer or "").strip().upper()
+        options = getattr(payload, "options", None) or {}
+        text = ""
+        if isinstance(options, dict):
+            text = str(options.get(letter) or options.get(letter.lower()) or "").strip()
+        if letter and text:
+            return f"{letter} — {text}"
+        return letter
+    if question.question_type == QuestionType.TRUE_FALSE:
+        return str(payload.correct_answer or "").strip()
+    if question.question_type == QuestionType.MULTI_BLANK:
+        answers = [str(item).strip() for item in (payload.answers or []) if str(item).strip()]
+        return " | ".join(answers)
+    if question.question_type == QuestionType.SHORT_ANSWER:
+        return str(getattr(payload, "ideal_answer", "") or "").strip()
+    return ""
+
+
+def engine_accepted_answers(question: Question) -> list[str] | None:
+    if question.question_type == QuestionType.MULTI_BLANK:
+        answers = [str(item).strip() for item in (question.payload.answers or []) if str(item).strip()]
+        return answers or None
+    key = engine_correct_answer(question)
+    return [key] if key else None
+
+
+def attach_engine_correct_answer(question: Question, result: GradeResult) -> GradeResult:
+    key = engine_correct_answer(question)
+    accepted = engine_accepted_answers(question)
+    if key:
+        result.correct_answer = key
+    if accepted:
+        result.accepted_answers = accepted
+    if question.question_type == QuestionType.SHORT_ANSWER and not result.ideal_answer:
+        result.ideal_answer = key or None
+    return result
 
 
 def _parse_sa_category(raw: object, *, score: float, missing: list[str]) -> str:
@@ -124,19 +269,22 @@ class GradingService:
 
     def grade(self, question: Question, student_answer: str) -> GradeResult:
         if question.question_type == QuestionType.MCQ:
-            return self._grade_mcq(question, student_answer)
-        if question.question_type == QuestionType.TRUE_FALSE:
-            return self._grade_true_false(question, student_answer)
-        if question.question_type == QuestionType.MULTI_BLANK:
-            return self._grade_multi_blank(question, student_answer)
-        return self._grade_short_answer(question, student_answer)
+            result = self._grade_mcq(question, student_answer)
+        elif question.question_type == QuestionType.TRUE_FALSE:
+            result = self._grade_true_false(question, student_answer)
+        elif question.question_type == QuestionType.MULTI_BLANK:
+            result = self._grade_multi_blank(question, student_answer)
+        else:
+            result = self._grade_short_answer(question, student_answer)
+        return attach_engine_correct_answer(question, result)
 
     # ---- deterministic graders -------------------------------------------------
 
     def _grade_mcq(self, question: Question, student_answer: str) -> GradeResult:
-        correct = question.payload.correct_answer.strip().upper()
-        chosen = student_answer.strip().upper()
-        is_correct = chosen == correct
+        options = getattr(question.payload, "options", None) or {}
+        correct = mcq_choice_letter(question.payload.correct_answer, options)
+        chosen = mcq_choice_letter(student_answer, options)
+        is_correct = bool(correct) and chosen == correct
         result = GradeResult(
             accuracy_score=1.0 if is_correct else 0.0,
             is_correct=is_correct,
@@ -177,9 +325,9 @@ class GradingService:
 
     def _grade_true_false(self, question: Question, student_answer: str) -> GradeResult:
         payload: TrueFalsePayload = question.payload  # type: ignore[assignment]
-        correct = payload.correct_answer.strip().lower()
-        chosen = student_answer.strip().lower()
-        is_correct = bool(chosen) and chosen.startswith(correct[0])
+        correct = true_false_token(payload.correct_answer)
+        chosen = true_false_token(student_answer)
+        is_correct = bool(correct) and chosen == correct
         if is_correct:
             return GradeResult(
                 accuracy_score=1.0,
@@ -284,9 +432,18 @@ class GradingService:
         return GradeResult(
             accuracy_score=score,
             is_correct=score >= _PASS_THRESHOLD,
-            feedback=f"{hits} of {len(ideal)} blanks correct.",
+            feedback=(
+                "Correct."
+                if score >= _PASS_THRESHOLD
+                else f"Incorrect. The blanks are: {' | '.join(payload.answers)}."
+            ),
             error_category=category,
             missed_blanks=missed_blanks or None,
+            detailed_explanation=(
+                None
+                if score >= _PASS_THRESHOLD
+                else f"Expected blanks: {' | '.join(payload.answers)}."
+            ),
         )
 
     @staticmethod
@@ -300,7 +457,10 @@ class GradingService:
                     return [str(item) for item in parsed]
             except json.JSONDecodeError:
                 pass
-        return [part.strip() for part in re.split(r"[|;,\n]", raw) if part.strip()][:expected]
+        # Split only on the blank delimiter. Commas belong inside an answer.
+        if "|" in raw:
+            return [part.strip() for part in raw.split("|")][:expected]
+        return [raw][:expected]
 
     # ---- LLM-judged grader -----------------------------------------------------
 
@@ -323,17 +483,19 @@ class GradingService:
             return GradeResult(
                 accuracy_score=0.0,
                 is_correct=False,
-                feedback="No answer provided.",
+                feedback=(
+                    "No answer was typed yet — write a short science idea and try again."
+                ),
                 reasoning="The response is blank, so no concept evidence could be evaluated.",
                 error_category=ShortAnswerErrorCategory.COMPLETELY_IRRELEVANT.value,
                 missing_keywords=list(payload.keywords or []),
                 detailed_explanation="No answer was provided, so none of the required concepts were demonstrated.",
+                ideal_answer=payload.ideal_answer,
             )
 
-        student_norm = " ".join(student_answer.lower().split())
-        ideal_norm = " ".join(payload.ideal_answer.lower().split())
+        student_norm = collapse_answer_text(student_answer)
         detected_missing = _keywords_missing(payload.keywords, student_norm)
-        if student_norm and student_norm == ideal_norm:
+        if answers_match_text(student_answer, payload.ideal_answer):
             return GradeResult(
                 accuracy_score=1.0,
                 is_correct=True,
@@ -342,6 +504,7 @@ class GradingService:
                 error_category=ShortAnswerErrorCategory.NO_ERROR.value,
                 missing_keywords=[],
                 detailed_explanation="",
+                ideal_answer=payload.ideal_answer,
             )
 
         prompt = render(
@@ -352,19 +515,19 @@ class GradingService:
             student_answer=student_answer.strip(),
         )
         try:
-            result = self._llm.generate_json(prompt, temperature=0.15)
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(
+                    self._llm.generate_json, prompt, temperature=0.15
+                )
+                result = future.result(timeout=_SEMANTIC_GRADE_TIMEOUT_S)
         except Exception as exc:
-            return GradeResult(
-                accuracy_score=0.0,
-                is_correct=False,
-                feedback=f"Grading failed: {exc}",
-                error_category=(
-                    ShortAnswerErrorCategory.MISSING_KEYWORDS.value
-                    if detected_missing
-                    else ShortAnswerErrorCategory.COMPLETELY_IRRELEVANT.value
-                ),
-                missing_keywords=detected_missing,
-                detailed_explanation="The semantic judge was unavailable, so the response could not be fully scored.",
+            # Never leak raw provider/model JSON into student-facing feedback.
+            print(f"[iae] semantic grading unavailable: {exc}")
+            return _keyword_fallback_grade(
+                payload,
+                student_norm,
+                detected_missing,
+                reason="The semantic judge was unavailable, so the response could not be fully scored.",
             )
         raw_score = result.get("accuracy_score", result.get("score", 0.0))
         score = float(raw_score)
@@ -415,4 +578,5 @@ class GradingService:
             error_category=category,
             missing_keywords=merged_missing,
             detailed_explanation=explanation,
+            ideal_answer=payload.ideal_answer,
         )
