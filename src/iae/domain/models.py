@@ -324,10 +324,6 @@ class GradeResult(BaseModel):
     concept_explanation: str | None = None
     distractor_tag: str | None = None
     distractor_label: str | None = None
-    ideal_answer: str | None = None
-    # Bank key for this item. Downstream (mind map) must not invent a substitute.
-    correct_answer: str | None = None
-    accepted_answers: list[str] | None = None
 
 
 class StudentProfile(BaseModel):

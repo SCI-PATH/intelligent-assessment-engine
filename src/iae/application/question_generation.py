@@ -165,17 +165,10 @@ def _validate_c4_distractor_label(label: str, *, item_kind: str) -> str:
 def _shuffle_mcq_options(raw: dict) -> dict:
     options = raw.get("options", {})
     correct_letter = str(raw.get("correct_answer", "")).strip().upper()
-    if correct_letter[:1] in {"A", "B", "C", "D"} and not correct_letter[1:2].isalnum():
-        correct_letter = correct_letter[:1]
-    keyed = {
-        str(key).strip().upper(): str(value).strip()
-        for key, value in options.items()
-        if str(key).strip()
-    } if isinstance(options, dict) else {}
-    if len(keyed) != 4 or correct_letter not in keyed:
+    if not isinstance(options, dict) or len(options) != 4 or correct_letter not in options:
         raise ValueError("Invalid MCQ payload shape")
 
-    pairs = list(keyed.items())
+    pairs = [(k, str(v).strip()) for k, v in options.items()]
     random.shuffle(pairs)
     letters = ("A", "B", "C", "D")
     old_to_new: dict[str, str] = {}
@@ -184,7 +177,7 @@ def _shuffle_mcq_options(raw: dict) -> dict:
     new_correct = "A"
     for idx, (old_key, text) in enumerate(pairs):
         letter = letters[idx]
-        old_to_new[old_key] = letter
+        old_to_new[str(old_key).strip().upper()] = letter
         new_options[letter] = text
         if old_key == correct_letter:
             new_correct = letter
